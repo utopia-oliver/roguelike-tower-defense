@@ -1,0 +1,295 @@
+:root {
+  color-scheme: dark;
+  font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  background: #111713;
+  color: #f4efdf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 25% 0%, rgba(65, 128, 100, 0.28), transparent 34rem),
+    linear-gradient(180deg, #17241d 0%, #0e120f 100%);
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  color: #fff8e7;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+#app {
+  display: grid;
+  min-height: 100vh;
+  padding: 16px;
+  place-items: center;
+}
+
+.meta-view {
+  width: min(100%, 980px);
+}
+
+.page-head {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.page-head h1 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.page-head p,
+.panel p {
+  color: #d6cbb8;
+  line-height: 1.5;
+  margin: 4px 0 0;
+}
+
+.meta-grid,
+.loadout-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.panel {
+  background: rgba(15, 22, 18, 0.86);
+  border: 1px solid rgba(219, 188, 115, 0.25);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.tag-list span {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  color: #f7eedb;
+  font-size: 13px;
+  padding: 5px 8px;
+}
+
+.game-shell {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(300px, 540px) minmax(260px, 330px);
+  width: min(100%, 920px);
+}
+
+.hud {
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(3, 1fr) auto;
+}
+
+.hud > div,
+.side-panel,
+.modal-panel {
+  background: rgba(15, 22, 18, 0.86);
+  border: 1px solid rgba(219, 188, 115, 0.25);
+  border-radius: 8px;
+}
+
+.hud > div {
+  padding: 9px 12px;
+}
+
+.label {
+  color: #aeb8ab;
+  display: block;
+  font-size: 12px;
+}
+
+.primary {
+  background: #2d6a4f;
+  min-height: 42px;
+  padding: 9px 14px;
+}
+
+.secondary {
+  background: #355646;
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+canvas {
+  aspect-ratio: 9 / 14;
+  background: #18251e;
+  border: 1px solid rgba(219, 188, 115, 0.38);
+  border-radius: 8px;
+  display: block;
+  max-height: calc(100vh - 108px);
+  width: 100%;
+}
+
+.side-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px;
+}
+
+h2 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+
+.choice-list {
+  display: grid;
+  gap: 8px;
+}
+
+.roles {
+  grid-template-columns: 1fr 1fr;
+}
+
+.choice {
+  background: #21362b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  min-height: 46px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.choice strong,
+.choice span {
+  display: block;
+}
+
+.choice span,
+.hint,
+.status-card p,
+.modal-panel p {
+  color: #d6cbb8;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.choice.selected {
+  background: #9a6a1f;
+}
+
+.choice.deployed {
+  background: #405246;
+  opacity: 0.72;
+}
+
+.status-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.modal {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.64);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 16px;
+  position: fixed;
+}
+
+.hidden {
+  display: none;
+}
+
+.modal-panel {
+  max-width: 780px;
+  padding: 18px;
+  width: min(100%, 780px);
+}
+
+.perk-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 12px;
+}
+
+.perk-card {
+  background: #1d3026;
+  border: 1px solid rgba(219, 188, 115, 0.38);
+  border-radius: 8px;
+  color: #fff8e7;
+  min-height: 168px;
+  padding: 14px;
+  text-align: left;
+}
+
+.perk-card small {
+  color: #d7ad5d;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.perk-card p {
+  margin-top: 8px;
+}
+
+.result {
+  text-align: center;
+}
+
+.debug-panel {
+  background: rgba(5, 9, 7, 0.82);
+  border: 1px solid rgba(146, 210, 171, 0.38);
+  border-radius: 6px;
+  bottom: 10px;
+  color: #d8f7df;
+  font: 12px/1.45 Consolas, monospace;
+  left: 10px;
+  margin: 0;
+  max-width: min(360px, calc(100vw - 20px));
+  padding: 10px;
+  pointer-events: none;
+  position: fixed;
+  white-space: pre-wrap;
+  z-index: 20;
+}
+
+@media (max-width: 780px) {
+  #app {
+    padding: 10px;
+  }
+
+  .game-shell,
+  .hud,
+  .meta-grid,
+  .loadout-grid {
+    grid-template-columns: 1fr;
+  }
+
+  canvas {
+    max-height: none;
+  }
+
+  .perk-grid,
+  .roles {
+    grid-template-columns: 1fr;
+  }
+}

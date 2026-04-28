@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>守山门 新版MVP</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main id="app">
+      <section id="lobbyView" class="meta-view">
+        <header class="page-head">
+          <div>
+            <h1>守山门</h1>
+            <p>外部系统</p>
+          </div>
+          <button id="goLoadoutButton" class="primary">开始战斗</button>
+        </header>
+        <div class="meta-grid">
+          <article class="panel">
+            <h2>玩家</h2>
+            <p>等级：<strong id="metaLevel">1</strong></p>
+            <p>灵石：<strong id="metaLingstone">0</strong></p>
+          </article>
+          <article class="panel">
+            <h2>已拥有角色</h2>
+            <div id="ownedRolesList" class="tag-list"></div>
+            <button id="roleUpgradeButton" class="secondary">角色升级</button>
+          </article>
+          <article class="panel">
+            <h2>已拥有法宝</h2>
+            <div id="ownedArtifactsList" class="tag-list"></div>
+          </article>
+          <article class="panel">
+            <h2>已解锁护山大阵</h2>
+            <div id="unlockedFormationsList" class="tag-list"></div>
+          </article>
+          <article class="panel">
+            <h2>抽卡</h2>
+            <p>消耗局外灵石获取宗门角色。MVP 中先保留入口。</p>
+            <button id="gachaButton" class="secondary">抽卡入口</button>
+          </article>
+        </div>
+      </section>
+
+      <section id="loadoutView" class="meta-view hidden">
+        <header class="page-head">
+          <div>
+            <h1>战前配置</h1>
+            <p>选择 1 个阵法、最多 3 名角色、最多 1 个法宝。</p>
+          </div>
+          <button id="enterDeployButton" class="primary">进入布阵</button>
+        </header>
+        <div class="loadout-grid">
+          <article class="panel">
+            <h2>护山大阵</h2>
+            <div id="loadoutFormationList" class="choice-list"></div>
+          </article>
+          <article class="panel">
+            <h2>出战宗门角色</h2>
+            <p class="hint">至少 1 名，最多 3 名。</p>
+            <div id="loadoutRoleList" class="choice-list roles"></div>
+          </article>
+          <article class="panel">
+            <h2>出战法宝</h2>
+            <div id="loadoutArtifactList" class="choice-list"></div>
+          </article>
+          <article class="panel">
+            <h2>配置状态</h2>
+            <p id="loadoutStatus"></p>
+          </article>
+        </div>
+      </section>
+
+      <section id="battleView" class="game-shell hidden">
+        <header class="hud">
+          <div>
+            <span class="label">波次</span>
+            <strong id="waveText">1 / 15</strong>
+          </div>
+          <div>
+            <span class="label">阵眼</span>
+            <strong id="hpText">20 / 20</strong>
+          </div>
+          <div>
+            <span class="label">灵气</span>
+            <strong id="lingqiText">Lv1 · 0 / 40</strong>
+          </div>
+          <button id="startButton" class="primary">开始战斗</button>
+        </header>
+
+        <canvas id="gameCanvas" width="540" height="840"></canvas>
+
+        <aside class="side-panel">
+          <section>
+            <h2>本局护山大阵</h2>
+            <div id="formationList" class="choice-list"></div>
+          </section>
+          <section>
+            <h2>待部署角色</h2>
+            <div class="hint" id="deployHint">点击角色，再点击最底部护山大阵 / 护山阵眼格部署。</div>
+            <div id="roleList" class="choice-list roles"></div>
+          </section>
+          <section>
+            <h2>本局法宝</h2>
+            <div id="artifactList" class="choice-list"></div>
+          </section>
+          <section class="status-card">
+            <h2>本局状态</h2>
+            <p id="runStatus"></p>
+          </section>
+        </aside>
+      </section>
+
+      <section id="settlementView" class="meta-view hidden">
+        <header class="page-head">
+          <div>
+            <h1 id="settlementTitle">结算</h1>
+            <p>局内击杀只给灵气，灵石在这里统一结算。</p>
+          </div>
+          <button id="returnLobbyButton" class="primary">返回外部系统</button>
+        </header>
+        <div class="meta-grid">
+          <article class="panel">
+            <h2>本局最高波次</h2>
+            <strong id="settlementWave">1</strong>
+          </article>
+          <article class="panel">
+            <h2>击杀数量</h2>
+            <strong id="settlementKills">0</strong>
+          </article>
+          <article class="panel">
+            <h2>获得局外灵石</h2>
+            <strong id="settlementLingstone">0</strong>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <div class="modal hidden" id="perkModal">
+      <div class="modal-panel">
+        <h2>灵气突破</h2>
+        <p>选择一项机缘，本局立即生效。</p>
+        <div class="perk-grid" id="perkGrid"></div>
+      </div>
+    </div>
+
+    <pre id="debugPanel" class="debug-panel"></pre>
+
+    <script src="data/game-data.js"></script>
+    <script src="src/game.js"></script>
+  </body>
+</html>
