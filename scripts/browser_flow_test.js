@@ -3,7 +3,15 @@ const http = require("http");
 const net = require("net");
 const path = require("path");
 
-const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const fs = require("fs");
+
+const CHROME_CANDIDATES = [
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+];
+const CHROME = CHROME_CANDIDATES.find((candidate) => fs.existsSync(candidate)) || CHROME_CANDIDATES[0];
 const PORT = 9223;
 const PAGE_URL = `file:///${path.resolve(__dirname, "..", "index.html").replace(/\\/g, "/")}`;
 
@@ -199,8 +207,6 @@ async function main() {
     await cdp.eval("window.__SHOUSHANMEN_ACTIONS__.selectLoadout()");
     await cdp.eval("window.__SHOUSHANMEN_ACTIONS__.enterDeploy()");
     await cdp.eval("window.__SHOUSHANMEN_ACTIONS__.deployRole(0, 0, 5)");
-    await cdp.eval("window.__SHOUSHANMEN_ACTIONS__.deployRole(1, 2, 5)");
-    await cdp.eval("window.__SHOUSHANMEN_ACTIONS__.deployRole(2, 4, 5)");
     await cdp.eval("window.__SHOUSHANMEN_ACTIONS__.startBattle()");
     await waitFor(cdp, "window.__SHOUSHANMEN_DEBUG__().APP_STATE === 'BATTLE'");
 
@@ -260,7 +266,7 @@ async function main() {
             enemyStopsAndAttacks:
               beforeAttackLine.firstEnemyMode === "ATTACKING" &&
               afterAttackLine.baseHp < beforeAttackLine.baseHp,
-            charactersPresent: later["characters.length"] === 3,
+            charactersPresent: later["characters.length"] === 1,
             artifactPresent: later["artifacts.length"] === 1,
             noConsoleErrors: consoleErrors.length === 0,
           },

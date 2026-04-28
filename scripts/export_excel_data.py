@@ -237,7 +237,7 @@ def normalize_perk(row):
     elif pid == "perk_formation_radius":
         effect = {"type": "formation_radius_add", "value": 0.5}
     elif pid == "perk_base_hp":
-        effect = {"type": "base_hp_add", "value": 3}
+        effect = {"type": "array_hp_bonus", "value": 30}
     elif pid == "perk_lingqi_gain":
         effect = {"type": "lingqi_gain_mult", "value": parse_percent(text)}
     elif pid == "perk_boss_slayer":
@@ -365,7 +365,13 @@ def main():
             "rows": 6,
             "deployRows": [5],
             "maxWaves": 15,
-            "baseHp": 20,
+            "baseHp": 180,
+            "arrayCore": {
+                "maxHp": 180,
+                "currentHp": 180,
+                "defense": 2,
+                "damageReductionRate": 0,
+            },
             "rosterSlots": 3,
         },
         "playerMeta": player_meta,

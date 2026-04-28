@@ -74,6 +74,15 @@ const colors = {
   boss_blackwind: "#555f6f",
   boss_bloodlotus: "#bb3d84",
   boss_outer_demon: "#6d28d9",
+  剑修: "#d7e1ec",
+  火修: "#ef7b45",
+  冰修: "#72c8ee",
+  毒修: "#a97ad8",
+  雷修: "#c4b5fd",
+  枪修: "#d6b36a",
+  音修: "#f0abfc",
+  暗修: "#a78bfa",
+  万法: "#facc15",
 };
 
 const rarityWeight = {
@@ -82,6 +91,71 @@ const rarityWeight = {
   "史诗": 8,
   "传说": 2,
 };
+
+const CHARACTER_RARITY = {
+  SR: "SR",
+  SSR: "SSR",
+  UR: "UR",
+  SP: "SP",
+};
+
+const PLAYER_LEVEL_UNLOCKS = DATA.playerLevelUnlocks || [];
+const DEPLOY_SLOT_UNLOCKS = DATA.deploySlotUnlocks || [];
+const GACHA_COST = 200;
+const DUPLICATE_GACHA_REFUND = 50;
+
+const GENERIC_PERKS = [
+  {
+    id: "generic_role_damage_15",
+    name: "灵力灌注",
+    rarity: "普通",
+    scope: "global",
+    description: "全体角色伤害 +15%。",
+    valueText: "+15%",
+    stackable: true,
+    effect: { type: "role_damage_mult", value: 0.15 },
+  },
+  {
+    id: "generic_attack_speed_10",
+    name: "周天急转",
+    rarity: "普通",
+    scope: "global",
+    description: "全体角色攻速 +10%。",
+    valueText: "+10%",
+    stackable: true,
+    effect: { type: "role_attack_speed", value: 0.1 },
+  },
+  {
+    id: "generic_array_hp_30",
+    name: "阵纹加固",
+    rarity: "普通",
+    scope: "array_core",
+    description: "护山阵眼最大生命 +30，并恢复30生命。",
+    valueText: "阵眼生命+30",
+    stackable: true,
+    effect: { type: "array_hp_bonus", value: 30 },
+  },
+  {
+    id: "generic_array_defense_2",
+    name: "玄岳守势",
+    rarity: "普通",
+    scope: "array_core",
+    description: "护山阵眼防御 +2。",
+    valueText: "防御+2",
+    stackable: true,
+    effect: { type: "array_defense_bonus", value: 2 },
+  },
+  {
+    id: "generic_focus_lowest",
+    name: "点化弟子",
+    rarity: "普通",
+    scope: "character",
+    description: "当前最低等级角色伤害 +20%。",
+    valueText: "最低等级角色伤害+20%",
+    stackable: true,
+    effect: { type: "lowest_character_damage", value: 0.2 },
+  },
+];
 
 const grid = {
   columns: DATA.config.columns,
@@ -96,12 +170,25 @@ const grid = {
 
 const state = {};
 
+const DEFAULT_ARRAY_CORE_MAX_HP = 150;
+const DEFAULT_ARRAY_CORE_DEFENSE = 0;
+
 const playerMeta = {
+  playerLevel: 1,
+  playerExp: 0,
+  spiritStones: 0,
   level: 1,
   lingstone: 0,
+  ownedCharacters: [...DATA.initial.roles],
+  unlockedCharacterIds: [...DATA.initial.roles],
   ownedRoles: [...DATA.initial.roles],
+  characterLevels: Object.fromEntries(DATA.initial.roles.map((id) => [id, 1])),
+  maxDeploySlots: 1,
   ownedArtifacts: [DATA.initial.artifact],
   unlockedFormations: [DATA.initial.formation],
+  arrayCoreLevel: 1,
+  arrayCoreBaseHpBonus: 0,
+  arrayCoreDefenseBonus: 0,
 };
 
 function defaultRunBonuses() {
@@ -125,10 +212,204 @@ function defaultRunBonuses() {
     controlMultiplier: 1,
     poisonDurationAdd: 0,
     poisonSpreadChanceAdd: 0,
+    artifactDamage: 1,
+    artifactCooldown: 1,
+    horizontalBonus: 0,
+    chainBonus: 0,
   };
 }
 
+function syncPlayerMetaAliases() {
+  playerMeta.level = playerMeta.playerLevel;
+  playerMeta.lingstone = playerMeta.spiritStones;
+  playerMeta.ownedRoles = playerMeta.ownedCharacters;
+  playerMeta.unlockedCharacterIds = playerMeta.ownedCharacters;
+  playerMeta.maxDeploySlots = getMaxDeploySlots(playerMeta.playerLevel);
+}
+
+function getPlayerLevelExpRequirement(level) {
+  return Math.floor(100 + (level - 1) * 60 + Math.pow(level - 1, 1.35) * 25);
+}
+
+function getMaxDeploySlots(level = playerMeta.playerLevel) {
+  return DEPLOY_SLOT_UNLOCKS.reduce(
+    (slots, unlock) => (level >= unlock.level ? unlock.deploySlots : slots),
+    1,
+  );
+}
+
+function getNextCharacterUnlock() {
+  return PLAYER_LEVEL_UNLOCKS.find(
+    (unlock) => unlock.level > playerMeta.playerLevel && !playerMeta.ownedCharacters.includes(unlock.characterId),
+  );
+}
+
+function getNextDeploySlotUnlock() {
+  return DEPLOY_SLOT_UNLOCKS.find((unlock) => unlock.level > playerMeta.playerLevel);
+}
+
+function grantCharacter(characterId, source = "unlock") {
+  if (!DATA.roles[characterId]) return false;
+  if (playerMeta.ownedCharacters.includes(characterId)) {
+    if (source === "gacha") playerMeta.spiritStones += DUPLICATE_GACHA_REFUND;
+    syncPlayerMetaAliases();
+    return false;
+  }
+  playerMeta.ownedCharacters.push(characterId);
+  playerMeta.characterLevels[characterId] = playerMeta.characterLevels[characterId] || 1;
+  syncPlayerMetaAliases();
+  return true;
+}
+
+function applyPlayerLevelUnlocks() {
+  const unlocked = [];
+  PLAYER_LEVEL_UNLOCKS.forEach((unlock) => {
+    if (unlock.type === "character" && playerMeta.playerLevel >= unlock.level) {
+      if (grantCharacter(unlock.characterId, "level")) unlocked.push(unlock.description);
+    }
+  });
+  playerMeta.maxDeploySlots = getMaxDeploySlots(playerMeta.playerLevel);
+  syncPlayerMetaAliases();
+  return unlocked;
+}
+
+function checkPlayerLevelUp() {
+  const rewards = [];
+  while (playerMeta.playerExp >= getPlayerLevelExpRequirement(playerMeta.playerLevel)) {
+    playerMeta.playerExp -= getPlayerLevelExpRequirement(playerMeta.playerLevel);
+    playerMeta.playerLevel += 1;
+    rewards.push(`玩家等级提升到 ${playerMeta.playerLevel}`);
+    rewards.push(...applyPlayerLevelUnlocks());
+  }
+  syncPlayerMetaAliases();
+  return rewards;
+}
+
+function getCharacterLevel(characterId) {
+  return playerMeta.characterLevels[characterId] || 1;
+}
+
+function getFlatDamageGrowthByRarity(rarity) {
+  if (rarity === CHARACTER_RARITY.UR) return 5;
+  if (rarity === CHARACTER_RARITY.SSR) return 4;
+  return 3;
+}
+
+function getPercentGrowthByRarity(rarity) {
+  if (rarity === CHARACTER_RARITY.UR) return 0.12;
+  if (rarity === CHARACTER_RARITY.SSR) return 0.1;
+  return 0.08;
+}
+
+function getCharacterBaseFinalDamage(character) {
+  const level = getCharacterLevel(character.id);
+  const levelDelta = level - 1;
+  return (
+    character.baseDamage +
+    levelDelta * getFlatDamageGrowthByRarity(character.rarity) +
+    character.baseDamage * levelDelta * getPercentGrowthByRarity(character.rarity)
+  );
+}
+
+function getCharacterUpgradeCost(characterLevel, rarity) {
+  const rarityBase = {
+    SR: 80,
+    SSR: 140,
+    UR: 240,
+    SP: 360,
+  };
+  const rarityGrowth = {
+    SR: 1.5,
+    SSR: 1.6,
+    UR: 1.7,
+    SP: 1.8,
+  };
+  return Math.floor((rarityBase[rarity] || rarityBase.SR) * Math.pow(rarityGrowth[rarity] || rarityGrowth.SR, characterLevel - 1));
+}
+
+function upgradeCharacter(characterId) {
+  if (!playerMeta.ownedCharacters.includes(characterId)) return false;
+  const character = DATA.roles[characterId];
+  const level = getCharacterLevel(characterId);
+  const cost = getCharacterUpgradeCost(level, character.rarity);
+  if (playerMeta.spiritStones < cost) {
+    setStatus(`灵石不足，${character.name} 升级需要 ${cost} 灵石。`);
+    return false;
+  }
+  playerMeta.spiritStones -= cost;
+  playerMeta.characterLevels[characterId] = level + 1;
+  syncPlayerMetaAliases();
+  setStatus(`${character.name} 提升到 ${level + 1} 级，战斗伤害提高。`);
+  renderLobby();
+  return true;
+}
+
+function drawGachaRarity() {
+  const roll = Math.random();
+  if (roll < 0.05) return CHARACTER_RARITY.UR;
+  if (roll < 0.3) return CHARACTER_RARITY.SSR;
+  return CHARACTER_RARITY.SR;
+}
+
+function performGacha() {
+  if (playerMeta.spiritStones < GACHA_COST) {
+    setStatus(`灵石不足，抽卡需要 ${GACHA_COST} 灵石。`);
+    return;
+  }
+  playerMeta.spiritStones -= GACHA_COST;
+  const pool = Object.values(DATA.roles).filter((role) => role.unlockType === "gacha");
+  const rarity = drawGachaRarity();
+  const rarityPool = pool.filter((role) => role.rarity === rarity);
+  const candidates = rarityPool.length ? rarityPool : pool;
+  const result = candidates[Math.floor(Math.random() * candidates.length)];
+  const isNew = grantCharacter(result.id, "gacha");
+  syncPlayerMetaAliases();
+  renderLobby();
+  renderLoadout();
+  setStatus(
+    isNew
+      ? `抽卡获得 ${result.rarity} ${result.name}。`
+      : `抽到重复角色 ${result.rarity} ${result.name}，返还${DUPLICATE_GACHA_REFUND}灵石。`,
+  );
+}
+
+function baseArrayCoreMaxHp() {
+  return DATA.config.arrayCore?.maxHp || DATA.config.baseHp || DEFAULT_ARRAY_CORE_MAX_HP;
+}
+
+function baseArrayCoreDefense() {
+  return DATA.config.arrayCore?.defense || DEFAULT_ARRAY_CORE_DEFENSE;
+}
+
+function initialArrayCoreState() {
+  const maxHp = baseArrayCoreMaxHp() + (playerMeta.arrayCoreBaseHpBonus || 0);
+  const defense = baseArrayCoreDefense() + (playerMeta.arrayCoreDefenseBonus || 0);
+  return {
+    arrayCoreMaxHp: maxHp,
+    arrayCoreHp: maxHp,
+    arrayCoreDefense: defense,
+    arrayCoreDamageReduction: DATA.config.arrayCore?.damageReductionRate || 0,
+  };
+}
+
+function initializeArrayCoreForRun() {
+  const core = initialArrayCoreState();
+  state.arrayCoreMaxHp = core.arrayCoreMaxHp;
+  state.arrayCoreHp = core.arrayCoreHp;
+  state.arrayCoreDefense = core.arrayCoreDefense;
+  state.arrayCoreDamageReduction = core.arrayCoreDamageReduction;
+  syncBaseHpAliases();
+}
+
+function syncBaseHpAliases() {
+  state.maxBaseHp = state.arrayCoreMaxHp;
+  state.baseHp = state.arrayCoreHp;
+}
+
 function resetGame() {
+  applyPlayerLevelUnlocks();
+  syncPlayerMetaAliases();
+  const arrayCore = initialArrayCoreState();
   Object.assign(state, {
     appState: APP_STATE.LOBBY,
     phase: "lobby",
@@ -137,8 +418,12 @@ function resetGame() {
     gameOver: false,
     wave: 1,
     highestWave: 1,
-    baseHp: DATA.config.baseHp,
-    maxBaseHp: DATA.config.baseHp,
+    arrayCoreMaxHp: arrayCore.arrayCoreMaxHp,
+    arrayCoreHp: arrayCore.arrayCoreHp,
+    arrayCoreDefense: arrayCore.arrayCoreDefense,
+    arrayCoreDamageReduction: arrayCore.arrayCoreDamageReduction,
+    baseHp: arrayCore.arrayCoreHp,
+    maxBaseHp: arrayCore.arrayCoreMaxHp,
     runLevel: 1,
     lingqi: 0,
     kills: 0,
@@ -157,6 +442,7 @@ function resetGame() {
     zones: [],
     spawnJobs: [],
     waveActive: false,
+    martialArtLevels: {},
     formationCooldown: 0,
     artifactCooldown: 0,
     pendingLevelUps: 0,
@@ -182,7 +468,7 @@ function getDebugActions() {
     enterLoadout: () => enterLoadout(),
     selectLoadout: () => {
       state.loadoutFormationId = playerMeta.unlockedFormations[0];
-      state.loadoutRoleIds = playerMeta.ownedRoles.slice(0, DATA.config.rosterSlots);
+      state.loadoutRoleIds = playerMeta.ownedCharacters.slice(0, playerMeta.maxDeploySlots);
       state.loadoutArtifactId = playerMeta.ownedArtifacts[0];
       renderLoadout();
       return getDebugSnapshot();
@@ -201,6 +487,29 @@ function getDebugActions() {
     grantLingqi: (amount) => {
       gainLingqi(amount);
       updateUi();
+      return getDebugSnapshot();
+    },
+    grantPlayerExp: (amount) => {
+      playerMeta.playerExp += amount;
+      const rewards = checkPlayerLevelUp();
+      renderLobby();
+      updateUi();
+      return { rewards, snapshot: getDebugSnapshot() };
+    },
+    grantSpiritStones: (amount) => {
+      playerMeta.spiritStones += amount;
+      syncPlayerMetaAliases();
+      renderLobby();
+      updateUi();
+      return getDebugSnapshot();
+    },
+    gachaOnce: () => {
+      performGacha();
+      return getDebugSnapshot();
+    },
+    upgradeFirstCharacter: () => {
+      const first = playerMeta.ownedCharacters[0];
+      if (first) upgradeCharacter(first);
       return getDebugSnapshot();
     },
     chooseFirstPerk: () => {
@@ -230,6 +539,10 @@ function showView(view) {
 }
 
 function enterLoadout() {
+  applyPlayerLevelUnlocks();
+  state.loadoutRoleIds = state.loadoutRoleIds
+    .filter((id) => playerMeta.ownedCharacters.includes(id))
+    .slice(0, playerMeta.maxDeploySlots);
   state.appState = APP_STATE.LOADOUT;
   state.phase = "loadout";
   setStatus("选择本局阵法、出战角色和法宝。");
@@ -241,7 +554,7 @@ function loadoutReady() {
   return (
     Boolean(state.loadoutFormationId) &&
     state.loadoutRoleIds.length > 0 &&
-    state.loadoutRoleIds.length <= DATA.config.rosterSlots &&
+    state.loadoutRoleIds.length <= playerMeta.maxDeploySlots &&
     Boolean(state.loadoutArtifactId)
   );
 }
@@ -254,9 +567,12 @@ function enterDeploy() {
   }
   state.appState = APP_STATE.DEPLOY;
     state.phase = "deploy";
+  initializeArrayCoreForRun();
   state.selectedFormationId = state.loadoutFormationId;
   state.selectedArtifactId = state.loadoutArtifactId;
-  state.availableRoles = [...state.loadoutRoleIds];
+  state.availableRoles = state.loadoutRoleIds
+    .filter((id) => playerMeta.ownedCharacters.includes(id))
+    .slice(0, playerMeta.maxDeploySlots);
   state.selectedRoleId = state.availableRoles[0] || "";
   state.deployedRoles = [];
   setStatus("布阵阶段：只能把已选择角色部署在最底部 5 个护山大阵 / 护山阵眼格。");
@@ -305,8 +621,8 @@ function deployRole(col, row) {
     setStatus("该格已有宗门角色。");
     return;
   }
-  if (state.deployedRoles.length >= DATA.config.rosterSlots) {
-    setStatus(`上阵槽已满，本局最多部署 ${DATA.config.rosterSlots} 名角色。`);
+  if (state.deployedRoles.length >= playerMeta.maxDeploySlots) {
+    setStatus(`上阵位已满，本局最多部署 ${playerMeta.maxDeploySlots} 名角色。`);
     return;
   }
   if (state.deployedRoles.some((role) => role.roleId === state.selectedRoleId)) {
@@ -402,19 +718,32 @@ class Enemy {
     return 13;
   }
 
+  get hitRadius() {
+    if (this.config.isBoss) return 32;
+    if (this.config.id === "enemy_swift_wolf") return 13;
+    if (this.config.id === "enemy_armor_beast") return 22;
+    if (this.config.id === "enemy_blood_cultivator") return 18;
+    return 14;
+  }
+
   hasStatus(type) {
     return this.statuses.some((status) => status.type === type);
   }
 
-  addStatus(type, duration, value) {
+  addStatus(type, duration, value, options = {}) {
     if (type === "slow" && this.config.id === "boss_outer_demon") return;
     const existing = this.statuses.find((status) => status.type === type);
     if (existing) {
       existing.duration = Math.max(existing.duration, duration);
-      existing.value = Math.max(existing.value, value);
+      if (options.stack) {
+        existing.stacks = Math.min(options.maxStacks || 3, (existing.stacks || 1) + 1);
+        existing.value = value * existing.stacks;
+      } else {
+        existing.value = Math.max(existing.value, value);
+      }
       return;
     }
-    this.statuses.push({ type, duration, value, tick: 0 });
+    this.statuses.push({ type, duration, value, tick: 0, stacks: options.stack ? 1 : 0 });
   }
 
   takeDamage(rawAmount, source = "role", attacker = null) {
@@ -446,7 +775,7 @@ class Enemy {
       state.bossKills.add(state.wave);
     }
     if (this.hasStatus("poison")) {
-      const poisonSpreadRole = state.deployedRoles.some((role) => role.roleId === "role_ning_caiwei");
+      const poisonSpreadRole = state.deployedRoles.some((role) => DATA.roles[role.roleId]?.passiveSkill === "poison_stack");
       if (poisonSpreadRole && Math.random() < 0.3 + state.bonuses.poisonSpreadChanceAdd) {
         nearestEnemies(this, 3).forEach((enemy) => enemy.addStatus("poison", 3, 5));
       }
@@ -472,14 +801,10 @@ class Enemy {
       this.attackTimer += dt;
       if (this.attackTimer >= this.attackInterval) {
         this.attackTimer = 0;
-        damageArrayCore(this.attackDamage, this);
-        state.floaters.push({
-          x: canvas.width / 2,
-          y: canvas.height - grid.cellH * 0.65,
-          text: `-${this.attackDamage}`,
-          ttl: 0.65,
-          color: "#ff9a76",
-        });
+        const weaken = this.statuses
+          .filter((status) => status.type === "weaken_attack")
+          .reduce((max, status) => Math.max(max, status.value), 0);
+        damageArrayCore(this.attackDamage * (1 - weaken), this);
       }
       return;
     }
@@ -563,18 +888,137 @@ function enterLevelUpReward() {
   updateUi();
 }
 
+function martialArtForCharacter(characterId) {
+  return (DATA.martialArts || []).find((art) => art.ownerCharacterId === characterId);
+}
+
+function getMartialArtLevelForRole(roleId) {
+  const art = martialArtForCharacter(roleId);
+  return art ? state.martialArtLevels[art.id] || 0 : 0;
+}
+
+function martialLevelEffects(roleId) {
+  const art = martialArtForCharacter(roleId);
+  const level = art ? state.martialArtLevels[art.id] || 0 : 0;
+  return art ? art.levels.filter((item) => item.level <= level) : [];
+}
+
+function martialBonuses(roleId) {
+  const bonuses = {
+    damageMult: 1,
+    attackSpeed: 1,
+    projectileAdd: 0,
+    projectileSet: 0,
+    pierceAdd: 0,
+    rangeAdd: 0,
+    splashRadius: 1,
+    splashShards: 0,
+    burnOnHit: 0,
+    slowBonus: 0,
+    slowSplash: 0,
+    poisonDuration: 0,
+    dotMult: 1,
+    chainAdd: 0,
+    swordTrail: false,
+    poisonFogOnDeath: false,
+    verticalColumns: 1,
+    horizontalWidth: 0,
+    fullRowSpear: false,
+    paralyze: 0,
+    freezeAttackLine: 0,
+    meteorRain: 0,
+    bossPriorityLightning: false,
+    speedMult: 1,
+    widthAdd: 0,
+    hitRadiusAdd: 0,
+    collisionPaddingAdd: 0,
+    sideDamageScale: 0.7,
+    giantSword: false,
+    giantSwordDamageMult: 1,
+    giantSwordIntervalMult: 1,
+    giantSwordSplashRadius: 0,
+    giantSwordSplashDamage: 0,
+  };
+  martialLevelEffects(roleId).forEach((effect) => {
+    if (effect.effectType === "damage_mult") bonuses.damageMult *= 1 + effect.value;
+    if (effect.effectType === "attack_speed") bonuses.attackSpeed *= 1 + effect.value;
+    if (effect.effectType === "projectile_add") bonuses.projectileAdd += effect.value;
+    if (effect.effectType === "projectile_set") bonuses.projectileSet = Math.max(bonuses.projectileSet, effect.value);
+    if (effect.effectType === "pierce_add") bonuses.pierceAdd += effect.value;
+    if (effect.effectType === "range_add") bonuses.rangeAdd += effect.value;
+    if (effect.effectType === "splash_radius") bonuses.splashRadius *= 1 + effect.value;
+    if (effect.effectType === "splash_shards") bonuses.splashShards += effect.value;
+    if (effect.effectType === "burn_on_hit") bonuses.burnOnHit += effect.value;
+    if (effect.effectType === "slow_bonus") bonuses.slowBonus += effect.value;
+    if (effect.effectType === "slow_splash") bonuses.slowSplash = Math.max(bonuses.slowSplash, effect.value);
+    if (effect.effectType === "poison_duration") bonuses.poisonDuration += effect.value;
+    if (effect.effectType === "dot_mult") bonuses.dotMult *= 1 + effect.value;
+    if (effect.effectType === "chain_add") bonuses.chainAdd += effect.value;
+    if (effect.effectType === "sword_trail") bonuses.swordTrail = true;
+    if (effect.effectType === "poison_fog_on_death") bonuses.poisonFogOnDeath = true;
+    if (effect.effectType === "vertical_columns") bonuses.verticalColumns = Math.max(bonuses.verticalColumns, effect.value);
+    if (effect.effectType === "horizontal_width") bonuses.horizontalWidth += effect.value;
+    if (effect.effectType === "full_row_spear") bonuses.fullRowSpear = true;
+    if (effect.effectType === "paralyze") bonuses.paralyze = Math.max(bonuses.paralyze, effect.value);
+    if (effect.effectType === "freeze_attack_line") bonuses.freezeAttackLine = Math.max(bonuses.freezeAttackLine, effect.value);
+    if (effect.effectType === "meteor_rain") bonuses.meteorRain += effect.value;
+    if (effect.effectType === "boss_priority_lightning") bonuses.bossPriorityLightning = true;
+    if (roleId === "lu_qingya" && effect.level === 1) bonuses.hitRadiusAdd += 4;
+    if (effect.effectType === "sword_qi_refine") {
+      bonuses.speedMult *= 1.15;
+      bonuses.widthAdd += 2;
+      bonuses.damageMult *= 1.1;
+    }
+    if (effect.effectType === "qingya_stage_4") {
+      bonuses.projectileSet = Math.max(bonuses.projectileSet, 3);
+      bonuses.pierceAdd += 1;
+    }
+    if (effect.effectType === "qingya_stage_5") {
+      bonuses.projectileSet = Math.max(bonuses.projectileSet, 4);
+      bonuses.sideDamageScale = Math.max(bonuses.sideDamageScale, 0.8);
+      bonuses.attackSpeed *= 1.1;
+    }
+    if (effect.effectType === "qingya_stage_6") {
+      bonuses.projectileSet = Math.max(bonuses.projectileSet, 5);
+      bonuses.sideDamageScale = Math.max(bonuses.sideDamageScale, 0.9);
+      bonuses.pierceAdd += 1;
+    }
+    if (effect.effectType === "qingya_giant_sword") {
+      bonuses.giantSword = true;
+      bonuses.giantSwordDamageMult = 3.5;
+      bonuses.giantSwordIntervalMult = 1.15;
+      bonuses.pierceAdd += 3;
+      bonuses.giantSwordSplashRadius = 36;
+      bonuses.giantSwordSplashDamage = 0.4;
+    }
+  });
+  return bonuses;
+}
+
 function roleStats(role) {
   const config = DATA.roles[role.roleId];
-  const sectLeader = state.deployedRoles.some((item) => item.roleId === "role_shen_tianque");
-  const sectLeaderBonus = sectLeader ? (state.baseHp / state.maxBaseHp < 0.3 ? 1.2 : 1.1) : 1;
+  const art = martialBonuses(role.roleId);
+  const characterLevel = getCharacterLevel(role.roleId);
+  const hasGlobalBoost = state.deployedRoles.some(
+    (item) => DATA.roles[item.roleId]?.passiveSkill === "global_formation_boost",
+  );
+  const arrayCoreRatio = state.arrayCoreMaxHp > 0 ? state.arrayCoreHp / state.arrayCoreMaxHp : 1;
+  const sectLeaderBonus = hasGlobalBoost ? (arrayCoreRatio < 0.3 ? 1.1 : 1) : 1;
   const elderSwordCount =
     role.roleId === "role_yunhe_elder"
       ? 1 + state.deployedRoles.filter((item) => DATA.roles[item.roleId].school === "剑").length * 0.08
       : 1;
   return {
-    damage: config.baseDamage * state.bonuses.roleDamage * role.personalDamage * sectLeaderBonus * elderSwordCount,
-    interval: config.attackInterval / (state.bonuses.roleAttackSpeed * role.personalSpeed),
-    range: (config.range + state.bonuses.roleRangeAdd) * grid.cellH,
+    damage:
+      getCharacterBaseFinalDamage(config) *
+      art.damageMult *
+      state.bonuses.roleDamage *
+      role.personalDamage *
+      sectLeaderBonus *
+      (hasGlobalBoost ? 1.1 : 1) *
+      elderSwordCount,
+    interval: ((config.attackInterval || 1 / (config.baseAttackSpeed || 1)) * art.giantSwordIntervalMult) / (state.bonuses.roleAttackSpeed * role.personalSpeed * art.attackSpeed),
+    range: ((config.range || config.baseRange) + state.bonuses.roleRangeAdd + art.rangeAdd) * grid.cellH,
     school: config.school,
     projectile: config.trajectoryType || config.projectile,
   };
@@ -589,7 +1033,7 @@ function updateRole(role, dt) {
 
   const config = DATA.roles[role.roleId];
   let attacks = 1 + state.bonuses.multishot;
-  if (role.roleId === "role_zhao_xuance" && role.attacks % 4 === 3) {
+  if (config.passiveSkill === "thunder_chain" && role.attacks % 4 === 3) {
     attacks += 1;
   }
   if (state.acquiredPerks.has("perk_outer_disciple_breakthrough") && role.attacks % 5 === 4) {
@@ -600,7 +1044,7 @@ function updateRole(role, dt) {
   }
   role.attacks += 1;
   role.cooldown = Math.max(0.12, stats.interval);
-  if (config.talent.includes("连续攻击同一目标")) {
+  if ((config.talent || "").includes("连续攻击同一目标")) {
     if (role.lastTargetId === target.id) {
       role.sameTargetStacks = Math.min(5, role.sameTargetStacks + 1);
     } else {
@@ -616,47 +1060,190 @@ function fireRole(role, targetId) {
   if (!target) return;
   const config = DATA.roles[role.roleId];
   const stats = roleStats(role);
+  const art = martialBonuses(role.roleId);
   let damage = stats.damage;
   if ((config.passiveSkill || config.talent || "").includes("连续攻击同一目标")) {
     damage *= 1 + role.sameTargetStacks * 0.05 * state.bonuses.passiveMultiplier;
   }
-  if (role.roleId === "role_bai_luoli" && target.hasStatus("slow")) {
-    damage *= 1 + 0.2 * state.bonuses.passiveMultiplier;
-  }
+  if (config.passiveSkill === "execute_low_hp" && target.hp / target.maxHp < 0.3) damage *= 1.8;
   if (Math.random() < state.bonuses.critChance) {
     damage *= state.bonuses.critMult;
   }
 
-  const projectileCount = 1 + state.bonuses.sideProjectiles;
-  const targets = [target, ...sideTargets(target, projectileCount - 1)];
-  targets.forEach((enemy) => applyRoleHit(role, enemy, damage));
-  drawShot(role.x, role.y, target.x, target.y, colors[config.school] || "#eee");
+  const baseProjectileCount = config.trajectoryType === "multi" ? 3 : 1;
+  const projectileCount = Math.max(art.projectileSet || 0, baseProjectileCount + state.bonuses.sideProjectiles + art.projectileAdd);
+  createRoleProjectiles(role, target, damage, projectileCount);
+}
+
+function projectileDefaults(config, art) {
+  const type = config.projectileType || config.trajectoryType || "projectile";
+  const defaults = {
+    speed: 380,
+    width: 7,
+    length: 24,
+    radius: 8,
+    hitRadius: 10,
+    collisionPadding: 4,
+    color: colors[config.school] || "#dbeafe",
+    trailColor: "rgba(255,255,255,0.22)",
+    maxLifetime: 1.5,
+  };
+  if (type === "flying_sword") Object.assign(defaults, { speed: 360, width: 10, length: 34, radius: 14, hitRadius: 14, collisionPadding: 6, maxLifetime: 1.8, color: "#d9fbff", trailColor: "rgba(125, 211, 252, 0.28)" });
+  if (type === "fire_talisman") Object.assign(defaults, { speed: 350, width: 10, length: 18, radius: 10, color: "#ffb15c", trailColor: "rgba(239, 123, 69, 0.28)" });
+  if (type === "frost_bolt") Object.assign(defaults, { speed: 370, width: 8, length: 22, radius: 9, color: "#9eeaff", trailColor: "rgba(114, 200, 238, 0.28)" });
+  if (type === "poison_needle") Object.assign(defaults, { speed: 430, width: 5, length: 24, radius: 7, color: "#d8b4fe", trailColor: "rgba(169, 122, 216, 0.28)" });
+  if (type === "sword_wave") Object.assign(defaults, { speed: 400, width: 9, length: 34, radius: 9, color: "#e8eef8", trailColor: "rgba(215, 225, 236, 0.22)" });
+  if (type === "spear_arc") Object.assign(defaults, { speed: 390, width: 12, length: 42, radius: 11, color: "#f4d47c", trailColor: "rgba(214, 179, 106, 0.26)" });
+  if (type === "thunder_arc") Object.assign(defaults, { speed: 440, width: 8, length: 26, radius: 9, color: "#ddd6fe", trailColor: "rgba(196, 181, 253, 0.3)" });
+  if (art?.giantSword) Object.assign(defaults, { speed: 300, width: 26, length: 86, radius: 28, hitRadius: 28, collisionPadding: 10, maxLifetime: 2.2, color: "#e9ffff", trailColor: "rgba(250, 204, 21, 0.3)" });
+  defaults.speed *= art?.speedMult || 1;
+  defaults.width += art?.widthAdd || 0;
+  defaults.radius += art?.hitRadiusAdd || 0;
+  defaults.hitRadius = (defaults.hitRadius || defaults.radius) + (art?.hitRadiusAdd || 0);
+  defaults.collisionPadding += art?.collisionPaddingAdd || 0;
+  if (art && art.pierceAdd > 0) defaults.radius += 1;
+  return defaults;
+}
+
+function createRoleProjectiles(role, target, damage, projectileCount) {
+  const config = DATA.roles[role.roleId];
+  const art = martialBonuses(role.roleId);
+  const defaults = projectileDefaults(config, art);
+  const predicted = getPredictedTargetPosition(role, target, defaults.speed);
+  const dx = predicted.x - role.x;
+  const dy = predicted.y - role.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const baseVx = dx / len;
+  const baseVy = dy / len;
+  const normalX = -baseVy;
+  const normalY = baseVx;
+  const actualCount = art.giantSword ? 1 : projectileCount;
+  for (let i = 0; i < actualCount; i += 1) {
+    const centered = i - (actualCount - 1) / 2;
+    const vx = baseVx;
+    const vy = baseVy;
+    const sideDamage = art.giantSword ? art.giantSwordDamageMult : centered === 0 ? 1 : art.sideDamageScale;
+    const offset = centered * 16;
+    const pierceCount = art.giantSword ? 3 + state.bonuses.pierceAdd : art.pierceAdd + state.bonuses.pierceAdd;
+    state.projectiles.push({
+      id: makeId(),
+      ownerCharacterId: role.roleId,
+      ownerRoleId: role.id,
+      type: art.giantSword ? "giant_sword_projectile" : config.projectileType || config.trajectoryType || "projectile",
+      trajectoryType: config.trajectoryType,
+      x: role.x + normalX * offset,
+      y: role.y + normalY * offset,
+      lastX: role.x + normalX * offset,
+      lastY: role.y + normalY * offset,
+      vx,
+      vy,
+      speed: defaults.speed,
+      damage: damage * sideDamage,
+      width: defaults.width,
+      length: defaults.length,
+      radius: defaults.radius,
+      hitRadius: defaults.hitRadius || defaults.radius,
+      collisionPadding: defaults.collisionPadding || 0,
+      pierce: pierceCount > 0,
+      remainingPierce: pierceCount,
+      hitEnemyIds: new Set(),
+      lifetime: 0,
+      maxLifetime: defaults.maxLifetime,
+      effectType: config.trajectoryType,
+      color: defaults.color,
+      trailColor: defaults.trailColor,
+      sourceRole: role,
+      sourceConfig: config,
+      splashRadius: art.giantSwordSplashRadius,
+      splashDamageMultiplier: art.giantSwordSplashDamage,
+    });
+  }
+}
+
+function getPredictedTargetPosition(source, target, projectileSpeed) {
+  const dx = target.x - source.x;
+  const dy = target.y - source.y;
+  const travelTime = Math.hypot(dx, dy) / Math.max(1, projectileSpeed);
+  const pathPixelSpeed =
+    ((target.moveSpeed || 0) * (attackLineY() + grid.cellH * 0.35)) / 6.1;
+  return {
+    x: target.x + (target.vx || 0) * travelTime,
+    y: target.y + (target.vy || pathPixelSpeed) * travelTime,
+  };
 }
 
 function applyRoleHit(role, target, damage) {
   if (!target || target.dead) return;
   const config = DATA.roles[role.roleId];
+  const art = martialBonuses(role.roleId);
   const projectile = config.trajectoryType || config.projectile;
   const killed = target.takeDamage(damage, "role", role);
 
   if (projectile === "splash") {
-    areaDamage(target.x, target.y, grid.cellW * 0.65, damage * 0.55, "role");
+    areaDamage(target.x, target.y, grid.cellW * 0.65 * art.splashRadius, damage * 0.55, "role");
+    if (art.splashShards > 0) {
+      nearestEnemies(target, art.splashShards).forEach((enemy) => {
+        enemy.takeDamage(damage * 0.25, "role", role);
+        enemy.addStatus("burn", 1.2, Math.max(2, damage * 0.08));
+      });
+    }
   }
   if (projectile === "horizontal") {
-    horizontalTargets(target, 2).forEach((enemy) => enemy.takeDamage(damage * 0.7, "role", role));
+    const count = art.fullRowSpear ? 99 : (config.passiveSkill === "horizontal_cleave" ? 4 : 2) + art.horizontalWidth + state.bonuses.horizontalBonus;
+    horizontalTargets(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.7, "role", role));
+  }
+  if (projectile === "vertical") {
+    const count = 2 + state.bonuses.pierceAdd + art.pierceAdd + (config.passiveSkill === "pierce_bonus" ? 1 : 0);
+    enemiesBehind(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.65, "role", role));
+    if (art.verticalColumns > 1) {
+      state.enemies
+        .filter((enemy) => !enemy.dead && enemy !== target && Math.abs(enemy.x - target.x) <= grid.cellW * 1.2)
+        .slice(0, 6)
+        .forEach((enemy) => enemy.takeDamage(damage * 0.45, "role", role));
+    }
+    if (art.swordTrail) {
+      state.zones.push({ x: target.x, y: target.y, radius: grid.cellW * 0.45, ttl: 1.2, color: "rgba(215, 225, 236, 0.16)", dps: damage * 0.22, tick: 0 });
+    }
   }
   if (projectile === "slow" || config.school === "冰") {
-    target.addStatus("slow", 1.2 * state.bonuses.controlMultiplier, 0.2);
+    target.addStatus("slow", 2 * state.bonuses.controlMultiplier, 0.3 + art.slowBonus);
+    if (art.slowSplash > 0) {
+      horizontalTargets(target, 2).forEach((enemy) => enemy.addStatus("slow", 1.5 * state.bonuses.controlMultiplier, art.slowSplash));
+    }
+    if (art.freezeAttackLine > 0 && target.progress >= 0.82 && Math.random() < art.freezeAttackLine) {
+      target.addStatus("freeze", 0.55 * state.bonuses.controlMultiplier, 1);
+    }
   }
   if (projectile === "poison" || config.school === "毒") {
-    target.addStatus("poison", 3 + state.bonuses.poisonDurationAdd, Math.max(2, damage * 0.22));
+    target.addStatus("poison", 3 + state.bonuses.poisonDurationAdd + art.poisonDuration, Math.max(2, damage * 0.22 * art.dotMult), {
+      stack: config.passiveSkill === "poison_stack",
+      maxStacks: 3,
+    });
+    if (art.chainAdd > 0) nearestEnemies(target, art.chainAdd).forEach((enemy) => {
+      enemy.takeDamage(damage * 0.45, "role", role);
+      enemy.addStatus("poison", 2 + art.poisonDuration, Math.max(1, damage * 0.1 * art.dotMult));
+    });
   }
-  if (projectile === "pierce" || state.bonuses.pierceAdd > 0) {
-    const count = (projectile === "pierce" ? 1 : 0) + state.bonuses.pierceAdd;
+  if (projectile === "pierce" || (state.bonuses.pierceAdd > 0 && projectile !== "vertical")) {
+    const count = (projectile === "pierce" ? 1 : 0) + state.bonuses.pierceAdd + art.pierceAdd;
     enemiesBehind(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.65, "role", role));
   }
   if (projectile === "chain") {
-    nearestEnemies(target, 2).forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
+    const count = (config.passiveSkill === "thunder_chain" ? 3 : 2) + art.chainAdd + state.bonuses.chainBonus;
+    nearestEnemies(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
+    if (art.paralyze > 0) target.addStatus("slow", 0.8, art.paralyze);
+    if (art.bossPriorityLightning) {
+      const elite = state.enemies.find((enemy) => !enemy.dead && (enemy.config.isBoss || enemy.config.type === "绮捐嫳"));
+      if (elite) elite.takeDamage(damage * 0.9, "role", role);
+    }
+  }
+  if (art.burnOnHit > 0) target.addStatus("burn", 1.5, art.burnOnHit);
+  if (art.meteorRain > 0) nearestEnemies(target, art.meteorRain).forEach((enemy) => enemy.takeDamage(damage * 0.35, "role", role));
+  if (projectile === "execute" && target.hp / target.maxHp < 0.3) {
+    target.takeDamage(damage * 0.35, "role", role);
+  }
+  if (config.passiveSkill === "weaken_enemy_attack") {
+    target.addStatus("weaken_attack", 3, 0.2);
   }
   if (role.roleId === "role_chiyang_elder" || role.roleId === "role_han_jin") {
     target.addStatus("burn", 1.5, Math.max(4, damage * 0.16 * state.bonuses.burnMultiplier));
@@ -667,13 +1254,20 @@ function applyRoleHit(role, target, damage) {
   if (killed && role.roleId === "role_han_jin") {
     state.zones.push({ x: target.x, y: target.y, radius: grid.cellW * 0.8, ttl: 1.5, color: "rgba(239, 123, 69, 0.22)", dps: damage * 0.2, tick: 0 });
   }
+  if (killed && art.poisonFogOnDeath) {
+    state.zones.push({ x: target.x, y: target.y, radius: grid.cellW * 0.75, ttl: 2, color: "rgba(168, 85, 247, 0.18)", dps: damage * 0.25, tick: 0 });
+  }
 }
 
 function chooseTarget(source, range) {
+  const config = DATA.roles[source.roleId] || {};
   const candidates = state.enemies.filter(
     (enemy) => !enemy.dead && distance(source, enemy) <= range,
   );
   if (!candidates.length) return null;
+  if (config.trajectoryType === "execute") {
+    return candidates.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+  }
   return candidates.sort((a, b) => b.progress - a.progress)[0];
 }
 
@@ -729,7 +1323,12 @@ function updateFormation(dt) {
     .sort((a, b) => b.progress - a.progress)
     .slice(0, formation.maxTargets);
   if (!targets.length) return;
-  const damage = 34 * state.bonuses.formationDamage;
+  const formationBoost = state.deployedRoles.some(
+    (role) => DATA.roles[role.roleId]?.passiveSkill === "global_formation_boost",
+  )
+    ? 1.1
+    : 1;
+  const damage = 34 * state.bonuses.formationDamage * formationBoost;
   targets.forEach((enemy) => {
     enemy.takeDamage(damage, "formation");
     if (formation.effectType === "knockback_slow") {
@@ -757,7 +1356,80 @@ function areaDamage(x, y, radius, damage, source) {
 }
 
 function drawShot(x, y, tx, ty, color) {
-  state.projectiles.push({ x, y, tx, ty, color, ttl: 0.16 });
+  state.projectiles.push({ x, y, tx, ty, color, ttl: 0.16, visualOnly: true });
+}
+
+function updateProjectiles(dt) {
+  state.projectiles.forEach((projectile) => {
+    if (projectile.visualOnly) {
+      projectile.ttl -= dt;
+      return;
+    }
+    projectile.lastX = projectile.x;
+    projectile.lastY = projectile.y;
+    projectile.x += projectile.vx * projectile.speed * dt;
+    projectile.y += projectile.vy * projectile.speed * dt;
+    projectile.lifetime += dt;
+    checkProjectileCollision(projectile);
+  });
+  state.projectiles = state.projectiles.filter((projectile) => {
+    if (projectile.visualOnly) return projectile.ttl > 0;
+    const inBounds =
+      projectile.x > -80 &&
+      projectile.x < canvas.width + 80 &&
+      projectile.y > -80 &&
+      projectile.y < canvas.height + 80;
+    return !projectile.dead && projectile.lifetime < projectile.maxLifetime && inBounds;
+  });
+}
+
+function checkProjectileCollision(projectile) {
+  for (const enemy of state.enemies) {
+    if (enemy.dead || projectile.hitEnemyIds.has(enemy.id)) continue;
+    if (!checkProjectileHitEnemy(projectile, enemy)) continue;
+    projectile.hitEnemyIds.add(enemy.id);
+    applyRoleHit(projectile.sourceRole, enemy, projectile.damage);
+    if (projectile.splashRadius > 0 && projectile.splashDamageMultiplier > 0) {
+      areaDamage(enemy.x, enemy.y, projectile.splashRadius, projectile.damage * projectile.splashDamageMultiplier, "role");
+    }
+    if (!projectile.pierce) {
+      projectile.dead = true;
+      return;
+    }
+    projectile.remainingPierce -= 1;
+    if (projectile.remainingPierce < 0) {
+      projectile.dead = true;
+      return;
+    }
+  }
+}
+
+function checkProjectileHitEnemy(projectile, enemy) {
+  const radius =
+    (projectile.hitRadius || projectile.radius || 0) +
+    (enemy.hitRadius || enemy.radius || 0) +
+    (projectile.collisionPadding || 0);
+  return (
+    distancePointToSegment(
+      enemy.x,
+      enemy.y,
+      projectile.lastX ?? projectile.x,
+      projectile.lastY ?? projectile.y,
+      projectile.x,
+      projectile.y,
+    ) <= radius
+  );
+}
+
+function distancePointToSegment(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const lengthSq = dx * dx + dy * dy;
+  if (lengthSq === 0) return Math.hypot(px - x1, py - y1);
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lengthSq));
+  const cx = x1 + t * dx;
+  const cy = y1 + t * dy;
+  return Math.hypot(px - cx, py - cy);
 }
 
 function update(dt) {
@@ -776,6 +1448,7 @@ function update(dt) {
   state.enemies.forEach((enemy) => enemy.update(dt));
   state.enemies = state.enemies.filter((enemy) => !enemy.dead);
   state.deployedRoles.forEach((role) => updateRole(role, dt));
+  updateProjectiles(dt);
   updateFormation(dt);
   updateArtifact(dt);
   updateEffects(dt);
@@ -806,7 +1479,7 @@ function updateArtifact(dt) {
   if (!targets.length) return;
   const origin = { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
   targets.forEach((enemy) => {
-    enemy.takeDamage(artifact.damage, "artifact");
+    enemy.takeDamage(artifact.damage * state.bonuses.artifactDamage, "artifact");
     drawShot(origin.x, origin.y, enemy.x, enemy.y, "#f6d365");
   });
   state.floaters.push({
@@ -816,20 +1489,37 @@ function updateArtifact(dt) {
     ttl: 0.7,
     color: "#f6d365",
   });
-  state.artifactCooldown = Math.max(2, artifact.cooldown);
+  state.artifactCooldown = Math.max(2, artifact.cooldown * state.bonuses.artifactCooldown);
 }
 
-function damageArrayCore(amount, enemy) {
-  state.baseHp = Math.max(0, state.baseHp - amount);
-  setStatus(`${enemy.config.name} 正在攻击护山大阵 / 护山阵眼，HP -${amount}。`);
-  if (state.baseHp <= 0) {
+function showDamageNumber(amount, target) {
+  if (target !== "arrayCore") return;
+  state.floaters.push({
+    x: canvas.width / 2,
+    y: canvas.height - grid.cellH * 0.65,
+    text: `-${Math.ceil(amount)}`,
+    ttl: 0.65,
+    color: "#ff9a76",
+  });
+}
+
+function damageArrayCore(rawDamage, enemy = null) {
+  const defense = state.arrayCoreDefense || 0;
+  const finalDamage = Math.max(1, rawDamage - defense);
+  state.arrayCoreHp = Math.max(0, state.arrayCoreHp - finalDamage);
+  syncBaseHpAliases();
+  showDamageNumber(finalDamage, "arrayCore");
+  const enemyName = enemy?.config?.name || "敌人";
+  setStatus(`${enemyName} 正在攻击护山大阵 / 护山阵眼，阵眼HP -${Math.ceil(finalDamage)}。`);
+  if (state.arrayCoreHp <= 0) {
+    state.arrayCoreHp = 0;
+    syncBaseHpAliases();
     endGame(false);
   }
+  return finalDamage;
 }
 
 function updateEffects(dt) {
-  state.projectiles.forEach((projectile) => (projectile.ttl -= dt));
-  state.projectiles = state.projectiles.filter((projectile) => projectile.ttl > 0);
   state.floaters.forEach((floater) => {
     floater.ttl -= dt;
     floater.y -= dt * 24;
@@ -848,7 +1538,7 @@ function updateEffects(dt) {
 }
 
 function showPerkChoices() {
-  const choices = drawPerks(3);
+  const choices = drawPerksFiltered(3);
   perkGrid.innerHTML = "";
   choices.forEach((perk) => {
     const button = document.createElement("button");
@@ -875,6 +1565,237 @@ function showPerkChoices() {
   perkModal.classList.remove("hidden");
 }
 
+function currentRunCharacters() {
+  return state.deployedRoles
+    .map((role) => DATA.roles[role.roleId])
+    .filter(Boolean);
+}
+
+function selectedArtifactIds() {
+  return state.selectedArtifactId ? [state.selectedArtifactId] : [];
+}
+
+function createMartialArtPerk(art) {
+  const currentLevel = state.martialArtLevels[art.id] || 0;
+  const next = art.levels.find((level) => level.level === currentLevel + 1);
+  if (!next) return null;
+  return {
+    id: `martial_${art.id}_${next.level}`,
+    name: `${art.name} Lv${next.level}`,
+    category: next.evolutionType === "minor_evolution" ? "先天武学·小进化" : next.evolutionType === "major_evolution" ? "先天武学·大进化" : "先天武学",
+    rarity: next.evolutionType === "major_evolution" ? "史诗" : next.evolutionType === "minor_evolution" ? "稀有" : "普通",
+    scope: "martial_art",
+    martialArtId: art.id,
+    effectType: "martial_art_upgrade",
+    description: `${next.title}：${next.description}`,
+    valueText: `当前Lv${currentLevel} → Lv${next.level}`,
+    effect: { type: "martial_art_upgrade", martialArtId: art.id },
+  };
+}
+
+function currentMartialArtUpgradePerks() {
+  return currentRunCharacters()
+    .map((character) => martialArtForCharacter(character.id))
+    .filter(Boolean)
+    .filter((art) => (state.martialArtLevels[art.id] || 0) < art.maxLevel)
+    .map(createMartialArtPerk)
+    .filter(Boolean);
+}
+
+function currentTrajectoryPerks() {
+  const trajectories = new Set(currentRunCharacters().map((character) => character.trajectoryType));
+  const perks = [];
+  if (trajectories.has("single")) {
+    perks.push({
+      id: "trajectory_single_extra",
+      name: "弹道分影",
+      category: "武学感悟",
+      rarity: "普通",
+      scope: "trajectory",
+      targetTrajectoryType: "single",
+      description: "单体弹道额外发射1道。",
+      valueText: "弹道+1",
+      effect: { type: "side_projectiles", value: 1 },
+    });
+  }
+  if (trajectories.has("vertical")) {
+    perks.push({
+      id: "trajectory_vertical_pierce",
+      name: "贯势入云",
+      category: "武学感悟",
+      rarity: "普通",
+      scope: "trajectory",
+      targetTrajectoryType: "vertical",
+      description: "贯穿弹道额外穿透1名敌人。",
+      valueText: "穿透+1",
+      effect: { type: "pierce_add", value: 1 },
+    });
+  }
+  if (trajectories.has("horizontal")) {
+    perks.push({
+      id: "trajectory_horizontal_cleave",
+      name: "横势开阔",
+      category: "武学感悟",
+      rarity: "普通",
+      scope: "trajectory",
+      targetTrajectoryType: "horizontal",
+      description: "横向弹道扫击范围提升。",
+      valueText: "横扫+1",
+      effect: { type: "horizontal_bonus", value: 1 },
+    });
+  }
+  if (trajectories.has("chain")) {
+    perks.push({
+      id: "trajectory_chain_plus",
+      name: "雷弧续跃",
+      category: "武学感悟",
+      rarity: "普通",
+      scope: "trajectory",
+      targetTrajectoryType: "chain",
+      description: "弹射类攻击额外跳跃1次。",
+      valueText: "弹射+1",
+      effect: { type: "chain_bonus", value: 1 },
+    });
+  }
+  return perks;
+}
+
+function artifactPerksForRun() {
+  if (!selectedArtifactIds().length) return [];
+  return [
+    {
+      id: "artifact_resonance_run",
+      name: "法宝共鸣",
+      category: "武学感悟",
+      rarity: "普通",
+      scope: "artifact",
+      description: "已携带法宝伤害提升。",
+      valueText: "法宝伤害+20%",
+      effect: { type: "artifact_damage_bonus", value: 0.2 },
+    },
+  ];
+}
+
+function defensivePerksForRun() {
+  const hpRatio = state.arrayCoreMaxHp > 0 ? state.arrayCoreHp / state.arrayCoreMaxHp : 1;
+  if (hpRatio > 0.6) return [];
+  const heal = {
+    id: "array_heal_lingquan",
+    name: "灵泉回涌",
+    category: "阵眼回复",
+    rarity: hpRatio < 0.35 ? "稀有" : "普通",
+    scope: "array_core",
+    description: "立即恢复护山阵眼50点生命。",
+    valueText: "阵眼恢复50",
+    effect: { type: "array_heal", value: 50 },
+  };
+  return hpRatio < 0.35 ? [heal, heal] : [heal];
+}
+
+function normalizePerk(perk) {
+  if (perk.scope) return perk;
+  let effectType = perk.effect?.type || perk.effectType || "unimplemented";
+  const normalized = { ...perk, effectType };
+  const id = perk.id || "";
+  const target = `${perk.target || ""} ${perk.requirement || ""}`;
+  if (id === "perk_artifact_damage" && effectType === "unimplemented") {
+    normalized.effect = { type: "artifact_damage_bonus", value: 0.25 };
+    effectType = "artifact_damage_bonus";
+    normalized.effectType = effectType;
+  }
+  if (id === "perk_artifact_cooldown" && effectType === "unimplemented") {
+    normalized.effect = { type: "artifact_cooldown_mult", value: 0.8 };
+    effectType = "artifact_cooldown_mult";
+    normalized.effectType = effectType;
+  }
+  if (id === "perk_role_focus_random" && effectType === "unimplemented") {
+    normalized.effect = { type: "lowest_character_damage", value: 0.2 };
+    effectType = "lowest_character_damage";
+    normalized.effectType = effectType;
+  }
+  if (["role_damage_mult", "role_attack_speed", "role_range_add", "crit", "lingqi_gain_mult", "boss_damage_mult", "lowest_character_damage"].includes(effectType)) {
+    normalized.scope = "global";
+  } else if (effectType.startsWith("array_") || effectType === "base_hp_add") {
+    normalized.scope = "array_core";
+  } else if (effectType.startsWith("formation_")) {
+    normalized.scope = "formation";
+  } else if (effectType.startsWith("artifact_") || id.includes("artifact")) {
+    normalized.scope = "artifact";
+  } else if (["pierce_add", "side_projectiles", "multishot"].includes(effectType)) {
+    normalized.scope = "trajectory";
+  } else if (id.includes("passive_up") || target.includes("被动")) {
+    normalized.scope = "character";
+    normalized.requiresPassiveSkill = true;
+  } else if (id.includes("sword")) {
+    normalized.scope = "character";
+    normalized.targetSchool = "剑修";
+  } else if (id.includes("fire")) {
+    normalized.scope = "character";
+    normalized.targetSchool = "火修";
+  } else if (id.includes("ice") || id.includes("frost")) {
+    normalized.scope = "character";
+    normalized.targetSchool = "冰修";
+  } else if (id.includes("poison")) {
+    normalized.scope = "character";
+    normalized.targetSchool = "毒修";
+  } else {
+    normalized.scope = effectType === "unimplemented" ? "invalid" : "global";
+  }
+  if (id.includes("vertical") || id.includes("pierce")) normalized.targetTrajectoryType = "vertical";
+  if (id.includes("horizontal")) normalized.targetTrajectoryType = "horizontal";
+  return normalized;
+}
+
+function isPerkValidForCurrentRun(rawPerk) {
+  const perk = normalizePerk(rawPerk);
+  if (perk.stackable === false && state.acquiredPerks.has(perk.id)) return false;
+  const requirement = String(perk.requirement || "");
+  if (requirement.includes("局内等级>=")) {
+    const required = Number(requirement.match(/\d+/)?.[0] || 1);
+    if (state.runLevel < required) return false;
+  }
+  if (requirement.includes("第5波后") && state.wave <= 5) return false;
+  if (perk.scope === "invalid") return false;
+  if (perk.scope === "martial_art") {
+    const art = (DATA.martialArts || []).find((item) => item.id === perk.martialArtId);
+    return Boolean(art && currentRunCharacters().some((character) => character.id === art.ownerCharacterId) && (state.martialArtLevels[art.id] || 0) < art.maxLevel);
+  }
+  if (perk.scope === "global" || perk.scope === "array_core") return true;
+  if (perk.scope === "formation") {
+    if (!state.selectedFormationId) return false;
+    return !perk.targetFormationId || perk.targetFormationId === state.selectedFormationId;
+  }
+  if (perk.scope === "artifact") {
+    const artifacts = selectedArtifactIds();
+    if (!artifacts.length) return false;
+    return !perk.targetArtifactId || artifacts.includes(perk.targetArtifactId);
+  }
+  const deployed = currentRunCharacters();
+  if (!deployed.length) return false;
+  if (perk.scope === "character") {
+    if (perk.targetCharacterId) return deployed.some((character) => character.id === perk.targetCharacterId);
+    if (perk.targetSchool) return deployed.some((character) => character.school === perk.targetSchool);
+    if (perk.targetRarity) return deployed.some((character) => character.rarity === perk.targetRarity);
+    if (perk.targetTrajectoryType) return deployed.some((character) => character.trajectoryType === perk.targetTrajectoryType);
+    if (perk.requiresPassiveSkill) return deployed.some((character) => Boolean(character.passiveSkill));
+    return true;
+  }
+  if (perk.scope === "trajectory") {
+    if (perk.targetTrajectoryType) return deployed.some((character) => character.trajectoryType === perk.targetTrajectoryType);
+    return true;
+  }
+  return false;
+}
+
+function fillWithGenericPerks(choices, count) {
+  GENERIC_PERKS.filter((perk) => perk.scope === "global" || perk.id === "generic_focus_lowest").forEach((perk) => {
+    if (choices.length >= count) return;
+    if (!choices.some((choice) => choice.id === perk.id) && isPerkValidForCurrentRun(perk)) {
+      choices.push(perk);
+    }
+  });
+}
+
 function chooseLevelUpPerk(perk) {
   try {
     applyPerk(perk);
@@ -894,6 +1815,36 @@ function chooseLevelUpPerk(perk) {
       updateUi();
     }
   }
+}
+
+function drawPerksFiltered(count) {
+  const martialPool = currentMartialArtUpgradePerks();
+  const supportPool = [
+    ...currentTrajectoryPerks(),
+    ...artifactPerksForRun(),
+    ...defensivePerksForRun(),
+    ...GENERIC_PERKS.filter((perk) => perk.scope === "global"),
+  ]
+    .map(normalizePerk)
+    .filter(isPerkValidForCurrentRun);
+  const pool = [...martialPool, ...martialPool, ...martialPool, ...supportPool];
+  const choices = [];
+  const forcedHeal = defensivePerksForRun()[0];
+  if (forcedHeal && state.arrayCoreMaxHp > 0 && state.arrayCoreHp / state.arrayCoreMaxHp < 0.2) {
+    choices.push(forcedHeal);
+  }
+  while (choices.length < count && pool.length) {
+    const total = pool.reduce((sum, perk) => sum + (rarityWeight[perk.rarity] || 12), 0);
+    let roll = Math.random() * total;
+    const selected = pool.find((perk) => {
+      roll -= rarityWeight[perk.rarity] || 12;
+      return roll <= 0;
+    }) || pool[pool.length - 1];
+    if (!choices.some((choice) => choice.id === selected.id)) choices.push(selected);
+    pool.splice(pool.indexOf(selected), 1);
+  }
+  if (choices.length < count) fillWithGenericPerks(choices, count);
+  return choices;
 }
 
 function drawPerks(count) {
@@ -933,6 +1884,12 @@ function hasPassiveRole(school) {
 }
 
 function applyPerk(perk) {
+  perk = normalizePerk(perk);
+  if (!isPerkValidForCurrentRun(perk)) {
+    state.bonuses.roleDamage *= 1.05;
+    setStatus("当前无可用机缘目标，已转化为全体角色伤害+5%。");
+    return;
+  }
   state.acquiredPerks.add(perk.id);
   const effect = perk.effect || { type: "unimplemented", value: 0 };
   switch (effect.type) {
@@ -968,8 +1925,22 @@ function applyPerk(perk) {
       state.bonuses.formationRadiusAdd += effect.value;
       break;
     case "base_hp_add":
-      state.maxBaseHp += effect.value;
-      state.baseHp = Math.min(state.maxBaseHp, state.baseHp + effect.value);
+    case "array_hp_bonus":
+      state.arrayCoreMaxHp += effect.value;
+      state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + effect.value);
+      syncBaseHpAliases();
+      break;
+    case "array_defense_bonus":
+      state.arrayCoreDefense += effect.value;
+      syncBaseHpAliases();
+      break;
+    case "array_heal":
+      state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + effect.value);
+      syncBaseHpAliases();
+      break;
+    case "array_damage_reduction_bonus":
+      state.arrayCoreDamageReduction += effect.value;
+      syncBaseHpAliases();
       break;
     case "lingqi_gain_mult":
       state.bonuses.lingqiGain *= 1 + effect.value;
@@ -980,6 +1951,45 @@ function applyPerk(perk) {
     case "slow_vulnerability":
       state.bonuses.slowVulnerability += effect.value;
       break;
+    case "control_bonus":
+      state.bonuses.controlMultiplier *= 1 + effect.value;
+      break;
+    case "poison_duration_add":
+      state.bonuses.poisonDurationAdd += effect.value;
+      break;
+    case "passive_skill_bonus":
+      state.bonuses.passiveMultiplier *= 1 + effect.value;
+      break;
+    case "artifact_damage_bonus":
+      state.bonuses.artifactDamage *= 1 + effect.value;
+      break;
+    case "artifact_cooldown_mult":
+      state.bonuses.artifactCooldown *= effect.value;
+      break;
+    case "horizontal_bonus":
+      state.bonuses.horizontalBonus += effect.value;
+      break;
+    case "chain_bonus":
+      state.bonuses.chainBonus += effect.value;
+      break;
+    case "lowest_character_damage": {
+      const target = [...state.deployedRoles].sort(
+        (a, b) => getCharacterLevel(a.roleId) - getCharacterLevel(b.roleId),
+      )[0];
+      if (target) target.personalDamage *= 1 + effect.value;
+      else state.bonuses.roleDamage *= 1.05;
+      break;
+    }
+    case "martial_art_upgrade": {
+      const art = (DATA.martialArts || []).find((item) => item.id === effect.martialArtId);
+      if (!art || !currentRunCharacters().some((character) => character.id === art.ownerCharacterId)) {
+        state.bonuses.roleDamage *= 1.05;
+        break;
+      }
+      const current = state.martialArtLevels[art.id] || 0;
+      state.martialArtLevels[art.id] = Math.min(art.maxLevel, current + 1);
+      break;
+    }
     default:
       if (perk.id === "perk_sword_passive_up") {
         state.bonuses.passiveMultiplier *= 1.5;
@@ -1014,6 +2024,13 @@ function calculateSettlement(win) {
   return reward;
 }
 
+function calculatePlayerExp(win) {
+  let exp = state.highestWave * 10 + state.kills;
+  exp += state.bossKills.size * 50;
+  if (win) exp += 100;
+  return exp;
+}
+
 function endGame(win) {
   if (state.gameOver) return;
   state.gameOver = true;
@@ -1021,21 +2038,57 @@ function endGame(win) {
   state.appState = APP_STATE.SETTLEMENT;
   state.paused = false;
   const reward = calculateSettlement(win);
-  playerMeta.lingstone += reward;
+  const playerExp = calculatePlayerExp(win);
+  playerMeta.spiritStones += reward;
+  playerMeta.playerExp += playerExp;
+  const levelRewards = checkPlayerLevelUp();
   settlementTitle.textContent = win ? "守山成功" : "阵眼破碎";
   settlementWave.textContent = state.highestWave;
   settlementKills.textContent = state.kills;
-  settlementLingstone.textContent = reward;
+  settlementLingstone.textContent = `${reward}灵石 / ${playerExp}经验${levelRewards.length ? ` / ${levelRewards.join("，")}` : ""}`;
   showView(settlementView);
   updateDebugPanel();
 }
 
 function renderLobby() {
-  metaLevel.textContent = playerMeta.level;
-  metaLingstone.textContent = playerMeta.lingstone;
-  ownedRolesList.innerHTML = playerMeta.ownedRoles
-    .map((id) => `<span>${DATA.roles[id].name}</span>`)
-    .join("");
+  syncPlayerMetaAliases();
+  metaLevel.textContent = `${playerMeta.playerLevel}（${playerMeta.playerExp}/${getPlayerLevelExpRequirement(playerMeta.playerLevel)}）`;
+  metaLingstone.textContent = playerMeta.spiritStones;
+  ownedRolesList.innerHTML = "";
+  Object.values(DATA.roles).forEach((role) => {
+    const owned = playerMeta.ownedCharacters.includes(role.id);
+    const level = getCharacterLevel(role.id);
+    const damage = Math.round(getCharacterBaseFinalDamage(role) * 10) / 10;
+    const item = document.createElement("div");
+    item.className = `character-card ${owned ? "owned" : "locked"}`;
+    const source = role.unlockType === "gacha" ? "抽卡获得" : `${role.unlockLevel}级解锁`;
+    item.innerHTML = `
+      <strong>${role.name} <small>${role.rarity}</small></strong>
+      <span>${role.rankTitle || role.rank} · ${role.school} · ${role.role}</span>
+      <span>等级 ${owned ? level : "-"} · 伤害 ${owned ? damage : role.baseDamage} · ${role.trajectoryType}</span>
+      <span>${owned ? "已拥有" : source}</span>
+      <p>${owned ? role.designValue : role.description}</p>
+    `;
+    if (owned) {
+      const button = document.createElement("button");
+      button.className = "secondary";
+      button.textContent = `升级 ${getCharacterUpgradeCost(level, role.rarity)}灵石`;
+      button.addEventListener("click", () => upgradeCharacter(role.id));
+      item.appendChild(button);
+    }
+    ownedRolesList.appendChild(item);
+  });
+  const nextCharacter = getNextCharacterUnlock();
+  const nextSlot = getNextDeploySlotUnlock();
+  const tips = [];
+  if (nextCharacter) tips.push(`${nextCharacter.level}级解锁：${DATA.roles[nextCharacter.characterId].name}`);
+  if (nextSlot) tips.push(`${nextSlot.level}级解锁第${nextSlot.deploySlots}个上阵位`);
+  if (tips.length) {
+    const tip = document.createElement("span");
+    tip.className = "unlock-tip";
+    tip.textContent = tips.join(" · ");
+    ownedRolesList.prepend(tip);
+  }
   ownedArtifactsList.innerHTML = playerMeta.ownedArtifacts
     .map((id) => `<span>${DATA.artifacts[id].name}</span>`)
     .join("");
@@ -1061,20 +2114,20 @@ function renderLoadout() {
   });
 
   loadoutRoleList.innerHTML = "";
-  playerMeta.ownedRoles.forEach((id) => {
+  playerMeta.ownedCharacters.forEach((id) => {
     const role = DATA.roles[id];
     const selected = state.loadoutRoleIds.includes(id);
     const button = document.createElement("button");
     button.className = "choice";
     button.classList.toggle("selected", selected);
-    button.innerHTML = `<strong>${role.name}</strong><span>${role.rank} · ${role.school} · ${role.projectile}</span>`;
+    button.innerHTML = `<strong>${role.name}</strong><span>${role.rarity} · ${role.rankTitle || role.rank} · Lv${getCharacterLevel(id)} · ${role.trajectoryType}</span>`;
     button.addEventListener("click", () => {
       if (selected) {
         state.loadoutRoleIds = state.loadoutRoleIds.filter((roleId) => roleId !== id);
-      } else if (state.loadoutRoleIds.length < DATA.config.rosterSlots) {
+      } else if (state.loadoutRoleIds.length < playerMeta.maxDeploySlots) {
         state.loadoutRoleIds.push(id);
       } else {
-        setStatus(`最多选择 ${DATA.config.rosterSlots} 名出战角色。`);
+        setStatus(`当前最多选择 ${playerMeta.maxDeploySlots} 名出战角色。`);
       }
       renderLoadout();
       updateUi();
@@ -1097,10 +2150,14 @@ function renderLoadout() {
     loadoutArtifactList.appendChild(button);
   });
 
-  const roleText = `${state.loadoutRoleIds.length}/${DATA.config.rosterSlots}`;
+  const roleText = `${state.loadoutRoleIds.length}/${playerMeta.maxDeploySlots}`;
+  const nextSlot = getNextDeploySlotUnlock();
   loadoutStatus.textContent = loadoutReady()
     ? `配置完成：1个阵法，${roleText} 名角色，1个法宝。`
-    : `配置未完成：需要 1 个阵法、1-3 名角色、1 个法宝。当前角色 ${roleText}。`;
+    : `配置未完成：需要 1 个阵法、至少1名角色、1 个法宝。当前上阵位：${roleText}。`;
+  if (nextSlot) {
+    loadoutStatus.textContent += ` ${nextSlot.level}级解锁第${nextSlot.deploySlots}个上阵位。`;
+  }
   enterDeployButton.disabled = !loadoutReady();
 }
 
@@ -1122,7 +2179,7 @@ function renderSetupLists() {
     button.className = "choice";
     button.classList.toggle("selected", roleId === state.selectedRoleId);
     button.classList.toggle("deployed", deployed);
-    button.innerHTML = `<strong>${role.name}</strong><span>${role.rank} · ${role.school} · ${role.projectile}</span>`;
+    button.innerHTML = `<strong>${role.name}</strong><span>${role.rarity} · ${role.rankTitle || role.rank} · ${role.school} · ${role.trajectoryType}</span>`;
     button.disabled = state.appState !== APP_STATE.DEPLOY || deployed;
     button.addEventListener("click", () => {
       state.selectedRoleId = roleId;
@@ -1150,7 +2207,9 @@ function updateUi() {
   if (state.appState === APP_STATE.SETTLEMENT) showView(settlementView);
   renderLobby();
   waveText.textContent = `${state.wave} / ${DATA.config.maxWaves}`;
-  hpText.textContent = `${Math.max(0, Math.ceil(state.baseHp))} / ${state.maxBaseHp}`;
+  hpText.textContent = `${Math.max(0, Math.ceil(state.arrayCoreHp))} / ${state.arrayCoreMaxHp}${
+    state.arrayCoreDefense > 0 ? `\n防御：${state.arrayCoreDefense}` : ""
+  }`;
   const next = nextLevelRequirement();
   lingqiText.textContent =
     next < Infinity
@@ -1171,6 +2230,13 @@ function getDebugSnapshot() {
   return {
     APP_STATE: state.appState,
     "player.level": state.runLevel,
+    "profile.playerLevel": playerMeta.playerLevel,
+    "profile.playerExp": playerMeta.playerExp,
+    "profile.spiritStones": playerMeta.spiritStones,
+    "profile.maxDeploySlots": playerMeta.maxDeploySlots,
+    "profile.ownedCharacters": playerMeta.ownedCharacters.join(","),
+    "profile.characterLevels": JSON.stringify(playerMeta.characterLevels),
+    martialArtLevels: JSON.stringify(state.martialArtLevels || {}),
     "player.spiritQi": Math.floor(state.lingqi),
     "player.nextLevelSpiritQi": nextLevelRequirement(),
     pendingLevelUps: state.pendingLevelUps,
@@ -1181,9 +2247,14 @@ function getDebugSnapshot() {
     battlePaused: state.paused,
     running: state.running,
     wave: state.wave,
-    baseHp: Math.ceil(state.baseHp),
+    baseHp: Math.ceil(state.arrayCoreHp),
+    arrayCoreMaxHp: state.arrayCoreMaxHp,
+    arrayCoreHp: Math.ceil(state.arrayCoreHp),
+    arrayCoreDefense: state.arrayCoreDefense,
+    arrayCoreDamageReduction: state.arrayCoreDamageReduction,
     kills: state.kills,
     "projectiles.length": state.projectiles.length,
+    firstProjectileType: state.projectiles.find((projectile) => !projectile.visualOnly)?.type || "none",
     roleAttackCount: state.deployedRoles.reduce((sum, role) => sum + role.attacks, 0),
     "artifacts.length": state.selectedArtifactId ? 1 : 0,
     selectedArtifact: state.selectedArtifactId || "",
@@ -1298,12 +2369,33 @@ function drawEnemy(enemy) {
 }
 
 function drawProjectile(projectile) {
-  ctx.strokeStyle = projectile.color;
-  ctx.lineWidth = 3;
+  if (projectile.visualOnly) {
+    ctx.strokeStyle = projectile.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(projectile.x, projectile.y);
+    ctx.lineTo(projectile.tx, projectile.ty);
+    ctx.stroke();
+    return;
+  }
+  const angle = Math.atan2(projectile.vy, projectile.vx);
+  ctx.save();
+  ctx.translate(projectile.x, projectile.y);
+  ctx.rotate(angle);
+  ctx.lineCap = "round";
+  ctx.strokeStyle = projectile.trailColor || "rgba(255,255,255,0.2)";
+  ctx.lineWidth = projectile.width + 5;
   ctx.beginPath();
-  ctx.moveTo(projectile.x, projectile.y);
-  ctx.lineTo(projectile.tx, projectile.ty);
+  ctx.moveTo(-projectile.length * 0.75, 0);
+  ctx.lineTo(projectile.length * 0.35, 0);
   ctx.stroke();
+  ctx.strokeStyle = projectile.color;
+  ctx.lineWidth = projectile.width;
+  ctx.beginPath();
+  ctx.moveTo(-projectile.length / 2, 0);
+  ctx.lineTo(projectile.length / 2, 0);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawZone(zone) {
@@ -1369,10 +2461,11 @@ enterDeployButton.addEventListener("click", enterDeploy);
 startButton.addEventListener("click", startRun);
 returnLobbyButton.addEventListener("click", resetGame);
 roleUpgradeButton.addEventListener("click", () => {
-  setStatus("角色升级入口已接入，后续消耗局外灵石提升角色基础属性。");
+  const first = playerMeta.ownedCharacters[0];
+  if (first) upgradeCharacter(first);
 });
 gachaButton.addEventListener("click", () => {
-  setStatus("抽卡入口已接入，后续消耗局外灵石获取宗门角色。");
+  performGacha();
 });
 
 resetGame();

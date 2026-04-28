@@ -91,6 +91,35 @@ button:disabled {
   padding: 5px 8px;
 }
 
+.character-card {
+  background: rgba(33, 54, 43, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  padding: 9px;
+  width: 100%;
+}
+
+.character-card.locked {
+  opacity: 0.64;
+}
+
+.character-card small {
+  color: #d7ad5d;
+}
+
+.character-card p {
+  color: #d6cbb8;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.unlock-tip {
+  width: 100%;
+}
+
 .game-shell {
   display: grid;
   gap: 14px;
@@ -115,6 +144,10 @@ button:disabled {
 
 .hud > div {
   padding: 9px 12px;
+}
+
+.hud strong {
+  white-space: pre-line;
 }
 
 .label {
