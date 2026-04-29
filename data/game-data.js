@@ -2227,12 +2227,12 @@ window.GAME_DATA.martialArts = [
     trajectoryType: "single",
     levels: [
       { level: 1, title: "剑气初成", evolutionType: "growth", effectType: "damage_mult", value: 0.2, description: "陆青崖剑气伤害+20%，剑气命中半径+4。" },
-      { level: 2, title: "剑气凝形", evolutionType: "growth", effectType: "sword_qi_refine", value: 1, description: "剑气速度+15%，宽度+2，伤害+10%。" },
+      { level: 2, title: "剑气凝形", evolutionType: "growth", effectType: "sword_qi_refine", value: 1, description: "剑气速度+15%，伤害+10%。" },
       { level: 3, title: "双锋并起", evolutionType: "minor_evolution", effectType: "projectile_set", value: 2, description: "小成：每次攻击发射2道剑气，副剑气70%伤害。" },
-      { level: 4, title: "三脉分光", evolutionType: "growth", effectType: "qingya_stage_4", value: 1, description: "每次攻击发射3道剑气，并获得穿透+1。" },
-      { level: 5, title: "剑雨连发", evolutionType: "growth", effectType: "qingya_stage_5", value: 1, description: "每次攻击发射4道剑气，额外剑气80%伤害，攻击间隔-10%。" },
-      { level: 6, title: "五剑成阵", evolutionType: "growth", effectType: "qingya_stage_6", value: 1, description: "每次攻击发射5道剑气，额外剑气90%伤害，剑气穿透再+1。" },
-      { level: 7, title: "青崖巨阙", evolutionType: "major_evolution", effectType: "qingya_giant_sword", value: 1, description: "大成：多剑气进化为巨型飞剑，伤害*3.5，穿透+3，命中震荡溅射。" }
+      { level: 4, title: "三脉分光", evolutionType: "growth", effectType: "qingya_stage_4", value: 1, description: "每次攻击至少发射3道剑气，伤害+20%，攻击间隔-10%，并获得穿透+1。" },
+      { level: 5, title: "剑雨连发", evolutionType: "growth", effectType: "qingya_stage_5", value: 1, description: "每次攻击发射4道剑气，攻击间隔总降幅更明显，新增剑气不降低单发伤害。" },
+      { level: 6, title: "五剑成阵", evolutionType: "growth", effectType: "qingya_stage_6", value: 1, description: "每次攻击发射5道剑气，伤害额外+40%，剑气穿透再+1，新增剑气不降低单发伤害。" },
+      { level: 7, title: "青崖巨阙", evolutionType: "major_evolution", effectType: "qingya_giant_sword", value: 1, description: "大成：多剑气进化为巨型飞剑，伤害*10，穿透6，命中大范围震荡溅射，对精英和Boss额外增伤。" }
     ]
   },
   {

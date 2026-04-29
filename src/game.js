@@ -932,12 +932,13 @@ function martialBonuses(roleId) {
     widthAdd: 0,
     hitRadiusAdd: 0,
     collisionPaddingAdd: 0,
-    sideDamageScale: 0.7,
+    sideDamageScale: 1,
     giantSword: false,
     giantSwordDamageMult: 1,
     giantSwordIntervalMult: 1,
     giantSwordSplashRadius: 0,
     giantSwordSplashDamage: 0,
+    giantSwordEliteDamageMult: 1,
   };
   martialLevelEffects(roleId).forEach((effect) => {
     if (effect.effectType === "damage_mult") bonuses.damageMult *= 1 + effect.value;
@@ -966,30 +967,30 @@ function martialBonuses(roleId) {
     if (roleId === "lu_qingya" && effect.level === 1) bonuses.hitRadiusAdd += 4;
     if (effect.effectType === "sword_qi_refine") {
       bonuses.speedMult *= 1.15;
-      bonuses.widthAdd += 2;
       bonuses.damageMult *= 1.1;
     }
     if (effect.effectType === "qingya_stage_4") {
       bonuses.projectileSet = Math.max(bonuses.projectileSet, 3);
+      bonuses.damageMult *= 1.2;
+      bonuses.attackSpeed *= 1.1;
       bonuses.pierceAdd += 1;
     }
     if (effect.effectType === "qingya_stage_5") {
       bonuses.projectileSet = Math.max(bonuses.projectileSet, 4);
-      bonuses.sideDamageScale = Math.max(bonuses.sideDamageScale, 0.8);
-      bonuses.attackSpeed *= 1.1;
+      bonuses.attackSpeed *= 1.08;
     }
     if (effect.effectType === "qingya_stage_6") {
       bonuses.projectileSet = Math.max(bonuses.projectileSet, 5);
-      bonuses.sideDamageScale = Math.max(bonuses.sideDamageScale, 0.9);
+      bonuses.damageMult *= 1.4;
       bonuses.pierceAdd += 1;
     }
     if (effect.effectType === "qingya_giant_sword") {
       bonuses.giantSword = true;
-      bonuses.giantSwordDamageMult = 3.5;
+      bonuses.giantSwordDamageMult = 10;
       bonuses.giantSwordIntervalMult = 1.15;
-      bonuses.pierceAdd += 3;
-      bonuses.giantSwordSplashRadius = 36;
-      bonuses.giantSwordSplashDamage = 0.4;
+      bonuses.giantSwordSplashRadius = 75;
+      bonuses.giantSwordSplashDamage = 0.75;
+      bonuses.giantSwordEliteDamageMult = 1.35;
     }
   });
   return bonuses;
@@ -1095,7 +1096,7 @@ function projectileDefaults(config, art) {
   if (type === "sword_wave") Object.assign(defaults, { speed: 400, width: 9, length: 34, radius: 9, color: "#e8eef8", trailColor: "rgba(215, 225, 236, 0.22)" });
   if (type === "spear_arc") Object.assign(defaults, { speed: 390, width: 12, length: 42, radius: 11, color: "#f4d47c", trailColor: "rgba(214, 179, 106, 0.26)" });
   if (type === "thunder_arc") Object.assign(defaults, { speed: 440, width: 8, length: 26, radius: 9, color: "#ddd6fe", trailColor: "rgba(196, 181, 253, 0.3)" });
-  if (art?.giantSword) Object.assign(defaults, { speed: 300, width: 26, length: 86, radius: 28, hitRadius: 28, collisionPadding: 10, maxLifetime: 2.2, color: "#e9ffff", trailColor: "rgba(250, 204, 21, 0.3)" });
+  if (art?.giantSword) Object.assign(defaults, { speed: 430, width: 52, length: 160, radius: 54, hitRadius: 54, collisionPadding: 18, maxLifetime: 2.5, color: "#e9ffff", trailColor: "rgba(250, 204, 21, 0.34)" });
   defaults.speed *= art?.speedMult || 1;
   defaults.width += art?.widthAdd || 0;
   defaults.radius += art?.hitRadiusAdd || 0;
@@ -1118,13 +1119,17 @@ function createRoleProjectiles(role, target, damage, projectileCount) {
   const normalX = -baseVy;
   const normalY = baseVx;
   const actualCount = art.giantSword ? 1 : projectileCount;
+  const spreadAngles = projectileSpreadAngles(actualCount);
   for (let i = 0; i < actualCount; i += 1) {
     const centered = i - (actualCount - 1) / 2;
-    const vx = baseVx;
-    const vy = baseVy;
+    const angle = (spreadAngles[i] || 0) * Math.PI / 180;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const vx = baseVx * cos - baseVy * sin;
+    const vy = baseVx * sin + baseVy * cos;
     const sideDamage = art.giantSword ? art.giantSwordDamageMult : centered === 0 ? 1 : art.sideDamageScale;
-    const offset = centered * 16;
-    const pierceCount = art.giantSword ? 3 + state.bonuses.pierceAdd : art.pierceAdd + state.bonuses.pierceAdd;
+    const offset = art.giantSword ? 0 : centered * 4;
+    const pierceCount = art.giantSword ? 6 + state.bonuses.pierceAdd : art.pierceAdd + state.bonuses.pierceAdd;
     state.projectiles.push({
       id: makeId(),
       ownerCharacterId: role.roleId,
@@ -1156,8 +1161,19 @@ function createRoleProjectiles(role, target, damage, projectileCount) {
       sourceConfig: config,
       splashRadius: art.giantSwordSplashRadius,
       splashDamageMultiplier: art.giantSwordSplashDamage,
+      eliteBossDamageMultiplier: art.giantSwordEliteDamageMult,
     });
   }
+}
+
+function projectileSpreadAngles(count) {
+  if (count <= 1) return [0];
+  if (count === 2) return [-5, 5];
+  if (count === 3) return [-7, 0, 7];
+  if (count === 4) return [-9, -3, 3, 9];
+  if (count === 5) return [-12, -6, 0, 6, 12];
+  const step = 24 / Math.max(1, count - 1);
+  return Array.from({ length: count }, (_, index) => -12 + step * index);
 }
 
 function getPredictedTargetPosition(source, target, projectileSpeed) {
@@ -1388,9 +1404,13 @@ function checkProjectileCollision(projectile) {
     if (enemy.dead || projectile.hitEnemyIds.has(enemy.id)) continue;
     if (!checkProjectileHitEnemy(projectile, enemy)) continue;
     projectile.hitEnemyIds.add(enemy.id);
-    applyRoleHit(projectile.sourceRole, enemy, projectile.damage);
+    const eliteBossMultiplier = enemy.config.isBoss || enemy.config.type === "精英"
+      ? projectile.eliteBossDamageMultiplier || 1
+      : 1;
+    const hitDamage = projectile.damage * eliteBossMultiplier;
+    applyRoleHit(projectile.sourceRole, enemy, hitDamage);
     if (projectile.splashRadius > 0 && projectile.splashDamageMultiplier > 0) {
-      areaDamage(enemy.x, enemy.y, projectile.splashRadius, projectile.damage * projectile.splashDamageMultiplier, "role");
+      areaDamage(enemy.x, enemy.y, projectile.splashRadius, hitDamage * projectile.splashDamageMultiplier, "role");
     }
     if (!projectile.pierce) {
       projectile.dead = true;
