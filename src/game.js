@@ -443,6 +443,7 @@ function resetGame() {
     spawnJobs: [],
     waveActive: false,
     martialArtLevels: {},
+    martialArtBranches: {},
     formationCooldown: 0,
     artifactCooldown: 0,
     pendingLevelUps: 0,
@@ -899,16 +900,211 @@ function getMartialArtLevelForRole(roleId) {
 
 function martialLevelEffects(roleId) {
   const art = martialArtForCharacter(roleId);
+  if (art?.id === "ma_qingya_sword") return [];
   const level = art ? state.martialArtLevels[art.id] || 0 : 0;
   return art ? art.levels.filter((item) => item.level <= level) : [];
+}
+
+const QINGYA_BRANCH_UPGRADES = [
+  {
+    id: "qingya_projectile_1",
+    name: "青崖剑诀·剑气分光 I",
+    type: "normal",
+    description: "每波剑气弹道数量+1。",
+    valueText: "projectileCount +1",
+    effects: { projectileAdd: 1 },
+  },
+  {
+    id: "qingya_projectile_2",
+    name: "青崖剑诀·剑气分光 II",
+    type: "normal",
+    requires: ["qingya_projectile_1"],
+    description: "每波剑气弹道数量再+1。",
+    valueText: "projectileCount +1",
+    effects: { projectileAdd: 1 },
+  },
+  {
+    id: "qingya_projectile_3",
+    name: "青崖剑诀·剑气分光 III",
+    type: "normal",
+    requires: ["qingya_projectile_2"],
+    description: "每波剑气弹道数量再+1，最多形成更宽的剑气覆盖。",
+    valueText: "projectileCount +1",
+    effects: { projectileAdd: 1 },
+  },
+  {
+    id: "qingya_volley_1",
+    name: "青崖剑诀·连潮剑势 I",
+    type: "normal",
+    description: "一次攻击连续多发射1波剑气。",
+    valueText: "volleyCount +1",
+    effects: { volleyAdd: 1 },
+  },
+  {
+    id: "qingya_volley_2",
+    name: "青崖剑诀·连潮剑势 II",
+    type: "normal",
+    requires: ["qingya_volley_1"],
+    description: "一次攻击连续多发射1波剑气，波次间隔缩短。",
+    valueText: "volleyCount +1 / volleyInterval -0.02",
+    effects: { volleyAdd: 1, volleyIntervalAdd: -0.02 },
+  },
+  {
+    id: "qingya_volley_3",
+    name: "青崖剑诀·连潮剑势 III",
+    type: "normal",
+    requires: ["qingya_volley_2"],
+    description: "一次攻击连续多发射1波剑气，波次间隔再次缩短。",
+    valueText: "volleyCount +1 / volleyInterval -0.02",
+    effects: { volleyAdd: 1, volleyIntervalAdd: -0.02 },
+  },
+  {
+    id: "qingya_damage_1",
+    name: "青崖剑诀·剑气凝练",
+    type: "normal",
+    description: "剑气单发伤害提升。",
+    valueText: "damageMultiplier +30%",
+    effects: { damageMult: 0.3 },
+  },
+  {
+    id: "qingya_interval_1",
+    name: "青崖剑诀·行剑如风",
+    type: "normal",
+    description: "陆青崖攻击间隔降低。",
+    valueText: "attackIntervalMultiplier *0.85",
+    effects: { attackIntervalMult: 0.85 },
+  },
+  {
+    id: "qingya_pierce_1",
+    name: "青崖剑诀·破妖剑痕",
+    type: "normal",
+    description: "剑气穿透数量+1。",
+    valueText: "pierceCount +1",
+    effects: { pierceAdd: 1 },
+  },
+  {
+    id: "qingya_attack_line_1",
+    name: "青崖剑诀·阵前破势",
+    type: "normal",
+    description: "对正在攻击阵眼的敌人造成额外伤害。",
+    valueText: "阵前敌人伤害 +40%",
+    effects: { attackLineDamageMult: 1.4 },
+  },
+  {
+    id: "qingya_minor_projectile",
+    name: "青崖剑诀·双锋并起",
+    type: "minor",
+    description: "小成：每波剑气弹道数量+1，伤害提升20%。",
+    valueText: "projectileCount +1 / damage +20%",
+    effects: { projectileAdd: 1, damageMult: 0.2 },
+  },
+  {
+    id: "qingya_minor_volley",
+    name: "青崖剑诀·剑潮初起",
+    type: "minor",
+    description: "小成：连续发射波数+1，波次间隔缩短，伤害提升20%。",
+    valueText: "volleyCount +1 / volleyInterval -0.02 / damage +20%",
+    effects: { volleyAdd: 1, volleyIntervalAdd: -0.02, damageMult: 0.2 },
+  },
+  {
+    id: "qingya_minor_damage",
+    name: "青崖剑诀·青锋小成",
+    type: "minor",
+    description: "小成：剑气伤害提升35%，穿透+1。",
+    valueText: "damage +35% / pierceCount +1",
+    effects: { damageMult: 0.35, pierceAdd: 1 },
+  },
+  {
+    id: "qingya_major_giant_sword",
+    name: "青崖剑诀·青崖巨阙",
+    type: "major",
+    description: "大成：剑气进化为巨型飞剑 projectile，高伤害、高穿透，并造成大范围震荡溅射。",
+    valueText: "巨剑大成",
+    effects: { giantSword: true },
+  },
+];
+
+function getMartialBranchState(artId) {
+  if (!state.martialArtBranches[artId]) state.martialArtBranches[artId] = {};
+  return state.martialArtBranches[artId];
+}
+
+function hasMartialBranchUpgrade(artId, upgradeId) {
+  return Boolean(getMartialBranchState(artId)[upgradeId]);
+}
+
+function qingyaAttackParamsFromBranches(extraUpgrade = null) {
+  const artId = "ma_qingya_sword";
+  const chosen = getMartialBranchState(artId);
+  const params = {
+    projectileCount: 1,
+    volleyCount: 1,
+    volleyInterval: 0.1,
+  };
+  QINGYA_BRANCH_UPGRADES.forEach((upgrade) => {
+    if (!chosen[upgrade.id] && upgrade.id !== extraUpgrade?.id) return;
+    const effects = upgrade.effects || {};
+    params.projectileCount += effects.projectileAdd || 0;
+    params.volleyCount += effects.volleyAdd || 0;
+    params.volleyInterval += effects.volleyIntervalAdd || 0;
+  });
+  params.projectileCount = Math.min(5, params.projectileCount);
+  params.volleyCount = Math.min(4, params.volleyCount);
+  params.volleyInterval = Math.max(0.04, params.volleyInterval);
+  return params;
+}
+
+function qingyaBranchUpgradeAvailable(upgrade) {
+  const artId = "ma_qingya_sword";
+  const currentLevel = state.martialArtLevels[artId] || 0;
+  if (hasMartialBranchUpgrade(artId, upgrade.id)) return false;
+  if ((upgrade.requires || []).some((id) => !hasMartialBranchUpgrade(artId, id))) return false;
+  if (currentLevel === 2) return upgrade.type === "minor";
+  if (currentLevel === 6) return upgrade.type === "major";
+  if (currentLevel >= 7) return false;
+  if (upgrade.type !== "normal") return false;
+
+  const nextParams = qingyaAttackParamsFromBranches(upgrade);
+  if (nextParams.projectileCount > 5 || nextParams.volleyCount > 4) return false;
+  if (nextParams.projectileCount * nextParams.volleyCount > 16) return false;
+  return true;
+}
+
+function applyQingyaBranchBonuses(bonuses) {
+  const chosen = getMartialBranchState("ma_qingya_sword");
+  QINGYA_BRANCH_UPGRADES.forEach((upgrade) => {
+    if (!chosen[upgrade.id]) return;
+    const effects = upgrade.effects || {};
+    bonuses.projectileAdd += effects.projectileAdd || 0;
+    bonuses.volleyCount += effects.volleyAdd || 0;
+    bonuses.volleyInterval += effects.volleyIntervalAdd || 0;
+    if (effects.damageMult) bonuses.damageMult *= 1 + effects.damageMult;
+    if (effects.attackIntervalMult) bonuses.attackIntervalMult *= effects.attackIntervalMult;
+    bonuses.pierceAdd += effects.pierceAdd || 0;
+    if (effects.attackLineDamageMult) bonuses.attackLineDamageMult *= effects.attackLineDamageMult;
+    if (effects.giantSword) {
+      bonuses.giantSword = true;
+      bonuses.giantSwordDamageMult = 10;
+      bonuses.giantSwordIntervalMult = 1.15;
+      bonuses.giantSwordSplashRadius = 75;
+      bonuses.giantSwordSplashDamage = 0.75;
+      bonuses.giantSwordEliteDamageMult = 1.35;
+    }
+  });
+  bonuses.projectileAdd = Math.min(4, bonuses.projectileAdd);
+  bonuses.volleyCount = Math.min(4, bonuses.volleyCount);
+  bonuses.volleyInterval = Math.max(0.04, bonuses.volleyInterval);
 }
 
 function martialBonuses(roleId) {
   const bonuses = {
     damageMult: 1,
     attackSpeed: 1,
+    attackIntervalMult: 1,
     projectileAdd: 0,
     projectileSet: 0,
+    volleyCount: 1,
+    volleyInterval: 0.1,
     pierceAdd: 0,
     rangeAdd: 0,
     splashRadius: 1,
@@ -939,6 +1135,7 @@ function martialBonuses(roleId) {
     giantSwordSplashRadius: 0,
     giantSwordSplashDamage: 0,
     giantSwordEliteDamageMult: 1,
+    attackLineDamageMult: 1,
   };
   martialLevelEffects(roleId).forEach((effect) => {
     if (effect.effectType === "damage_mult") bonuses.damageMult *= 1 + effect.value;
@@ -993,6 +1190,7 @@ function martialBonuses(roleId) {
       bonuses.giantSwordEliteDamageMult = 1.35;
     }
   });
+  if (roleId === "lu_qingya") applyQingyaBranchBonuses(bonuses);
   return bonuses;
 }
 
@@ -1018,7 +1216,7 @@ function roleStats(role) {
       sectLeaderBonus *
       (hasGlobalBoost ? 1.1 : 1) *
       elderSwordCount,
-    interval: ((config.attackInterval || 1 / (config.baseAttackSpeed || 1)) * art.giantSwordIntervalMult) / (state.bonuses.roleAttackSpeed * role.personalSpeed * art.attackSpeed),
+    interval: ((config.attackInterval || 1 / (config.baseAttackSpeed || 1)) * art.attackIntervalMult * art.giantSwordIntervalMult) / (state.bonuses.roleAttackSpeed * role.personalSpeed * art.attackSpeed),
     range: ((config.range || config.baseRange) + state.bonuses.roleRangeAdd + art.rangeAdd) * grid.cellH,
     school: config.school,
     projectile: config.trajectoryType || config.projectile,
@@ -1072,8 +1270,16 @@ function fireRole(role, targetId) {
   }
 
   const baseProjectileCount = config.trajectoryType === "multi" ? 3 : 1;
-  const projectileCount = Math.max(art.projectileSet || 0, baseProjectileCount + state.bonuses.sideProjectiles + art.projectileAdd);
-  createRoleProjectiles(role, target, damage, projectileCount);
+  const projectileCount = Math.min(
+    art.giantSword ? 1 : 5,
+    Math.max(art.projectileSet || 0, baseProjectileCount + state.bonuses.sideProjectiles + art.projectileAdd),
+  );
+  fireProjectileAttack(role, target, {
+    projectileCount,
+    volleyCount: art.giantSword ? 1 : art.volleyCount,
+    volleyInterval: art.volleyInterval,
+    damage,
+  });
 }
 
 function projectileDefaults(config, art) {
@@ -1104,6 +1310,27 @@ function projectileDefaults(config, art) {
   defaults.collisionPadding += art?.collisionPaddingAdd || 0;
   if (art && art.pierceAdd > 0) defaults.radius += 1;
   return defaults;
+}
+
+function fireProjectileAttack(role, target, attackParams) {
+  const volleyCount = Math.max(1, attackParams.volleyCount || 1);
+  const volleyInterval = Math.max(0.04, attackParams.volleyInterval || 0.1);
+  const fireOneVolley = () => {
+    if (state.appState !== APP_STATE.BATTLE) return;
+    const stats = roleStats(role);
+    const liveTarget =
+      state.enemies.find((enemy) => enemy.id === target.id && !enemy.dead) ||
+      chooseTarget(role, stats.range);
+    if (!liveTarget) return;
+    createRoleProjectiles(role, liveTarget, attackParams.damage, attackParams.projectileCount);
+  };
+  for (let volleyIndex = 0; volleyIndex < volleyCount; volleyIndex += 1) {
+    if (volleyIndex === 0) {
+      fireOneVolley();
+    } else {
+      setTimeout(fireOneVolley, volleyIndex * volleyInterval * 1000);
+    }
+  }
 }
 
 function createRoleProjectiles(role, target, damage, projectileCount) {
@@ -1162,6 +1389,7 @@ function createRoleProjectiles(role, target, damage, projectileCount) {
       splashRadius: art.giantSwordSplashRadius,
       splashDamageMultiplier: art.giantSwordSplashDamage,
       eliteBossDamageMultiplier: art.giantSwordEliteDamageMult,
+      attackLineDamageMultiplier: art.attackLineDamageMult,
     });
   }
 }
@@ -1407,7 +1635,10 @@ function checkProjectileCollision(projectile) {
     const eliteBossMultiplier = enemy.config.isBoss || enemy.config.type === "精英"
       ? projectile.eliteBossDamageMultiplier || 1
       : 1;
-    const hitDamage = projectile.damage * eliteBossMultiplier;
+    const attackLineMultiplier = enemy.state === ENEMY_STATE.ATTACKING
+      ? projectile.attackLineDamageMultiplier || 1
+      : 1;
+    const hitDamage = projectile.damage * eliteBossMultiplier * attackLineMultiplier;
     applyRoleHit(projectile.sourceRole, enemy, hitDamage);
     if (projectile.splashRadius > 0 && projectile.splashDamageMultiplier > 0) {
       areaDamage(enemy.x, enemy.y, projectile.splashRadius, hitDamage * projectile.splashDamageMultiplier, "role");
@@ -1613,13 +1844,41 @@ function createMartialArtPerk(art) {
   };
 }
 
+function createQingyaBranchPerk(upgrade) {
+  const currentLevel = state.martialArtLevels.ma_qingya_sword || 0;
+  return {
+    id: `martial_branch_${upgrade.id}`,
+    name: upgrade.name,
+    category: upgrade.type === "minor" ? "先天武学·小成" : upgrade.type === "major" ? "先天武学·大成" : "先天武学·分支",
+    rarity: upgrade.type === "major" ? "史诗" : upgrade.type === "minor" ? "稀有" : "普通",
+    scope: "martial_art_branch",
+    martialArtId: "ma_qingya_sword",
+    upgradeId: upgrade.id,
+    effectType: "martial_art_branch_upgrade",
+    description: upgrade.description,
+    valueText: `当前Lv${currentLevel} → Lv${Math.min(7, currentLevel + 1)} · ${upgrade.valueText}`,
+    effect: {
+      type: "martial_art_branch_upgrade",
+      martialArtId: "ma_qingya_sword",
+      upgradeId: upgrade.id,
+    },
+  };
+}
+
+function createQingyaBranchPerks() {
+  return QINGYA_BRANCH_UPGRADES
+    .filter(qingyaBranchUpgradeAvailable)
+    .map(createQingyaBranchPerk);
+}
+
 function currentMartialArtUpgradePerks() {
-  return currentRunCharacters()
-    .map((character) => martialArtForCharacter(character.id))
-    .filter(Boolean)
-    .filter((art) => (state.martialArtLevels[art.id] || 0) < art.maxLevel)
-    .map(createMartialArtPerk)
-    .filter(Boolean);
+  return currentRunCharacters().flatMap((character) => {
+    const art = martialArtForCharacter(character.id);
+    if (!art || (state.martialArtLevels[art.id] || 0) >= art.maxLevel) return [];
+    if (art.id === "ma_qingya_sword") return createQingyaBranchPerks();
+    const perk = createMartialArtPerk(art);
+    return perk ? [perk] : [];
+  });
 }
 
 function currentTrajectoryPerks() {
@@ -1776,6 +2035,11 @@ function isPerkValidForCurrentRun(rawPerk) {
   }
   if (requirement.includes("第5波后") && state.wave <= 5) return false;
   if (perk.scope === "invalid") return false;
+  if (perk.scope === "martial_art_branch") {
+    if (!currentRunCharacters().some((character) => character.id === "lu_qingya")) return false;
+    const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === perk.upgradeId);
+    return Boolean(upgrade && qingyaBranchUpgradeAvailable(upgrade));
+  }
   if (perk.scope === "martial_art") {
     const art = (DATA.martialArts || []).find((item) => item.id === perk.martialArtId);
     return Boolean(art && currentRunCharacters().some((character) => character.id === art.ownerCharacterId) && (state.martialArtLevels[art.id] || 0) < art.maxLevel);
@@ -2006,6 +2270,18 @@ function applyPerk(perk) {
         state.bonuses.roleDamage *= 1.05;
         break;
       }
+      const current = state.martialArtLevels[art.id] || 0;
+      state.martialArtLevels[art.id] = Math.min(art.maxLevel, current + 1);
+      break;
+    }
+    case "martial_art_branch_upgrade": {
+      const art = (DATA.martialArts || []).find((item) => item.id === effect.martialArtId);
+      const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === effect.upgradeId);
+      if (!art || !upgrade || !qingyaBranchUpgradeAvailable(upgrade)) {
+        state.bonuses.roleDamage *= 1.05;
+        break;
+      }
+      getMartialBranchState(art.id)[upgrade.id] = true;
       const current = state.martialArtLevels[art.id] || 0;
       state.martialArtLevels[art.id] = Math.min(art.maxLevel, current + 1);
       break;

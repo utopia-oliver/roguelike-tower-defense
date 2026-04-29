@@ -2226,7 +2226,7 @@ window.GAME_DATA.martialArts = [
     projectileType: "flying_sword",
     trajectoryType: "single",
     levels: [
-      { level: 1, title: "剑气初成", evolutionType: "growth", effectType: "damage_mult", value: 0.2, description: "陆青崖剑气伤害+20%，剑气命中半径+4。" },
+      { level: 1, title: "剑气初成", evolutionType: "growth", effectType: "damage_mult", value: 0.2, description: "陆青崖剑气伤害+20%。" },
       { level: 2, title: "剑气凝形", evolutionType: "growth", effectType: "sword_qi_refine", value: 1, description: "剑气速度+15%，伤害+10%。" },
       { level: 3, title: "双锋并起", evolutionType: "minor_evolution", effectType: "projectile_set", value: 2, description: "小成：每次攻击发射2道剑气，副剑气70%伤害。" },
       { level: 4, title: "三脉分光", evolutionType: "growth", effectType: "qingya_stage_4", value: 1, description: "每次攻击至少发射3道剑气，伤害+20%，攻击间隔-10%，并获得穿透+1。" },
