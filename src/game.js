@@ -44,6 +44,11 @@ const runStatus = document.querySelector("#runStatus");
 const perkModal = document.querySelector("#perkModal");
 const perkGrid = document.querySelector("#perkGrid");
 const debugPanel = document.querySelector("#debugPanel");
+const debugToggle = document.querySelector("#debugToggle");
+const debugClose = document.querySelector("#debugClose");
+const debugTabs = document.querySelector("#debugTabs");
+const debugActionsPanel = document.querySelector("#debugActions");
+const debugContent = document.querySelector("#debugContent");
 
 const APP_STATE = {
   LOBBY: "LOBBY",
@@ -103,6 +108,9 @@ const PLAYER_LEVEL_UNLOCKS = DATA.playerLevelUnlocks || [];
 const DEPLOY_SLOT_UNLOCKS = DATA.deploySlotUnlocks || [];
 const GACHA_COST = 200;
 const DUPLICATE_GACHA_REFUND = 50;
+const DEBUG_STORAGE_KEY = "xuanmen_debug_runtime";
+const DEBUG_TABS = ["状态", "角色", "法宝", "先天武学", "机缘", "护山大阵", "怪物", "波次"];
+let activeDebugTab = "状态";
 
 const GENERIC_PERKS = [
   {
@@ -110,8 +118,8 @@ const GENERIC_PERKS = [
     name: "灵力灌注",
     rarity: "普通",
     scope: "global",
-    description: "全体角色伤害 +15%。",
-    valueText: "+15%",
+    description: "当前武学伤害提升。",
+    valueText: "武学伤害提升",
     stackable: true,
     effect: { type: "role_damage_mult", value: 0.15 },
   },
@@ -120,8 +128,8 @@ const GENERIC_PERKS = [
     name: "周天急转",
     rarity: "普通",
     scope: "global",
-    description: "全体角色攻速 +10%。",
-    valueText: "+10%",
+    description: "当前武学攻击间隔降低。",
+    valueText: "武学攻速提升",
     stackable: true,
     effect: { type: "role_attack_speed", value: 0.1 },
   },
@@ -489,6 +497,12 @@ function resetGame() {
     lastTime: 0,
     status: "山门待命。先在外部系统进入战前配置。",
     bonuses: defaultRunBonuses(),
+    modifiers: {
+      martialArt: {},
+      character: {},
+      artifact: {},
+      projectileType: {},
+    },
     acquiredPerks: new Set(),
   });
   perkModal.classList.add("hidden");
@@ -929,6 +943,30 @@ function martialArtForCharacter(characterId) {
   return (DATA.martialArts || []).find((art) => art.ownerCharacterId === characterId);
 }
 
+function getScopedModifier(bucket, id) {
+  state.modifiers = state.modifiers || { martialArt: {}, character: {}, artifact: {}, projectileType: {} };
+  state.modifiers[bucket] = state.modifiers[bucket] || {};
+  state.modifiers[bucket][id] = state.modifiers[bucket][id] || {};
+  return state.modifiers[bucket][id];
+}
+
+function getMartialArtModifier(artId) {
+  const modifier = getScopedModifier("martialArt", artId);
+  modifier.damageMultiplier = modifier.damageMultiplier || 1;
+  modifier.attackIntervalMultiplier = modifier.attackIntervalMultiplier || 1;
+  modifier.pierceAdd = modifier.pierceAdd || 0;
+  return modifier;
+}
+
+function getArtifactModifier(artifactId) {
+  const modifier = getScopedModifier("artifact", artifactId);
+  modifier.damageMultiplier = modifier.damageMultiplier || 1;
+  modifier.cooldownMultiplier = modifier.cooldownMultiplier || 1;
+  modifier.extraCast = modifier.extraCast || 0;
+  modifier.pierceAdd = modifier.pierceAdd || 0;
+  return modifier;
+}
+
 function getMartialArtLevelForRole(roleId) {
   const art = martialArtForCharacter(roleId);
   return art ? state.martialArtLevels[art.id] || 0 : 0;
@@ -1268,6 +1306,13 @@ function martialBonuses(roleId) {
     }
   });
   if (roleId === "lu_qingya") applyQingyaBranchBonuses(bonuses);
+  const art = martialArtForCharacter(roleId);
+  if (art) {
+    const modifier = getMartialArtModifier(art.id);
+    bonuses.damageMult *= modifier.damageMultiplier;
+    bonuses.attackIntervalMult *= modifier.attackIntervalMultiplier;
+    bonuses.pierceAdd += modifier.pierceAdd;
+  }
   return bonuses;
 }
 
@@ -1799,6 +1844,7 @@ function update(dt) {
 function updateArtifact(dt) {
   const artifact = DATA.artifacts[state.selectedArtifactId];
   if (!artifact) return;
+  const artifactModifier = getArtifactModifier(state.selectedArtifactId);
   state.artifactCooldown -= dt;
   if (state.artifactCooldown > 0) return;
   const targets = state.enemies
@@ -1808,7 +1854,7 @@ function updateArtifact(dt) {
   if (!targets.length) return;
   const origin = { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
   targets.forEach((enemy) => {
-    enemy.takeDamage(artifact.damage * state.bonuses.artifactDamage, "artifact");
+    enemy.takeDamage(artifact.damage * artifactModifier.damageMultiplier, "artifact");
     drawShot(origin.x, origin.y, enemy.x, enemy.y, "#f6d365");
   });
   state.floaters.push({
@@ -1818,7 +1864,7 @@ function updateArtifact(dt) {
     ttl: 0.7,
     color: "#f6d365",
   });
-  state.artifactCooldown = Math.max(2, artifact.cooldown * state.bonuses.artifactCooldown);
+  state.artifactCooldown = Math.max(2, artifact.cooldown * artifactModifier.cooldownMultiplier);
 }
 
 function showDamageNumber(amount, target) {
@@ -1881,12 +1927,12 @@ function showPerkChoices() {
   if (!choices.length) {
     const button = document.createElement("button");
     button.className = "perk-card";
-    button.innerHTML = "<strong>灵气稳固</strong><p>没有可用机缘时，所有角色伤害+5%。</p>";
+    button.innerHTML = "<strong>武学稳固</strong><p>没有可用机缘时，当前武学伤害+5%。</p>";
     button.addEventListener("click", () => {
       chooseLevelUpPerk({
         id: `fallback_damage_${state.runLevel}_${Date.now()}`,
         name: "灵气稳固",
-        effect: { type: "role_damage_mult", value: 0.05 },
+        effect: { type: "martial_art_damage_bonus", martialArtId: martialArtForCharacter(currentRunCharacters()[0]?.id)?.id || "", value: 0.05 },
       });
     });
     perkGrid.appendChild(button);
@@ -1924,6 +1970,7 @@ function createMartialArtPerk(art) {
 
 function createQingyaBranchPerk(upgrade) {
   const currentLevel = state.martialArtLevels.ma_qingya_sword || 0;
+  const art = { id: "ma_qingya_sword", name: "青崖剑诀" };
   return {
     id: `martial_branch_${upgrade.id}`,
     name: upgrade.name,
@@ -1932,7 +1979,10 @@ function createQingyaBranchPerk(upgrade) {
     scope: "martial_art_branch",
     martialArtId: "ma_qingya_sword",
     upgradeId: upgrade.id,
-    effectType: "martial_art_branch_upgrade",
+      effectType: "martial_art_branch_upgrade",
+      targetType: "martialArt",
+      targetId: "ma_qingya_sword",
+      targetName: upgrade.type === "major_enhance" ? "青崖巨阙" : art.name,
     description: upgrade.description,
     valueText: `当前Lv${currentLevel} → Lv${Math.min(7, currentLevel + 1)} · ${upgrade.valueText}`,
     effect: {
@@ -1958,6 +2008,32 @@ function currentMartialArtUpgradePerks() {
     const perk = createMartialArtPerk(art);
     return perk ? [perk] : [];
   });
+}
+
+function currentTargetedMartialPerks() {
+  return currentRunCharacters()
+    .map((character) => {
+      const art = martialArtForCharacter(character.id);
+      if (!art) return null;
+      if ((state.martialArtLevels[art.id] || 0) >= art.maxLevel) return null;
+      return {
+        id: `targeted_${art.id}_damage`,
+        name: `${art.name}·凝练`,
+        category: "先天武学·精修",
+        rarity: "普通",
+        scope: "martial_art",
+        martialArtId: art.id,
+        targetMartialArtId: art.id,
+        targetCharacterId: character.id,
+        targetName: art.name,
+        targetType: "martialArt",
+        effectType: "martial_art_damage_bonus",
+        description: `${art.name}伤害提升25%。`,
+        valueText: "伤害 +25%",
+        effect: { type: "martial_art_damage_bonus", martialArtId: art.id, value: 0.25 },
+      };
+    })
+    .filter(Boolean);
 }
 
 function currentTrajectoryPerks() {
@@ -2020,6 +2096,42 @@ function currentTrajectoryPerks() {
 }
 
 function artifactPerksForRun() {
+  const artifactIds = selectedArtifactIds();
+  if (!artifactIds.length) return [];
+  const artifactId = artifactIds[0];
+  const artifact = DATA.artifacts[artifactId];
+  if (!artifact) return [];
+  return [
+    {
+      id: `artifact_${artifactId}_damage`,
+      name: `${artifact.name}·开匣锋鸣`,
+      category: "法宝·精修",
+      rarity: "普通",
+      scope: "artifact",
+      targetArtifactId: artifactId,
+      targetName: artifact.name,
+      targetType: "artifact",
+      effectType: "artifact_damage_bonus",
+      description: `${artifact.name}伤害提升20%。`,
+      valueText: "伤害 +20%",
+      effect: { type: "artifact_damage_bonus", artifactId, value: 0.2 },
+    },
+    {
+      id: `artifact_${artifactId}_cooldown`,
+      name: `${artifact.name}·灵机回转`,
+      category: "法宝·精修",
+      rarity: "普通",
+      scope: "artifact",
+      targetArtifactId: artifactId,
+      targetName: artifact.name,
+      targetType: "artifact",
+      effectType: "artifact_cooldown_mult",
+      description: `${artifact.name}冷却降低15%。`,
+      valueText: "冷却 -15%",
+      effect: { type: "artifact_cooldown_mult", artifactId, value: 0.85 },
+    },
+  ];
+  /*
   if (!selectedArtifactIds().length) return [];
   return [
     {
@@ -2033,6 +2145,7 @@ function artifactPerksForRun() {
       effect: { type: "artifact_damage_bonus", value: 0.2 },
     },
   ];
+  */
 }
 
 function defensivePerksForRun() {
@@ -2067,12 +2180,16 @@ function normalizePerk(perk) {
   const id = perk.id || "";
   const target = `${perk.target || ""} ${perk.requirement || ""}`;
   if (id === "perk_artifact_damage" && effectType === "unimplemented") {
-    normalized.effect = { type: "artifact_damage_bonus", value: 0.25 };
+    const artifactId = selectedArtifactIds()[0] || "";
+    normalized.targetArtifactId = artifactId;
+    normalized.effect = { type: "artifact_damage_bonus", artifactId, value: 0.25 };
     effectType = "artifact_damage_bonus";
     normalized.effectType = effectType;
   }
   if (id === "perk_artifact_cooldown" && effectType === "unimplemented") {
-    normalized.effect = { type: "artifact_cooldown_mult", value: 0.8 };
+    const artifactId = selectedArtifactIds()[0] || "";
+    normalized.targetArtifactId = artifactId;
+    normalized.effect = { type: "artifact_cooldown_mult", artifactId, value: 0.8 };
     effectType = "artifact_cooldown_mult";
     normalized.effectType = effectType;
   }
@@ -2089,6 +2206,9 @@ function normalizePerk(perk) {
     normalized.scope = "formation";
   } else if (effectType.startsWith("artifact_") || id.includes("artifact")) {
     normalized.scope = "artifact";
+  } else if (effectType.startsWith("martial_art_")) {
+    normalized.scope = "martial_art";
+    normalized.martialArtId = normalized.effect?.martialArtId || normalized.martialArtId;
   } else if (["pierce_add", "side_projectiles", "multishot"].includes(effectType)) {
     normalized.scope = "trajectory";
   } else if (id.includes("passive_up") || target.includes("被动")) {
@@ -2114,10 +2234,17 @@ function normalizePerk(perk) {
   return normalized;
 }
 
+function hasForbiddenGenericText(perk) {
+  const text = [perk.name, perk.description, perk.valueText, perk.category].filter(Boolean).join(" ");
+  return /(全体角色|全体法宝|所有角色|所有法宝|全体单位|全局伤害|通用角色强化|通用法宝强化)/.test(text);
+}
+
 function isPerkValidForCurrentRun(rawPerk) {
   const perk = normalizePerk(rawPerk);
   const effectType = perk.effect?.type || perk.effectType;
+  if (hasForbiddenGenericText(perk)) return false;
   if (["array_defense_bonus", "defense_bonus"].includes(effectType)) return false;
+  if (perk.scope === "global") return false;
   if (perk.stackable === false && state.acquiredPerks.has(perk.id)) return false;
   const requirement = String(perk.requirement || "");
   if (requirement.includes("局内等级>=")) {
@@ -2135,7 +2262,7 @@ function isPerkValidForCurrentRun(rawPerk) {
     const art = (DATA.martialArts || []).find((item) => item.id === perk.martialArtId);
     return Boolean(art && currentRunCharacters().some((character) => character.id === art.ownerCharacterId) && (state.martialArtLevels[art.id] || 0) < art.maxLevel);
   }
-  if (perk.scope === "global" || perk.scope === "array_core") return true;
+  if (perk.scope === "array_core") return true;
   if (perk.scope === "formation") {
     if (!state.selectedFormationId) return false;
     return !perk.targetFormationId || perk.targetFormationId === state.selectedFormationId;
@@ -2143,7 +2270,7 @@ function isPerkValidForCurrentRun(rawPerk) {
   if (perk.scope === "artifact") {
     const artifacts = selectedArtifactIds();
     if (!artifacts.length) return false;
-    return !perk.targetArtifactId || artifacts.includes(perk.targetArtifactId);
+    return Boolean(perk.targetArtifactId && artifacts.includes(perk.targetArtifactId));
   }
   const deployed = currentRunCharacters();
   if (!deployed.length) return false;
@@ -2153,7 +2280,7 @@ function isPerkValidForCurrentRun(rawPerk) {
     if (perk.targetRarity) return deployed.some((character) => character.rarity === perk.targetRarity);
     if (perk.targetTrajectoryType) return deployed.some((character) => character.trajectoryType === perk.targetTrajectoryType);
     if (perk.requiresPassiveSkill) return deployed.some((character) => Boolean(character.passiveSkill));
-    return true;
+    return Boolean(perk.targetCharacterId);
   }
   if (perk.scope === "trajectory") {
     if (perk.targetTrajectoryType) return deployed.some((character) => character.trajectoryType === perk.targetTrajectoryType);
@@ -2163,7 +2290,7 @@ function isPerkValidForCurrentRun(rawPerk) {
 }
 
 function fillWithGenericPerks(choices, count) {
-  GENERIC_PERKS.filter((perk) => perk.scope === "global" || perk.id === "generic_focus_lowest").forEach((perk) => {
+  currentTargetedMartialPerks().forEach((perk) => {
     if (choices.length >= count) return;
     if (!choices.some((choice) => choice.id === perk.id || perkEffectKey(choice) === perkEffectKey(perk)) && isPerkValidForCurrentRun(perk)) {
       choices.push(perk);
@@ -2233,10 +2360,9 @@ function chooseLevelUpPerk(perk) {
 function drawPerksFiltered(count) {
   const martialPool = dedupePerks(currentMartialArtUpgradePerks());
   const supportPool = [
-    ...currentTrajectoryPerks(),
     ...artifactPerksForRun(),
     ...defensivePerksForRun(),
-    ...GENERIC_PERKS.filter((perk) => perk.scope === "global"),
+    ...currentTargetedMartialPerks(),
   ]
     .map(normalizePerk)
     .filter(isPerkValidForCurrentRun);
@@ -2296,11 +2422,22 @@ function hasPassiveRole(school) {
   });
 }
 
+function applyTargetedFallbackUpgrade() {
+  const character = currentRunCharacters()[0];
+  const art = character ? martialArtForCharacter(character.id) : null;
+  if (art) {
+    getMartialArtModifier(art.id).damageMultiplier *= 1.05;
+    return;
+  }
+  const role = state.deployedRoles[0];
+  if (role) role.personalDamage *= 1.05;
+}
+
 function applyPerk(perk) {
   perk = normalizePerk(perk);
   if (!isPerkValidForCurrentRun(perk)) {
-    state.bonuses.roleDamage *= 1.05;
-    setStatus("当前无可用机缘目标，已转化为全体角色伤害+5%。");
+    applyTargetedFallbackUpgrade();
+    setStatus("当前无可用机缘目标，已转化为当前武学伤害+5%。");
     return;
   }
   state.acquiredPerks.add(perk.id);
@@ -2374,10 +2511,10 @@ function applyPerk(perk) {
       state.bonuses.passiveMultiplier *= 1 + effect.value;
       break;
     case "artifact_damage_bonus":
-      state.bonuses.artifactDamage *= 1 + effect.value;
+      getArtifactModifier(effect.artifactId).damageMultiplier *= 1 + effect.value;
       break;
     case "artifact_cooldown_mult":
-      state.bonuses.artifactCooldown *= effect.value;
+      getArtifactModifier(effect.artifactId).cooldownMultiplier *= effect.value;
       break;
     case "horizontal_bonus":
       state.bonuses.horizontalBonus += effect.value;
@@ -2415,6 +2552,12 @@ function applyPerk(perk) {
       state.martialArtLevels[art.id] = Math.min(art.maxLevel, current + 1);
       break;
     }
+    case "martial_art_damage_bonus":
+      getMartialArtModifier(effect.martialArtId).damageMultiplier *= 1 + effect.value;
+      break;
+    case "martial_art_attack_interval_mult":
+      getMartialArtModifier(effect.martialArtId).attackIntervalMultiplier *= effect.value;
+      break;
     default:
       if (perk.id === "perk_sword_passive_up") {
         state.bonuses.passiveMultiplier *= 1.5;
@@ -2691,11 +2834,401 @@ function getDebugSnapshot() {
   };
 }
 
-function updateDebugPanel() {
+function safeText(value) {
+  return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function formatDebugValue(value) {
+  if (value instanceof Set) return [...value].join(", ");
+  if (Array.isArray(value)) return value.join(", ");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "number") return Number.isInteger(value) ? value : Number(value.toFixed(3));
+  return value ?? "";
+}
+
+function debugTable(columns, rows) {
+  const head = columns.map((column) => `<th>${safeText(column.label || column.key)}</th>`).join("");
+  const body = rows
+    .map((row) => `<tr>${columns.map((column) => `<td>${safeText(formatDebugValue(row[column.key]))}</td>`).join("")}</tr>`)
+    .join("");
+  return `<table class="debug-table"><thead><tr>${head}</tr></thead><tbody>${body || `<tr><td colspan="${columns.length}">无数据</td></tr>`}</tbody></table>`;
+}
+
+function getRoleAttackDebug(roleId) {
+  const deployed = state.deployedRoles.find((item) => item.roleId === roleId);
+  const role = deployed || { roleId, personalDamage: 1, personalSpeed: 1 };
+  const config = DATA.roles[roleId];
+  if (!config) return {};
+  const art = martialBonuses(roleId);
+  const projectileConfig = projectileDefaults(config, art);
+  const stats = deployed ? roleStats(role) : null;
+  const baseProjectileCount = config.trajectoryType === "multi" ? 3 : 1;
+  const projectileCount = Math.min(art.giantSword ? 1 : 5, Math.max(art.projectileSet || 0, baseProjectileCount + state.bonuses.sideProjectiles + art.projectileAdd));
+  const baseDamage = stats ? stats.damage : getCharacterBaseFinalDamage(config) * art.damageMult * state.bonuses.roleDamage;
+  const singleProjectileDamage = baseDamage * (art.giantSword ? art.giantSwordDamageMult : 1);
+  const interval = stats ? stats.interval : ((config.attackInterval || 1 / (config.baseAttackSpeed || 1)) * art.attackIntervalMult * art.giantSwordIntervalMult) / (state.bonuses.roleAttackSpeed * art.attackSpeed);
+  return {
+    projectileCount,
+    volleyCount: art.giantSword ? 1 : art.volleyCount,
+    volleyInterval: art.volleyInterval,
+    damageMultiplier: art.damageMult,
+    attackIntervalMultiplier: art.attackIntervalMult * art.giantSwordIntervalMult,
+    pierceCount: art.giantSword ? 6 + state.bonuses.pierceAdd : art.pierceAdd + state.bonuses.pierceAdd,
+    projectileType: art.giantSword ? "giant_sword_projectile" : config.projectileType,
+    projectileSpeed: projectileConfig.speed,
+    hitRadius: projectileConfig.hitRadius || projectileConfig.radius,
+    collisionPadding: projectileConfig.collisionPadding,
+    singleProjectileDamage,
+    attackInterval: interval,
+    totalProjectiles: projectileCount * (art.giantSword ? 1 : art.volleyCount),
+    isGiantSword: art.giantSword,
+  };
+}
+
+function getDebugStateRows() {
   const snapshot = getDebugSnapshot();
-  debugPanel.textContent = Object.entries(snapshot)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("\n");
+  return [
+    ["APP_STATE", snapshot.APP_STATE],
+    ["wave", snapshot.wave],
+    ["arrayCoreHp / arrayCoreMaxHp", `${snapshot.arrayCoreHp} / ${snapshot.arrayCoreMaxHp}`],
+    ["arrayCoreDefense", snapshot.arrayCoreDefense],
+    ["runState.level", snapshot["player.level"]],
+    ["spiritQi / nextLevelSpiritQi", `${snapshot["player.spiritQi"]} / ${snapshot["player.nextLevelSpiritQi"]}`],
+    ["enemies.length", snapshot["enemies.length"]],
+    ["projectiles.length", snapshot["projectiles.length"]],
+    ["playerProfile.playerLevel", snapshot["profile.playerLevel"]],
+    ["playerProfile.spiritStones", snapshot["profile.spiritStones"]],
+    ["当前上阵角色", state.deployedRoles.map((role) => DATA.roles[role.roleId]?.name || role.roleId).join(", ")],
+    ["当前携带法宝", DATA.artifacts[state.selectedArtifactId]?.name || state.selectedArtifactId || ""],
+  ].map(([key, value]) => ({ key, value }));
+}
+
+function getDebugRoleRows() {
+  return Object.values(DATA.roles).map((role) => {
+    const attack = getRoleAttackDebug(role.id);
+    return {
+      id: role.id,
+      name: role.name,
+      rarity: role.rarity,
+      school: role.school,
+      owned: playerMeta.ownedCharacters.includes(role.id),
+      deployed: state.deployedRoles.some((item) => item.roleId === role.id),
+      level: getCharacterLevel(role.id),
+      damage: attack.singleProjectileDamage || role.baseDamage,
+      interval: attack.attackInterval || role.attackInterval,
+      projectileType: role.projectileType,
+      hitRadius: attack.hitRadius,
+      collisionPadding: attack.collisionPadding,
+      trajectoryType: role.trajectoryType,
+      passiveSkill: role.passiveSkill || "",
+    };
+  });
+}
+
+function getDebugArtifactRows() {
+  return Object.values(DATA.artifacts || {}).map((artifact) => ({
+    id: artifact.id,
+    name: artifact.name,
+    owned: playerMeta.ownedArtifacts.includes(artifact.id),
+    selected: state.selectedArtifactId === artifact.id,
+    damage: artifact.damage,
+    cooldown: artifact.cooldown,
+    runtimeCooldown: state.selectedArtifactId === artifact.id ? state.artifactCooldown : "",
+  }));
+}
+
+function getDebugMartialRows() {
+  return (DATA.martialArts || []).map((art) => {
+    const selectedUpgradeIds = Object.keys(getMartialBranchState(art.id)).filter((id) => getMartialBranchState(art.id)[id]);
+    const attack = getRoleAttackDebug(art.ownerCharacterId);
+    return {
+      martialArtId: art.id,
+      name: art.name,
+      ownerCharacterId: art.ownerCharacterId,
+      martialArtLevel: state.martialArtLevels[art.id] || 0,
+      selectedUpgradeIds,
+      minorEvolutionSelected: selectedUpgradeIds.some((id) => QINGYA_BRANCH_UPGRADES.find((upgrade) => upgrade.id === id)?.type === "minor"),
+      majorEvolutionSelected: selectedUpgradeIds.some((id) => QINGYA_BRANCH_UPGRADES.find((upgrade) => upgrade.id === id)?.type === "major"),
+      projectileCount: attack.projectileCount,
+      volleyCount: attack.volleyCount,
+      volleyInterval: attack.volleyInterval,
+      damageMultiplier: attack.damageMultiplier,
+      attackIntervalMultiplier: attack.attackIntervalMultiplier,
+      pierceCount: attack.pierceCount,
+      projectileType: attack.projectileType || art.projectileType,
+      projectileSpeed: attack.projectileSpeed,
+      hitRadius: attack.hitRadius,
+      collisionPadding: attack.collisionPadding,
+      singleProjectileDamage: attack.singleProjectileDamage,
+      attackInterval: attack.attackInterval,
+      totalProjectiles: attack.totalProjectiles,
+      isGiantSword: attack.isGiantSword,
+    };
+  });
+}
+
+function getQingyaUpgradeInvalidReason(upgrade) {
+  const level = state.martialArtLevels.ma_qingya_sword || 0;
+  if (hasMartialBranchUpgrade("ma_qingya_sword", upgrade.id)) return "已选择";
+  const missing = (upgrade.requires || []).filter((id) => !hasMartialBranchUpgrade("ma_qingya_sword", id));
+  if (missing.length) return `缺少前置：${missing.join(", ")}`;
+  if (level >= 7 && upgrade.type !== "major_enhance") return "Lv7后只允许大成专属强化";
+  if (level === 2 && upgrade.type !== "minor") return "Lv3小成时只显示小成候选";
+  if (level === 6 && upgrade.type !== "major") return "Lv7大成时只显示大成候选";
+  if (level < 7 && upgrade.type === "major_enhance") return "需要青崖巨阙大成";
+  if (upgrade.type !== "normal" && ![2, 6].includes(level) && level < 7) return "当前等级不匹配";
+  const params = qingyaAttackParamsFromBranches(upgrade);
+  if (params.projectileCount * params.volleyCount > 16) return "totalProjectiles超过软上限";
+  return qingyaBranchUpgradeAvailable(upgrade) ? "" : "不可选";
+}
+
+function getDebugUpgradeRows() {
+  return QINGYA_BRANCH_UPGRADES.map((upgrade) => ({
+    id: upgrade.id,
+    name: upgrade.name,
+    type: upgrade.type,
+    requires: upgrade.requires || [],
+    effectType: Object.keys(upgrade.effects || {}).join(", "),
+    value: upgrade.valueText,
+    description: upgrade.description,
+    selected: hasMartialBranchUpgrade("ma_qingya_sword", upgrade.id),
+    selectable: qingyaBranchUpgradeAvailable(upgrade),
+    invalidReason: getQingyaUpgradeInvalidReason(upgrade),
+  }));
+}
+
+function getPerkInvalidReason(perk) {
+  const effectType = perk.effect?.type || perk.effectType;
+  if (["array_defense_bonus", "defense_bonus"].includes(effectType)) return "局内防御机缘已禁用";
+  if (perk.scope === "martial_art_branch") {
+    const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === perk.upgradeId);
+    return upgrade ? getQingyaUpgradeInvalidReason(upgrade) : "找不到武学节点";
+  }
+  if (perk.scope === "artifact" && !selectedArtifactIds().length) return "本局未携带法宝";
+  if (perk.scope === "trajectory" && perk.targetTrajectoryType && !currentRunCharacters().some((role) => role.trajectoryType === perk.targetTrajectoryType)) return "当前阵容没有对应弹道";
+  if (perk.scope === "character" && perk.targetSchool && !currentRunCharacters().some((role) => role.school === perk.targetSchool)) return "当前阵容没有对应流派";
+  return "过滤条件不满足";
+}
+
+function getDebugPerkRows() {
+  const raw = [...currentMartialArtUpgradePerks(), ...currentTargetedMartialPerks(), ...artifactPerksForRun(), ...defensivePerksForRun()].map(normalizePerk);
+  const seen = new Set();
+  const duplicates = new Set();
+  raw.forEach((perk) => {
+    const key = perkEffectKey(perk);
+    if (seen.has(key)) duplicates.add(key);
+    seen.add(key);
+  });
+  return raw.map((perk) => {
+    const valid = isPerkValidForCurrentRun(perk);
+    return {
+      id: perk.id,
+      name: perk.name,
+      isValidForCurrentRun: valid,
+      invalidReason: valid ? "" : getPerkInvalidReason(perk),
+      isDuplicateThisRoll: duplicates.has(perkEffectKey(perk)),
+      displayName: perk.name,
+      targetId: perk.targetId || perk.martialArtId || perk.targetMartialArtId || perk.targetCharacterId || perk.targetArtifactId || perk.targetTrajectoryType || "",
+      targetName: perk.targetName || perk.martialArtId || perk.targetCharacterId || perk.targetTrajectoryType || perk.targetArtifactId || "",
+      targetType: perk.targetType || perk.scope,
+      effectType: perk.effect?.type || perk.effectType,
+      value: perk.effect?.value ?? "",
+      actualEffectPreview: perk.valueText || JSON.stringify(perk.effect || {}),
+    };
+  });
+}
+
+function getDebugArrayCoreRows() {
+  return [
+    { key: "arrayCoreMaxHp", value: state.arrayCoreMaxHp },
+    { key: "arrayCoreHp", value: state.arrayCoreHp },
+    { key: "arrayCoreDefense", value: state.arrayCoreDefense },
+    { key: "arrayCoreDamageReduction", value: state.arrayCoreDamageReduction },
+    { key: "baseHpAlias", value: state.baseHp },
+    { key: "maxBaseHpAlias", value: state.maxBaseHp },
+  ];
+}
+
+function getDebugEnemyRows() {
+  return state.enemies.map((enemy) => ({
+    id: enemy.id,
+    enemyId: enemy.config.id,
+    name: enemy.config.name,
+    state: enemy.state,
+    hp: enemy.hp,
+    maxHp: enemy.maxHp,
+    x: enemy.x,
+    y: enemy.y,
+    progress: enemy.progress,
+    attackDamage: enemy.attackDamage,
+    hitRadius: enemy.hitRadius,
+    statuses: enemy.statuses.map((status) => status.type).join(", "),
+  }));
+}
+
+function getDebugWaveRows() {
+  return (DATA.waves || []).map((wave) => ({
+    wave: wave.wave,
+    goal: wave.goal,
+    active: state.wave === wave.wave,
+    segments: (wave.segments || []).map((segment) => `${segment.enemyId} x${segment.count} @${segment.startDelay}s`).join("; "),
+  }));
+}
+
+function getDebugExportData() {
+  return {
+    generatedAt: new Date().toISOString(),
+    snapshot: getDebugSnapshot(),
+    martialArts: getDebugMartialRows(),
+    upgrades: getDebugUpgradeRows(),
+    perks: getDebugPerkRows(),
+    roles: getDebugRoleRows(),
+    artifacts: getDebugArtifactRows(),
+    arrayCore: getDebugArrayCoreRows(),
+    enemies: getDebugEnemyRows(),
+    waves: getDebugWaveRows(),
+    playerProfile: playerMeta,
+  };
+}
+
+function renderDebugTabs() {
+  debugTabs.innerHTML = DEBUG_TABS.map((tab) => `<button type="button" data-tab="${safeText(tab)}" class="${tab === activeDebugTab ? "active" : ""}">${safeText(tab)}</button>`).join("");
+  debugTabs.querySelectorAll("button").forEach((button) => {
+    button.addEventListener("click", () => {
+      activeDebugTab = button.dataset.tab;
+      updateDebugPanel();
+    });
+  });
+}
+
+function renderDebugActions() {
+  const actions = [
+    ["刷新运行时数据", () => updateDebugPanel()],
+    ["应用本局", () => applySavedDebugData()],
+    ["保存到本地调试数据", () => saveDebugData()],
+    ["重置调试数据", () => resetDebugData()],
+    ["导出 JSON", () => exportDebugJson()],
+    ["+100 灵气", () => getDebugActions().grantLingqi(100)],
+    ["本局升一级", () => getDebugActions().grantLingqi(Math.max(1, nextLevelRequirement() - state.lingqi))],
+    ["陆青崖武学 Lv3", () => setQingyaDebugLevel(3)],
+    ["陆青崖武学 Lv6", () => setQingyaDebugLevel(6)],
+    ["陆青崖武学 Lv7", () => setQingyaDebugLevel(7)],
+    ["跳到第5波", () => jumpToWave(5)],
+    ["跳到第10波", () => jumpToWave(10)],
+    ["阵眼回满血", () => healArrayCoreFull()],
+    ["清空怪物", () => { state.enemies = []; }],
+    ["清空弹道", () => { state.projectiles = []; }],
+    ["+1000 灵石", () => getDebugActions().grantSpiritStones(1000)],
+    ["解锁全部角色", () => unlockAllCharacters()],
+    ["重置本地存档", () => resetLocalSaveWithConfirm()],
+  ];
+  debugActionsPanel.innerHTML = "";
+  actions.forEach(([label, handler]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      handler();
+      renderLobby();
+      renderLoadout();
+      updateUi();
+      updateDebugPanel();
+    });
+    debugActionsPanel.appendChild(button);
+  });
+}
+
+function renderDebugContent() {
+  if (activeDebugTab === "状态") {
+    debugContent.innerHTML = debugTable([{ key: "key", label: "字段" }, { key: "value", label: "当前值" }], getDebugStateRows());
+  } else if (activeDebugTab === "角色") {
+    debugContent.innerHTML = debugTable([{ key: "id" }, { key: "name" }, { key: "rarity" }, { key: "school" }, { key: "owned" }, { key: "deployed" }, { key: "level" }, { key: "damage" }, { key: "interval" }, { key: "projectileType" }, { key: "hitRadius" }, { key: "collisionPadding" }, { key: "trajectoryType" }, { key: "passiveSkill" }], getDebugRoleRows());
+  } else if (activeDebugTab === "法宝") {
+    debugContent.innerHTML = debugTable([{ key: "id" }, { key: "name" }, { key: "owned" }, { key: "selected" }, { key: "damage" }, { key: "cooldown" }, { key: "runtimeCooldown" }], getDebugArtifactRows());
+  } else if (activeDebugTab === "先天武学") {
+    debugContent.innerHTML = debugTable([{ key: "martialArtId" }, { key: "name" }, { key: "ownerCharacterId" }, { key: "martialArtLevel" }, { key: "selectedUpgradeIds" }, { key: "minorEvolutionSelected" }, { key: "majorEvolutionSelected" }, { key: "projectileCount" }, { key: "volleyCount" }, { key: "volleyInterval" }, { key: "damageMultiplier" }, { key: "attackIntervalMultiplier" }, { key: "pierceCount" }, { key: "projectileType" }, { key: "singleProjectileDamage" }, { key: "attackInterval" }, { key: "totalProjectiles" }, { key: "isGiantSword" }], getDebugMartialRows()) + "<h3>升级节点</h3>" + debugTable([{ key: "id" }, { key: "name" }, { key: "type" }, { key: "requires" }, { key: "effectType" }, { key: "value" }, { key: "description" }, { key: "selected" }, { key: "selectable" }, { key: "invalidReason" }], getDebugUpgradeRows());
+  } else if (activeDebugTab === "机缘") {
+    debugContent.innerHTML = debugTable([{ key: "id" }, { key: "displayName" }, { key: "targetType" }, { key: "targetId" }, { key: "targetName" }, { key: "effectType" }, { key: "value" }, { key: "isValidForCurrentRun" }, { key: "invalidReason" }, { key: "isDuplicateThisRoll" }, { key: "actualEffectPreview" }], getDebugPerkRows());
+  } else if (activeDebugTab === "护山大阵") {
+    debugContent.innerHTML = debugTable([{ key: "key", label: "字段" }, { key: "value", label: "当前值" }], getDebugArrayCoreRows());
+  } else if (activeDebugTab === "怪物") {
+    debugContent.innerHTML = debugTable([{ key: "id" }, { key: "enemyId" }, { key: "name" }, { key: "state" }, { key: "hp" }, { key: "maxHp" }, { key: "x" }, { key: "y" }, { key: "progress" }, { key: "attackDamage" }, { key: "hitRadius" }, { key: "statuses" }], getDebugEnemyRows());
+  } else if (activeDebugTab === "波次") {
+    debugContent.innerHTML = debugTable([{ key: "wave" }, { key: "goal" }, { key: "active" }, { key: "segments" }], getDebugWaveRows());
+  }
+}
+
+function saveDebugData() {
+  localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(getDebugExportData()));
+}
+
+function applySavedDebugData() {
+  const saved = localStorage.getItem(DEBUG_STORAGE_KEY);
+  if (!saved) return;
+  const data = JSON.parse(saved);
+  if (data.snapshot?.martialArtLevels) state.martialArtLevels = JSON.parse(data.snapshot.martialArtLevels);
+  if (data.playerProfile?.spiritStones !== undefined) playerMeta.spiritStones = data.playerProfile.spiritStones;
+  syncPlayerMetaAliases();
+}
+
+function resetDebugData() {
+  localStorage.removeItem(DEBUG_STORAGE_KEY);
+}
+
+function exportDebugJson() {
+  const blob = new Blob([JSON.stringify(getDebugExportData(), null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "xuanmen-debug-runtime.json";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function setQingyaDebugLevel(level) {
+  const picks = {
+    3: ["qingya_projectile_1", "qingya_volley_1", "qingya_minor_projectile"],
+    6: ["qingya_projectile_1", "qingya_volley_1", "qingya_minor_projectile", "qingya_projectile_2", "qingya_volley_2", "qingya_damage_1"],
+    7: ["qingya_projectile_1", "qingya_volley_1", "qingya_minor_projectile", "qingya_projectile_2", "qingya_volley_2", "qingya_damage_1", "qingya_major_giant_sword"],
+  }[level] || [];
+  state.martialArtLevels.ma_qingya_sword = level;
+  state.martialArtBranches.ma_qingya_sword = {};
+  picks.forEach((id) => {
+    state.martialArtBranches.ma_qingya_sword[id] = true;
+  });
+}
+
+function jumpToWave(wave) {
+  state.wave = wave;
+  state.waveActive = false;
+  state.spawnJobs = [];
+  state.enemies = [];
+}
+
+function healArrayCoreFull() {
+  state.arrayCoreHp = state.arrayCoreMaxHp;
+  syncBaseHpAliases();
+}
+
+function unlockAllCharacters() {
+  playerMeta.ownedCharacters = Object.keys(DATA.roles);
+  Object.keys(DATA.roles).forEach((id) => {
+    playerMeta.characterLevels[id] = playerMeta.characterLevels[id] || 1;
+  });
+  syncPlayerMetaAliases();
+}
+
+function resetLocalSaveWithConfirm() {
+  if (!window.confirm("确定重置本地存档和调试数据？")) return;
+  localStorage.clear();
+  resetGame();
+}
+
+function updateDebugPanel() {
+  if (!debugPanel || debugPanel.classList.contains("hidden")) return;
+  renderDebugTabs();
+  renderDebugActions();
+  renderDebugContent();
 }
 
 function draw() {
@@ -2891,6 +3424,13 @@ roleUpgradeButton.addEventListener("click", () => {
 });
 gachaButton.addEventListener("click", () => {
   performGacha();
+});
+debugToggle.addEventListener("click", () => {
+  debugPanel.classList.remove("hidden");
+  updateDebugPanel();
+});
+debugClose.addEventListener("click", () => {
+  debugPanel.classList.add("hidden");
 });
 
 resetGame();

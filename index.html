@@ -145,7 +145,16 @@
       </div>
     </div>
 
-    <pre id="debugPanel" class="debug-panel"></pre>
+    <button id="debugToggle" class="debug-toggle" type="button">调试</button>
+    <aside id="debugPanel" class="debug-panel hidden" aria-label="开发者调试面板">
+      <header class="debug-header">
+        <strong>开发者调试</strong>
+        <button id="debugClose" type="button">关闭</button>
+      </header>
+      <nav id="debugTabs" class="debug-tabs"></nav>
+      <div class="debug-actions" id="debugActions"></div>
+      <section id="debugContent" class="debug-content"></section>
+    </aside>
 
     <script src="data/game-data.js"></script>
     <script src="src/game.js"></script>
