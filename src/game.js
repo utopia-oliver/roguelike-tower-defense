@@ -502,6 +502,7 @@ function resetGame() {
       character: {},
       artifact: {},
       projectileType: {},
+      majorEvolution: {},
     },
     acquiredPerks: new Set(),
   });
@@ -944,7 +945,7 @@ function martialArtForCharacter(characterId) {
 }
 
 function getScopedModifier(bucket, id) {
-  state.modifiers = state.modifiers || { martialArt: {}, character: {}, artifact: {}, projectileType: {} };
+  state.modifiers = state.modifiers || { martialArt: {}, character: {}, artifact: {}, projectileType: {}, majorEvolution: {} };
   state.modifiers[bucket] = state.modifiers[bucket] || {};
   state.modifiers[bucket][id] = state.modifiers[bucket][id] || {};
   return state.modifiers[bucket][id];
@@ -965,6 +966,14 @@ function getArtifactModifier(artifactId) {
   modifier.extraCast = modifier.extraCast || 0;
   modifier.pierceAdd = modifier.pierceAdd || 0;
   return modifier;
+}
+
+function getPerkTargetId(perk) {
+  return perk.targetId || perk.martialArtId || perk.targetMartialArtId || perk.targetCharacterId || perk.targetArtifactId || perk.majorEvolutionId || "";
+}
+
+function hasExplicitPerkTarget(perk) {
+  return Boolean(perk.targetType && getPerkTargetId(perk) && perk.targetName);
 }
 
 function getMartialArtLevelForRole(roleId) {
@@ -1929,10 +1938,16 @@ function showPerkChoices() {
     button.className = "perk-card";
     button.innerHTML = "<strong>武学稳固</strong><p>没有可用机缘时，当前武学伤害+5%。</p>";
     button.addEventListener("click", () => {
+      const fallbackArt = martialArtForCharacter(currentRunCharacters()[0]?.id);
       chooseLevelUpPerk({
         id: `fallback_damage_${state.runLevel}_${Date.now()}`,
-        name: "灵气稳固",
-        effect: { type: "martial_art_damage_bonus", martialArtId: martialArtForCharacter(currentRunCharacters()[0]?.id)?.id || "", value: 0.05 },
+        name: fallbackArt ? `${fallbackArt.name}·武学稳固` : "护体圣光",
+        scope: fallbackArt ? "martial_art" : "array_core",
+        targetType: fallbackArt ? "martial_art" : "array_recover",
+        targetId: fallbackArt ? fallbackArt.id : "array_core",
+        targetName: fallbackArt ? fallbackArt.name : "护山阵眼",
+        martialArtId: fallbackArt?.id || "",
+        effect: fallbackArt ? { type: "martial_art_damage_bonus", martialArtId: fallbackArt.id, value: 0.05 } : { type: "array_heal", value: 50 },
       });
     });
     perkGrid.appendChild(button);
@@ -1956,11 +1971,14 @@ function createMartialArtPerk(art) {
   if (!next) return null;
   return {
     id: `martial_${art.id}_${next.level}`,
-    name: `${art.name} Lv${next.level}`,
+    name: `${art.name}·${next.title}`,
     category: next.evolutionType === "minor_evolution" ? "先天武学·小进化" : next.evolutionType === "major_evolution" ? "先天武学·大进化" : "先天武学",
     rarity: next.evolutionType === "major_evolution" ? "史诗" : next.evolutionType === "minor_evolution" ? "稀有" : "普通",
     scope: "martial_art",
     martialArtId: art.id,
+    targetType: "martial_art",
+    targetId: art.id,
+    targetName: art.name,
     effectType: "martial_art_upgrade",
     description: `${next.title}：${next.description}`,
     valueText: `当前Lv${currentLevel} → Lv${next.level}`,
@@ -1971,6 +1989,7 @@ function createMartialArtPerk(art) {
 function createQingyaBranchPerk(upgrade) {
   const currentLevel = state.martialArtLevels.ma_qingya_sword || 0;
   const art = { id: "ma_qingya_sword", name: "青崖剑诀" };
+  const isMajorForm = upgrade.type === "major" || upgrade.type === "major_enhance";
   return {
     id: `martial_branch_${upgrade.id}`,
     name: upgrade.name,
@@ -1980,9 +1999,9 @@ function createQingyaBranchPerk(upgrade) {
     martialArtId: "ma_qingya_sword",
     upgradeId: upgrade.id,
       effectType: "martial_art_branch_upgrade",
-      targetType: "martialArt",
-      targetId: "ma_qingya_sword",
-      targetName: upgrade.type === "major_enhance" ? "青崖巨阙" : art.name,
+      targetType: isMajorForm ? "major_evolution" : "martial_art",
+      targetId: isMajorForm ? "qingya_major_giant_sword" : "ma_qingya_sword",
+      targetName: isMajorForm ? "青崖巨阙" : art.name,
     description: upgrade.description,
     valueText: `当前Lv${currentLevel} → Lv${Math.min(7, currentLevel + 1)} · ${upgrade.valueText}`,
     effect: {
@@ -2012,31 +2031,123 @@ function currentMartialArtUpgradePerks() {
 
 function currentTargetedMartialPerks() {
   return currentRunCharacters()
-    .map((character) => {
+    .flatMap((character) => {
       const art = martialArtForCharacter(character.id);
-      if (!art) return null;
-      if ((state.martialArtLevels[art.id] || 0) >= art.maxLevel) return null;
-      return {
-        id: `targeted_${art.id}_damage`,
-        name: `${art.name}·凝练`,
-        category: "先天武学·精修",
-        rarity: "普通",
-        scope: "martial_art",
-        martialArtId: art.id,
-        targetMartialArtId: art.id,
-        targetCharacterId: character.id,
-        targetName: art.name,
-        targetType: "martialArt",
-        effectType: "martial_art_damage_bonus",
-        description: `${art.name}伤害提升25%。`,
-        valueText: "伤害 +25%",
-        effect: { type: "martial_art_damage_bonus", martialArtId: art.id, value: 0.25 },
-      };
+      if (!art) return [];
+      const isMaxed = (state.martialArtLevels[art.id] || 0) >= art.maxLevel;
+      const isQingyaGiant = art.id === "ma_qingya_sword" && hasMartialBranchUpgrade(art.id, "qingya_major_giant_sword");
+      if (isMaxed && !isQingyaGiant) return [];
+      if (isQingyaGiant) {
+        return [
+          {
+            id: "targeted_qingya_giant_damage",
+            name: "青崖巨阙·剑威",
+            category: "先天武学·大成",
+            rarity: "普通",
+            scope: "martial_art_branch",
+            martialArtId: art.id,
+            upgradeId: "qingya_giant_damage",
+            targetType: "major_evolution",
+            targetId: "qingya_major_giant_sword",
+            targetName: "青崖巨阙",
+            effectType: "martial_art_branch_upgrade",
+            description: "青崖巨阙伤害提升30%。",
+            valueText: "巨剑伤害 +30%",
+            effect: { type: "martial_art_branch_upgrade", martialArtId: art.id, upgradeId: "qingya_giant_damage" },
+          },
+          {
+            id: "targeted_qingya_giant_splash",
+            name: "青崖巨阙·裂山",
+            category: "先天武学·大成",
+            rarity: "普通",
+            scope: "martial_art_branch",
+            martialArtId: art.id,
+            upgradeId: "qingya_giant_splash",
+            targetType: "major_evolution",
+            targetId: "qingya_major_giant_sword",
+            targetName: "青崖巨阙",
+            effectType: "martial_art_branch_upgrade",
+            description: "青崖巨阙溅射范围提升25%。",
+            valueText: "巨剑溅射 +25%",
+            effect: { type: "martial_art_branch_upgrade", martialArtId: art.id, upgradeId: "qingya_giant_splash" },
+          },
+          {
+            id: "targeted_qingya_giant_speed",
+            name: "青崖巨阙·御空",
+            category: "先天武学·大成",
+            rarity: "普通",
+            scope: "martial_art_branch",
+            martialArtId: art.id,
+            upgradeId: "qingya_giant_speed",
+            targetType: "major_evolution",
+            targetId: "qingya_major_giant_sword",
+            targetName: "青崖巨阙",
+            effectType: "martial_art_branch_upgrade",
+            description: "青崖巨阙飞行速度提升20%。",
+            valueText: "巨剑速度 +20%",
+            effect: { type: "martial_art_branch_upgrade", martialArtId: art.id, upgradeId: "qingya_giant_speed" },
+          },
+        ];
+      }
+      return [
+        {
+          id: `targeted_${art.id}_damage`,
+          name: `${art.name}·剑意凝练`,
+          category: "先天武学·精修",
+          rarity: "普通",
+          scope: "martial_art",
+          martialArtId: art.id,
+          targetMartialArtId: art.id,
+          targetCharacterId: character.id,
+          targetType: "martial_art",
+          targetId: art.id,
+          targetName: art.name,
+          effectType: "martial_art_damage_bonus",
+          description: `${art.name}伤害提升25%。`,
+          valueText: "伤害 +25%",
+          effect: { type: "martial_art_damage_bonus", martialArtId: art.id, value: 0.25 },
+        },
+        {
+          id: `targeted_${art.id}_speed`,
+          name: `${art.name}·行气如风`,
+          category: "先天武学·精修",
+          rarity: "普通",
+          scope: "martial_art",
+          martialArtId: art.id,
+          targetMartialArtId: art.id,
+          targetCharacterId: character.id,
+          targetType: "martial_art",
+          targetId: art.id,
+          targetName: art.name,
+          effectType: "martial_art_attack_interval_mult",
+          description: `${art.name}攻击间隔降低12%。`,
+          valueText: "攻击间隔 -12%",
+          effect: { type: "martial_art_attack_interval_mult", martialArtId: art.id, value: 0.88 },
+        },
+        {
+          id: `targeted_${art.id}_pierce`,
+          name: `${art.name}·破妖入骨`,
+          category: "先天武学·精修",
+          rarity: "普通",
+          scope: "martial_art",
+          martialArtId: art.id,
+          targetMartialArtId: art.id,
+          targetCharacterId: character.id,
+          targetType: "martial_art",
+          targetId: art.id,
+          targetName: art.name,
+          effectType: "martial_art_pierce_bonus",
+          description: `${art.name}穿透提升1。`,
+          valueText: "穿透 +1",
+          effect: { type: "martial_art_pierce_bonus", martialArtId: art.id, value: 1 },
+        },
+      ];
     })
     .filter(Boolean);
 }
 
 function currentTrajectoryPerks() {
+  return [];
   const trajectories = new Set(currentRunCharacters().map((character) => character.trajectoryType));
   const hasQingya = currentRunCharacters().some((character) => character.id === "lu_qingya");
   const perks = [];
@@ -2048,7 +2159,7 @@ function currentTrajectoryPerks() {
       rarity: "普通",
       scope: "trajectory",
       targetTrajectoryType: "single",
-      description: "单体弹道额外发射1道。",
+      description: "已禁用的旧弹道候选。",
       valueText: "弹道+1",
       effect: { type: "side_projectiles", value: 1 },
     });
@@ -2111,6 +2222,7 @@ function artifactPerksForRun() {
       targetArtifactId: artifactId,
       targetName: artifact.name,
       targetType: "artifact",
+      targetId: artifactId,
       effectType: "artifact_damage_bonus",
       description: `${artifact.name}伤害提升20%。`,
       valueText: "伤害 +20%",
@@ -2125,6 +2237,7 @@ function artifactPerksForRun() {
       targetArtifactId: artifactId,
       targetName: artifact.name,
       targetType: "artifact",
+      targetId: artifactId,
       effectType: "artifact_cooldown_mult",
       description: `${artifact.name}冷却降低15%。`,
       valueText: "冷却 -15%",
@@ -2157,6 +2270,10 @@ function defensivePerksForRun() {
     category: "阵眼回复",
     rarity: hpRatio < 0.35 ? "稀有" : "普通",
     scope: "array_core",
+    targetType: "array_recover",
+    targetId: "array_core",
+    targetName: "护山阵眼",
+    effectType: "array_heal",
     description: "立即恢复护山阵眼50点生命。",
     valueText: "阵眼恢复50",
     effect: { type: "array_heal", value: 50 },
@@ -2174,7 +2291,12 @@ function defensivePerksForRun() {
 }
 
 function normalizePerk(perk) {
-  if (perk.scope) return perk;
+  if (perk.scope) {
+    const normalized = { ...perk, effectType: perk.effect?.type || perk.effectType || "unimplemented" };
+    normalized.targetId = getPerkTargetId(normalized);
+    if (!normalized.targetType) normalized.targetType = normalized.scope;
+    return normalized;
+  }
   let effectType = perk.effect?.type || perk.effectType || "unimplemented";
   const normalized = { ...perk, effectType };
   const id = perk.id || "";
@@ -2236,7 +2358,19 @@ function normalizePerk(perk) {
 
 function hasForbiddenGenericText(perk) {
   const text = [perk.name, perk.description, perk.valueText, perk.category].filter(Boolean).join(" ");
-  return /(全体角色|全体法宝|所有角色|所有法宝|全体单位|全局伤害|通用角色强化|通用法宝强化)/.test(text);
+  return [
+    "全体角色",
+    "全体法宝",
+    "所有角色",
+    "所有法宝",
+    "全体单位",
+    "全局伤害",
+    "全局攻速",
+    "通用角色强化",
+    "通用法宝强化",
+    "当前主修武学",
+    "单体弹道",
+  ].some((word) => text.includes(word));
 }
 
 function isPerkValidForCurrentRun(rawPerk) {
@@ -2245,6 +2379,7 @@ function isPerkValidForCurrentRun(rawPerk) {
   if (hasForbiddenGenericText(perk)) return false;
   if (["array_defense_bonus", "defense_bonus"].includes(effectType)) return false;
   if (perk.scope === "global") return false;
+  if (!hasExplicitPerkTarget(perk)) return false;
   if (perk.stackable === false && state.acquiredPerks.has(perk.id)) return false;
   const requirement = String(perk.requirement || "");
   if (requirement.includes("局内等级>=")) {
@@ -2283,8 +2418,7 @@ function isPerkValidForCurrentRun(rawPerk) {
     return Boolean(perk.targetCharacterId);
   }
   if (perk.scope === "trajectory") {
-    if (perk.targetTrajectoryType) return deployed.some((character) => character.trajectoryType === perk.targetTrajectoryType);
-    return true;
+    return false;
   }
   return false;
 }
@@ -2299,11 +2433,13 @@ function fillWithGenericPerks(choices, count) {
 }
 
 function perkSpecificity(perk) {
+  if (perk.targetType === "major_evolution") return 6;
   if (perk.scope === "martial_art_branch") return 5;
   if (perk.scope === "martial_art") return 4;
   if (perk.targetCharacterId || perk.targetMartialArtId || perk.martialArtId) return 3;
-  if (perk.scope === "trajectory" || perk.targetTrajectoryType || perk.targetProjectileType) return 2;
-  if (perk.scope === "artifact" || perk.scope === "character") return 1;
+  if (perk.scope === "artifact") return 3;
+  if (perk.scope === "character") return 2;
+  if (perk.scope === "trajectory" || perk.targetTrajectoryType || perk.targetProjectileType) return 1;
   return 0;
 }
 
@@ -2311,11 +2447,18 @@ function perkEffectKey(rawPerk) {
   const perk = normalizePerk(rawPerk);
   const effect = perk.effect || {};
   const effectType = effect.type || perk.effectType || "none";
-  const fields = [];
-  ["value", "chance", "mult"].forEach((key) => {
+  const fields = [`targetType:${perk.targetType || perk.scope || ""}`, `targetId:${getPerkTargetId(perk)}`];
+  ["value", "chance", "mult", "artifactId", "martialArtId"].forEach((key) => {
     if (effect[key] !== undefined) fields.push(`${key}:${effect[key]}`);
   });
-  if (perk.upgradeId) fields.push(`upgrade:${perk.upgradeId}`);
+  if (perk.upgradeId) {
+    const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === perk.upgradeId);
+    const upgradeFields = Object.entries(upgrade?.effects || {})
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, value]) => `${key}:${value}`)
+      .join(",");
+    fields.push(`upgradeFields:${upgradeFields || perk.upgradeId}`);
+  }
   if (perk.martialArtId || perk.targetMartialArtId) fields.push(`art:${perk.martialArtId || perk.targetMartialArtId}`);
   if (perk.targetProjectileType) fields.push(`projectile:${perk.targetProjectileType}`);
   if (perk.targetTrajectoryType) fields.push(`trajectory:${perk.targetTrajectoryType}`);
@@ -2358,7 +2501,7 @@ function chooseLevelUpPerk(perk) {
 }
 
 function drawPerksFiltered(count) {
-  const martialPool = dedupePerks(currentMartialArtUpgradePerks());
+  const martialPool = dedupePerks(currentMartialArtUpgradePerks().map(normalizePerk).filter(isPerkValidForCurrentRun));
   const supportPool = [
     ...artifactPerksForRun(),
     ...defensivePerksForRun(),
@@ -2369,8 +2512,9 @@ function drawPerksFiltered(count) {
   const pool = dedupePerks([...martialPool, ...martialPool, ...martialPool, ...supportPool]);
   const choices = [];
   const forcedHeal = defensivePerksForRun()[0];
-  if (forcedHeal && state.arrayCoreMaxHp > 0 && state.arrayCoreHp / state.arrayCoreMaxHp < 0.2) {
-    choices.push(forcedHeal);
+  const normalizedHeal = forcedHeal ? normalizePerk(forcedHeal) : null;
+  if (normalizedHeal && isPerkValidForCurrentRun(normalizedHeal) && state.arrayCoreMaxHp > 0 && state.arrayCoreHp / state.arrayCoreMaxHp < 0.2) {
+    choices.push(normalizedHeal);
   }
   while (choices.length < count && pool.length) {
     const total = pool.reduce((sum, perk) => sum + (rarityWeight[perk.rarity] || 12), 0);
@@ -2387,6 +2531,7 @@ function drawPerksFiltered(count) {
 }
 
 function drawPerks(count) {
+  return drawPerksFiltered(count);
   const pool = DATA.perks.filter((perk) => {
     const requirement = String(perk.requirement || "");
     if (perk.stackable === false && state.acquiredPerks.has(perk.id)) return false;
@@ -2533,7 +2678,7 @@ function applyPerk(perk) {
     case "martial_art_upgrade": {
       const art = (DATA.martialArts || []).find((item) => item.id === effect.martialArtId);
       if (!art || !currentRunCharacters().some((character) => character.id === art.ownerCharacterId)) {
-        state.bonuses.roleDamage *= 1.05;
+        applyTargetedFallbackUpgrade();
         break;
       }
       const current = state.martialArtLevels[art.id] || 0;
@@ -2544,7 +2689,7 @@ function applyPerk(perk) {
       const art = (DATA.martialArts || []).find((item) => item.id === effect.martialArtId);
       const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === effect.upgradeId);
       if (!art || !upgrade || !qingyaBranchUpgradeAvailable(upgrade)) {
-        state.bonuses.roleDamage *= 1.05;
+        applyTargetedFallbackUpgrade();
         break;
       }
       getMartialBranchState(art.id)[upgrade.id] = true;
@@ -2557,6 +2702,9 @@ function applyPerk(perk) {
       break;
     case "martial_art_attack_interval_mult":
       getMartialArtModifier(effect.martialArtId).attackIntervalMultiplier *= effect.value;
+      break;
+    case "martial_art_pierce_bonus":
+      getMartialArtModifier(effect.martialArtId).pierceAdd += effect.value;
       break;
     default:
       if (perk.id === "perk_sword_passive_up") {
@@ -2999,13 +3147,17 @@ function getDebugUpgradeRows() {
 
 function getPerkInvalidReason(perk) {
   const effectType = perk.effect?.type || perk.effectType;
+  if (hasForbiddenGenericText(perk)) return "包含泛化升级文案";
   if (["array_defense_bonus", "defense_bonus"].includes(effectType)) return "局内防御机缘已禁用";
+  if (perk.scope === "global") return "普通三选一禁用无目标全局强化";
+  if (!hasExplicitPerkTarget(perk)) return "缺少明确targetType/targetId/targetName";
   if (perk.scope === "martial_art_branch") {
     const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === perk.upgradeId);
     return upgrade ? getQingyaUpgradeInvalidReason(upgrade) : "找不到武学节点";
   }
   if (perk.scope === "artifact" && !selectedArtifactIds().length) return "本局未携带法宝";
-  if (perk.scope === "trajectory" && perk.targetTrajectoryType && !currentRunCharacters().some((role) => role.trajectoryType === perk.targetTrajectoryType)) return "当前阵容没有对应弹道";
+  if (perk.scope === "artifact" && !selectedArtifactIds().includes(perk.targetArtifactId)) return "目标法宝未携带";
+  if (perk.scope === "trajectory") return "泛化弹道升级已禁用";
   if (perk.scope === "character" && perk.targetSchool && !currentRunCharacters().some((role) => role.school === perk.targetSchool)) return "当前阵容没有对应流派";
   return "过滤条件不满足";
 }
@@ -3027,9 +3179,10 @@ function getDebugPerkRows() {
       isValidForCurrentRun: valid,
       invalidReason: valid ? "" : getPerkInvalidReason(perk),
       isDuplicateThisRoll: duplicates.has(perkEffectKey(perk)),
+      duplicateKey: perkEffectKey(perk),
       displayName: perk.name,
-      targetId: perk.targetId || perk.martialArtId || perk.targetMartialArtId || perk.targetCharacterId || perk.targetArtifactId || perk.targetTrajectoryType || "",
-      targetName: perk.targetName || perk.martialArtId || perk.targetCharacterId || perk.targetTrajectoryType || perk.targetArtifactId || "",
+      targetId: getPerkTargetId(perk),
+      targetName: perk.targetName || "",
       targetType: perk.targetType || perk.scope,
       effectType: perk.effect?.type || perk.effectType,
       value: perk.effect?.value ?? "",
@@ -3148,7 +3301,7 @@ function renderDebugContent() {
   } else if (activeDebugTab === "先天武学") {
     debugContent.innerHTML = debugTable([{ key: "martialArtId" }, { key: "name" }, { key: "ownerCharacterId" }, { key: "martialArtLevel" }, { key: "selectedUpgradeIds" }, { key: "minorEvolutionSelected" }, { key: "majorEvolutionSelected" }, { key: "projectileCount" }, { key: "volleyCount" }, { key: "volleyInterval" }, { key: "damageMultiplier" }, { key: "attackIntervalMultiplier" }, { key: "pierceCount" }, { key: "projectileType" }, { key: "singleProjectileDamage" }, { key: "attackInterval" }, { key: "totalProjectiles" }, { key: "isGiantSword" }], getDebugMartialRows()) + "<h3>升级节点</h3>" + debugTable([{ key: "id" }, { key: "name" }, { key: "type" }, { key: "requires" }, { key: "effectType" }, { key: "value" }, { key: "description" }, { key: "selected" }, { key: "selectable" }, { key: "invalidReason" }], getDebugUpgradeRows());
   } else if (activeDebugTab === "机缘") {
-    debugContent.innerHTML = debugTable([{ key: "id" }, { key: "displayName" }, { key: "targetType" }, { key: "targetId" }, { key: "targetName" }, { key: "effectType" }, { key: "value" }, { key: "isValidForCurrentRun" }, { key: "invalidReason" }, { key: "isDuplicateThisRoll" }, { key: "actualEffectPreview" }], getDebugPerkRows());
+    debugContent.innerHTML = debugTable([{ key: "id" }, { key: "displayName" }, { key: "targetType" }, { key: "targetId" }, { key: "targetName" }, { key: "effectType" }, { key: "value" }, { key: "isValidForCurrentRun" }, { key: "invalidReason" }, { key: "isDuplicateThisRoll" }, { key: "duplicateKey" }, { key: "actualEffectPreview" }], getDebugPerkRows());
   } else if (activeDebugTab === "护山大阵") {
     debugContent.innerHTML = debugTable([{ key: "key", label: "字段" }, { key: "value", label: "当前值" }], getDebugArrayCoreRows());
   } else if (activeDebugTab === "怪物") {
