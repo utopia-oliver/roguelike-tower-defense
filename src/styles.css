@@ -354,6 +354,10 @@ h2 {
   overflow: auto;
 }
 
+.debug-table-wrap {
+  overflow-x: auto;
+}
+
 .debug-table {
   border-collapse: collapse;
   min-width: 100%;
@@ -375,8 +379,50 @@ h2 {
   top: 0;
 }
 
+.debug-table tr.changed td {
+  background: rgba(215, 173, 93, 0.08);
+}
+
+.debug-table tr.invalid td {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.debug-field {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(146, 210, 171, 0.35);
+  border-radius: 4px;
+  color: #ecfdf5;
+  font: inherit;
+  min-width: 90px;
+  padding: 4px 6px;
+}
+
+.debug-field.changed {
+  border-color: #d7ad5d;
+}
+
+.debug-field.invalid {
+  border-color: #ef4444;
+}
+
+.debug-errors {
+  background: rgba(127, 29, 29, 0.68);
+  border: 1px solid #ef4444;
+  border-radius: 5px;
+  color: #fee2e2;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+}
+
 .debug-json {
+  min-height: 320px;
+  width: 100%;
   white-space: pre-wrap;
+}
+
+.debug-export {
+  display: grid;
+  gap: 8px;
 }
 
 @media (max-width: 780px) {
