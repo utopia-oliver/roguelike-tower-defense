@@ -112,6 +112,16 @@ const DEBUG_STORAGE_KEY = "xuanmen_debug_runtime";
 const DEBUG_TABS = ["状态", "角色", "法宝", "先天武学", "机缘", "护山大阵", "怪物", "波次"];
 let activeDebugTab = "状态";
 
+const IN_RUN_UPGRADE_WEIGHTS = {
+  projectile_count: 28,
+  volley_count: 28,
+  pierce: 22,
+  martial_art_damage: 28,
+  attack_speed: 6,
+  artifact: 8,
+  major_evolution_upgrade: 25,
+};
+
 const GENERIC_PERKS = [
   {
     id: "generic_role_damage_15",
@@ -976,6 +986,35 @@ function hasExplicitPerkTarget(perk) {
   return Boolean(perk.targetType && getPerkTargetId(perk) && perk.targetName);
 }
 
+function getDisabledUpgradeReason(upgrade) {
+  const effects = upgrade?.effects || {};
+  const text = [upgrade?.id, upgrade?.name, upgrade?.description, upgrade?.valueText].filter(Boolean).join(" ");
+  if (effects.attackLineDamageMult || /attackLine|阵前破势|压线|正在攻击阵眼/.test(text)) {
+    return "压线增伤暂时从局内升级池移除。";
+  }
+  if (effects.giantSwordSpeedMult || effects.speedMult || effects.projectileSpeed || /projectile_speed|弹道速度|飞行速度/.test(text)) {
+    return "弹道速度属于底层手感配置，不作为局内升级选项。";
+  }
+  return "";
+}
+
+function getDisabledPerkReason(perk) {
+  const effect = perk.effect || {};
+  const effectType = effect.type || perk.effectType || "";
+  const text = [perk.id, perk.name, perk.description, perk.valueText, perk.category].filter(Boolean).join(" ");
+  if (["pressure_damage"].includes(effectType) || /pressure_damage|attackLine|阵前破势|压线|正在攻击阵眼/.test(text)) {
+    return "压线增伤暂时从局内升级池移除。";
+  }
+  if (["projectile_speed"].includes(effectType) || /projectile_speed|弹道速度|飞行速度/.test(text)) {
+    return "弹道速度属于底层手感配置，不作为局内升级选项。";
+  }
+  if (perk.scope === "martial_art_branch") {
+    const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === perk.upgradeId);
+    return getDisabledUpgradeReason(upgrade);
+  }
+  return "";
+}
+
 function getMartialArtLevelForRole(roleId) {
   const art = martialArtForCharacter(roleId);
   return art ? state.martialArtLevels[art.id] || 0 : 0;
@@ -1176,6 +1215,7 @@ function qingyaAttackParamsFromBranches(extraUpgrade = null) {
 function qingyaBranchUpgradeAvailable(upgrade) {
   const artId = "ma_qingya_sword";
   const currentLevel = state.martialArtLevels[artId] || 0;
+  if (getDisabledUpgradeReason(upgrade)) return false;
   if (hasMartialBranchUpgrade(artId, upgrade.id)) return false;
   if ((upgrade.requires || []).some((id) => !hasMartialBranchUpgrade(artId, id))) return false;
   if (currentLevel >= 7) return upgrade.type === "major_enhance";
@@ -2071,22 +2111,6 @@ function currentTargetedMartialPerks() {
             valueText: "巨剑溅射 +25%",
             effect: { type: "martial_art_branch_upgrade", martialArtId: art.id, upgradeId: "qingya_giant_splash" },
           },
-          {
-            id: "targeted_qingya_giant_speed",
-            name: "青崖巨阙·御空",
-            category: "先天武学·大成",
-            rarity: "普通",
-            scope: "martial_art_branch",
-            martialArtId: art.id,
-            upgradeId: "qingya_giant_speed",
-            targetType: "major_evolution",
-            targetId: "qingya_major_giant_sword",
-            targetName: "青崖巨阙",
-            effectType: "martial_art_branch_upgrade",
-            description: "青崖巨阙飞行速度提升20%。",
-            valueText: "巨剑速度 +20%",
-            effect: { type: "martial_art_branch_upgrade", martialArtId: art.id, upgradeId: "qingya_giant_speed" },
-          },
         ];
       }
       return [
@@ -2373,9 +2397,30 @@ function hasForbiddenGenericText(perk) {
   ].some((word) => text.includes(word));
 }
 
+function perkUpgradeWeight(rawPerk) {
+  const perk = normalizePerk(rawPerk);
+  if (perk.scope === "artifact") return IN_RUN_UPGRADE_WEIGHTS.artifact;
+  if (perk.targetType === "major_evolution" || perk.scope === "martial_art_branch") {
+    const upgrade = QINGYA_BRANCH_UPGRADES.find((item) => item.id === perk.upgradeId);
+    const effects = upgrade?.effects || {};
+    if (upgrade?.type === "major_enhance") return IN_RUN_UPGRADE_WEIGHTS.major_evolution_upgrade;
+    if (effects.projectileAdd) return IN_RUN_UPGRADE_WEIGHTS.projectile_count;
+    if (effects.volleyAdd) return IN_RUN_UPGRADE_WEIGHTS.volley_count;
+    if (effects.pierceAdd) return IN_RUN_UPGRADE_WEIGHTS.pierce;
+    if (effects.damageMult || effects.giantSwordDamageMultAdd) return IN_RUN_UPGRADE_WEIGHTS.martial_art_damage;
+    if (effects.attackIntervalMult) return IN_RUN_UPGRADE_WEIGHTS.attack_speed;
+  }
+  const effectType = perk.effect?.type || perk.effectType;
+  if (effectType === "martial_art_pierce_bonus") return IN_RUN_UPGRADE_WEIGHTS.pierce;
+  if (effectType === "martial_art_attack_interval_mult") return IN_RUN_UPGRADE_WEIGHTS.attack_speed;
+  if (effectType === "martial_art_damage_bonus") return IN_RUN_UPGRADE_WEIGHTS.martial_art_damage;
+  return rarityWeight[perk.rarity] || 12;
+}
+
 function isPerkValidForCurrentRun(rawPerk) {
   const perk = normalizePerk(rawPerk);
   const effectType = perk.effect?.type || perk.effectType;
+  if (getDisabledPerkReason(perk)) return false;
   if (hasForbiddenGenericText(perk)) return false;
   if (["array_defense_bonus", "defense_bonus"].includes(effectType)) return false;
   if (perk.scope === "global") return false;
@@ -2517,10 +2562,10 @@ function drawPerksFiltered(count) {
     choices.push(normalizedHeal);
   }
   while (choices.length < count && pool.length) {
-    const total = pool.reduce((sum, perk) => sum + (rarityWeight[perk.rarity] || 12), 0);
+    const total = pool.reduce((sum, perk) => sum + perkUpgradeWeight(perk), 0);
     let roll = Math.random() * total;
     const selected = pool.find((perk) => {
-      roll -= rarityWeight[perk.rarity] || 12;
+      roll -= perkUpgradeWeight(perk);
       return roll <= 0;
     }) || pool[pool.length - 1];
     if (!choices.some((choice) => choice.id === selected.id || perkEffectKey(choice) === perkEffectKey(selected))) choices.push(selected);
@@ -3117,6 +3162,8 @@ function getDebugMartialRows() {
 
 function getQingyaUpgradeInvalidReason(upgrade) {
   const level = state.martialArtLevels.ma_qingya_sword || 0;
+  const disabledReason = getDisabledUpgradeReason(upgrade);
+  if (disabledReason) return disabledReason;
   if (hasMartialBranchUpgrade("ma_qingya_sword", upgrade.id)) return "已选择";
   const missing = (upgrade.requires || []).filter((id) => !hasMartialBranchUpgrade("ma_qingya_sword", id));
   if (missing.length) return `缺少前置：${missing.join(", ")}`;
@@ -3147,6 +3194,8 @@ function getDebugUpgradeRows() {
 
 function getPerkInvalidReason(perk) {
   const effectType = perk.effect?.type || perk.effectType;
+  const disabledReason = getDisabledPerkReason(perk);
+  if (disabledReason) return disabledReason;
   if (hasForbiddenGenericText(perk)) return "包含泛化升级文案";
   if (["array_defense_bonus", "defense_bonus"].includes(effectType)) return "局内防御机缘已禁用";
   if (perk.scope === "global") return "普通三选一禁用无目标全局强化";
