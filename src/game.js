@@ -114,6 +114,10 @@ const DEBUG_TABS = ["状态", "角色", "先天武学", "机缘 / 升级候选",
 let activeDebugTab = "状态";
 let debugEditMode = false;
 let debugExportOpen = false;
+let debugContentDirty = true;
+let debugTabsRenderKey = "";
+let debugActionsRenderKey = "";
+let debugNoticeText = "";
 let debugValidationErrors = new Map();
 const DEFAULT_GAME_DATA = deepClone(DATA);
 let DEFAULT_QINGYA_BRANCH_UPGRADES = [];
@@ -3265,6 +3269,15 @@ function handleDebugFieldChange(input) {
   renderDebugValidation();
 }
 
+function syncDebugFieldsFromDom() {
+  debugContent.querySelectorAll("[data-debug-field].changed").forEach((input) => handleDebugFieldChange(input));
+  if (document.activeElement?.matches?.("[data-debug-field]")) handleDebugFieldChange(document.activeElement);
+}
+
+function markDebugContentDirty() {
+  debugContentDirty = true;
+}
+
 function renderDebugValidation() {
   const existing = debugContent.querySelector(".debug-errors");
   if (existing) existing.remove();
@@ -3630,54 +3643,38 @@ function getMergedDebugData() {
 }
 
 function renderDebugTabs() {
-  debugTabs.innerHTML = DEBUG_TABS.map((tab) => `<button type="button" data-tab="${safeText(tab)}" class="${tab === activeDebugTab ? "active" : ""}">${safeText(tab)}</button>`).join("");
-  debugTabs.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      debugExportOpen = false;
-      activeDebugTab = button.dataset.tab;
-      updateDebugPanel();
-    });
-  });
+  const renderKey = `${activeDebugTab}|${DEBUG_TABS.join("|")}`;
+  if (debugTabsRenderKey === renderKey) return;
+  debugTabsRenderKey = renderKey;
+  debugTabs.innerHTML = DEBUG_TABS.map((tab) => `<button type="button" data-debug-tab="${safeText(tab)}" class="${tab === activeDebugTab ? "active" : ""}">${safeText(tab)}</button>`).join("");
 }
 
 function renderDebugActions() {
   const actions = [
-    ["刷新运行时数据", () => updateDebugPanel()],
-    [debugEditMode ? "编辑模式：开" : "编辑模式：关", () => { debugEditMode = !debugEditMode; }],
-    ["应用本局", () => applyDebugOverridesForRun()],
-    ["保存到本地调试数据", () => saveDebugData()],
-    ["重置调试数据", () => resetDebugData()],
-    ["导出 JSON", () => exportDebugJson(), true],
-    ["+100 灵气", () => getDebugActions().grantLingqi(100)],
-    ["本局升一级", () => getDebugActions().grantLingqi(Math.max(1, nextLevelRequirement() - state.lingqi))],
-    ["陆青崖武学 Lv3", () => setQingyaDebugLevel(3)],
-    ["陆青崖武学 Lv6", () => setQingyaDebugLevel(6)],
-    ["陆青崖武学 Lv7", () => setQingyaDebugLevel(7)],
-    ["跳到第5波", () => jumpToWave(5)],
-    ["跳到第10波", () => jumpToWave(10)],
-    ["阵眼回满血", () => healArrayCoreFull()],
-    ["清空怪物", () => { state.enemies = []; }],
-    ["清空弹道", () => { state.projectiles = []; }],
-    ["+1000 灵石", () => getDebugActions().grantSpiritStones(1000)],
-    ["解锁全部角色", () => unlockAllCharacters()],
-    ["重置本地存档", () => resetLocalSaveWithConfirm()],
+    ["refresh", "刷新运行时数据"],
+    ["toggleEdit", debugEditMode ? "编辑模式：开" : "编辑模式：关"],
+    ["applyRun", "应用本局"],
+    ["save", "保存到本地调试数据"],
+    ["reset", "重置调试数据"],
+    ["export", "导出 JSON"],
+    ["grantLingqi100", "+100 灵气"],
+    ["levelUp", "本局升一级"],
+    ["qingyaLv3", "陆青崖武学 Lv3"],
+    ["qingyaLv6", "陆青崖武学 Lv6"],
+    ["qingyaLv7", "陆青崖武学 Lv7"],
+    ["jumpWave5", "跳到第5波"],
+    ["jumpWave10", "跳到第10波"],
+    ["healCore", "阵眼回满血"],
+    ["clearEnemies", "清空怪物"],
+    ["clearProjectiles", "清空弹道"],
+    ["grantSpiritStones1000", "+1000 灵石"],
+    ["unlockAllCharacters", "解锁全部角色"],
+    ["resetSave", "重置本地存档"],
   ];
-  debugActionsPanel.innerHTML = "";
-  actions.forEach(([label, handler, skipRefresh]) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.addEventListener("click", () => {
-      handler();
-      if (skipRefresh) return;
-      debugExportOpen = false;
-      renderLobby();
-      renderLoadout();
-      updateUi();
-      updateDebugPanel();
-    });
-    debugActionsPanel.appendChild(button);
-  });
+  const renderKey = actions.map(([id, label]) => `${id}:${label}`).join("|");
+  if (debugActionsRenderKey === renderKey) return;
+  debugActionsRenderKey = renderKey;
+  debugActionsPanel.innerHTML = actions.map(([id, label]) => `<button type="button" data-debug-action="${id}">${safeText(label)}</button>`).join("");
 }
 
 function renderDebugContent() {
@@ -3701,6 +3698,16 @@ function renderDebugContent() {
   }
 }
 
+function renderDebugNotice() {
+  const existing = debugContent.querySelector(".debug-notice");
+  if (existing) existing.remove();
+  if (!debugNoticeText) return;
+  const div = document.createElement("div");
+  div.className = "debug-notice";
+  div.textContent = debugNoticeText;
+  debugContent.prepend(div);
+}
+
 function saveDebugData() {
   if (debugValidationErrors.size) {
     setStatus("调试表存在非法输入，无法保存。");
@@ -3711,12 +3718,15 @@ function saveDebugData() {
 }
 
 function applyDebugOverridesForRun() {
+  syncDebugFieldsFromDom();
   if (debugValidationErrors.size) {
     setStatus("调试表存在非法输入，无法应用。");
     return;
   }
   refreshRuntimeFromDebugData();
+  debugNoticeText = "已应用";
   setStatus("已应用本局调试覆盖。");
+  renderDebugNotice();
 }
 
 function resetDebugData() {
@@ -3786,8 +3796,55 @@ function updateDebugPanel() {
   if (debugEditMode && document.activeElement?.matches?.("[data-debug-field]")) return;
   renderDebugTabs();
   renderDebugActions();
-  renderDebugContent();
+  if (activeDebugTab === "状态" || debugContentDirty) {
+    renderDebugContent();
+    debugContentDirty = false;
+  }
+  renderDebugNotice();
   renderDebugValidation();
+}
+
+function runDebugAction(action) {
+  const handlers = {
+    refresh: () => markDebugContentDirty(),
+    toggleEdit: () => {
+      debugEditMode = !debugEditMode;
+      debugActionsRenderKey = "";
+      markDebugContentDirty();
+    },
+    applyRun: () => applyDebugOverridesForRun(),
+    save: () => saveDebugData(),
+    reset: () => resetDebugData(),
+    export: () => exportDebugJson(),
+    grantLingqi100: () => getDebugActions().grantLingqi(100),
+    levelUp: () => getDebugActions().grantLingqi(Math.max(1, nextLevelRequirement() - state.lingqi)),
+    qingyaLv3: () => setQingyaDebugLevel(3),
+    qingyaLv6: () => setQingyaDebugLevel(6),
+    qingyaLv7: () => setQingyaDebugLevel(7),
+    jumpWave5: () => jumpToWave(5),
+    jumpWave10: () => jumpToWave(10),
+    healCore: () => healArrayCoreFull(),
+    clearEnemies: () => {
+      state.enemies = [];
+    },
+    clearProjectiles: () => {
+      state.projectiles = [];
+    },
+    grantSpiritStones1000: () => getDebugActions().grantSpiritStones(1000),
+    unlockAllCharacters: () => unlockAllCharacters(),
+    resetSave: () => resetLocalSaveWithConfirm(),
+  };
+  const handler = handlers[action];
+  if (!handler) return;
+  handler();
+  if (action === "export") return;
+  debugExportOpen = false;
+  if (action !== "applyRun") debugNoticeText = "";
+  renderLobby();
+  renderLoadout();
+  updateUi();
+  markDebugContentDirty();
+  updateDebugPanel();
 }
 
 function draw() {
@@ -3986,11 +4043,25 @@ gachaButton.addEventListener("click", () => {
 });
 debugToggle.addEventListener("click", () => {
   debugExportOpen = false;
+  markDebugContentDirty();
   debugPanel.classList.remove("hidden");
   updateDebugPanel();
 });
 debugClose.addEventListener("click", () => {
   debugPanel.classList.add("hidden");
+});
+debugTabs.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-debug-tab]");
+  if (!button) return;
+  debugExportOpen = false;
+  activeDebugTab = button.dataset.debugTab;
+  markDebugContentDirty();
+  updateDebugPanel();
+});
+debugActionsPanel.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-debug-action]");
+  if (!button) return;
+  runDebugAction(button.dataset.debugAction);
 });
 debugContent.addEventListener("input", (event) => {
   if (event.target.matches("[data-debug-field]")) handleDebugFieldChange(event.target);
@@ -4002,6 +4073,7 @@ debugContent.addEventListener("click", (event) => {
   const applyRow = event.target.closest("[data-debug-apply-row]");
   if (applyRow) {
     if (!debugValidationErrors.size) applyDebugOverridesForRun();
+    markDebugContentDirty();
     updateDebugPanel();
     return;
   }

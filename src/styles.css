@@ -414,6 +414,15 @@ h2 {
   padding: 6px 8px;
 }
 
+.debug-notice {
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(74, 222, 128, 0.55);
+  border-radius: 5px;
+  color: #bbf7d0;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+}
+
 .debug-json {
   min-height: 320px;
   width: 100%;
