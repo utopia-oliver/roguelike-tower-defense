@@ -66,6 +66,15 @@ const {
 const PLAYER_LEVEL_UNLOCKS = DATA.playerLevelUnlocks || [];
 const DEPLOY_SLOT_UNLOCKS = DATA.deploySlotUnlocks || [];
 const { distance, distancePointToSegment } = window.XM.Math;
+const {
+  createEmptyDebugOverrides,
+  deepClone,
+  loadDebugOverrides,
+  mergeObject,
+  normalizeDebugOverrides,
+  resetDebugData: resetStoredDebugData,
+  saveDebugData: saveStoredDebugData,
+} = window.XM.Storage;
 let activeDebugTab = "状态";
 let debugEditMode = false;
 let debugExportOpen = false;
@@ -2958,47 +2967,6 @@ function updateUi() {
   updateDebugPanel();
 }
 
-function deepClone(value) {
-  return JSON.parse(JSON.stringify(value ?? null));
-}
-
-function createEmptyDebugOverrides() {
-  return {
-    characters: {},
-    martialArts: {},
-    upgrades: {},
-    perks: {},
-    enemies: {},
-    waves: {},
-    artifacts: {},
-    formations: {},
-  };
-}
-
-function normalizeDebugOverrides(value) {
-  return { ...createEmptyDebugOverrides(), ...(value || {}) };
-}
-
-function loadDebugOverrides() {
-  try {
-    return normalizeDebugOverrides(JSON.parse(localStorage.getItem(DEBUG_OVERRIDES_KEY) || "{}"));
-  } catch {
-    return createEmptyDebugOverrides();
-  }
-}
-
-function mergeObject(base, override) {
-  if (!override || typeof override !== "object") return base;
-  Object.entries(override).forEach(([key, value]) => {
-    if (value && typeof value === "object" && !Array.isArray(value) && base[key] && typeof base[key] === "object" && !Array.isArray(base[key])) {
-      mergeObject(base[key], value);
-    } else {
-      base[key] = value;
-    }
-  });
-  return base;
-}
-
 function applyCollectionOverrides(collection, overrides) {
   Object.entries(overrides || {}).forEach(([id, patch]) => {
     if (!collection[id]) return;
@@ -3657,8 +3625,7 @@ function saveDebugData() {
     setStatus("调试表存在非法输入，无法保存。");
     return;
   }
-  localStorage.setItem(DEBUG_OVERRIDES_KEY, JSON.stringify(debugOverrides));
-  localStorage.setItem(DEBUG_STORAGE_KEY, JSON.stringify(getDebugExportData()));
+  saveStoredDebugData(debugOverrides, getDebugExportData());
 }
 
 function applyDebugOverridesForRun() {
@@ -3678,8 +3645,7 @@ function resetDebugData() {
   debugOverrides = createEmptyDebugOverrides();
   debugValidationErrors = new Map();
   applyDebugOverridesToData();
-  localStorage.removeItem(DEBUG_OVERRIDES_KEY);
-  localStorage.removeItem(DEBUG_STORAGE_KEY);
+  resetStoredDebugData();
   refreshRuntimeFromDebugData();
 }
 
