@@ -57,6 +57,7 @@ window.XM.Constants = window.XM.Constants || {
 
   GACHA_COST: 200,
   DUPLICATE_GACHA_REFUND: 50,
+  PLAYER_PROFILE_STORAGE_KEY: "xuanmen_player_profile",
   DEBUG_STORAGE_KEY: "xuanmen_debug_runtime",
   DEBUG_OVERRIDES_KEY: "xuanmen_debug_overrides",
   DEBUG_TABS: Object.freeze(["状态", "角色", "先天武学", "机缘 / 升级候选", "怪物", "波次", "法宝", "护山大阵"]),

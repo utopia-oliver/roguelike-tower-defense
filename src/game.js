@@ -58,6 +58,7 @@ const {
   CHARACTER_RARITY,
   GACHA_COST,
   DUPLICATE_GACHA_REFUND,
+  PLAYER_PROFILE_STORAGE_KEY,
   DEBUG_STORAGE_KEY,
   DEBUG_OVERRIDES_KEY,
   DEBUG_TABS,
@@ -206,6 +207,8 @@ const playerMeta = {
   playerLevel: 1,
   playerExp: 0,
   spiritStones: 0,
+  highestWave: 0,
+  totalKills: 0,
   level: 1,
   lingstone: 0,
   ownedCharacters: [...DATA.initial.roles],
@@ -214,11 +217,15 @@ const playerMeta = {
   characterLevels: Object.fromEntries(DATA.initial.roles.map((id) => [id, 1])),
   maxDeploySlots: 1,
   ownedArtifacts: [DATA.initial.artifact],
+  artifactLevels: {},
   unlockedFormations: [DATA.initial.formation],
+  formationLevels: {},
   arrayCoreLevel: 1,
   arrayCoreBaseHpBonus: 0,
   arrayCoreDefenseBonus: 0,
 };
+let playerProfileLoadedFromStorage = false;
+let playerProfileSaveSuppressed = false;
 
 function defaultRunBonuses() {
   return {
@@ -267,6 +274,149 @@ function getMaxDeploySlots(level = playerMeta.playerLevel) {
   );
 }
 
+function initialCharacterId() {
+  return DATA.initial.roles[0] || "lu_qingya";
+}
+
+function initialCharacterLevels() {
+  return Object.fromEntries(DATA.initial.roles.map((id) => [id, 1]));
+}
+
+function compactIdList(ids, collection) {
+  return [...new Set((Array.isArray(ids) ? ids : []).filter((id) => !collection || collection[id]))];
+}
+
+function createDefaultPlayerProfile() {
+  const ownedArtifacts = DATA.initial.artifact ? [DATA.initial.artifact] : [];
+  const unlockedFormations = DATA.initial.formation ? [DATA.initial.formation] : [];
+  return {
+    playerLevel: 1,
+    playerExp: 0,
+    spiritStones: 0,
+    highestWave: 0,
+    totalKills: 0,
+    ownedCharacters: [...DATA.initial.roles],
+    characterLevels: initialCharacterLevels(),
+    ownedArtifacts,
+    artifactLevels: {},
+    unlockedFormations,
+    formationLevels: {},
+    maxDeploySlots: 1,
+    arrayCoreLevel: 1,
+    arrayCoreBaseHpBonus: 0,
+    arrayCoreDefenseBonus: 0,
+  };
+}
+
+function normalizeLevelMap(value, validIds, fallbackLevels = {}) {
+  const result = {};
+  if (value && typeof value === "object") {
+    Object.entries(value).forEach(([id, level]) => {
+      if (!validIds.includes(id)) return;
+      result[id] = Math.max(1, Math.floor(Number(level) || 1));
+    });
+  }
+  Object.entries(fallbackLevels).forEach(([id, level]) => {
+    if (validIds.includes(id) && !result[id]) result[id] = Math.max(1, Math.floor(Number(level) || 1));
+  });
+  return result;
+}
+
+function normalizePlayerProfile(raw) {
+  const defaults = createDefaultPlayerProfile();
+  const profile = {
+    ...defaults,
+    ...(raw || {}),
+  };
+  const firstCharacterId = initialCharacterId();
+
+  profile.playerLevel = Math.max(1, Math.floor(Number(profile.playerLevel) || 1));
+  profile.playerExp = Math.max(0, Math.floor(Number(profile.playerExp) || 0));
+  profile.spiritStones = Math.max(0, Math.floor(Number(profile.spiritStones) || 0));
+  profile.highestWave = Math.max(0, Math.floor(Number(profile.highestWave) || 0));
+  profile.totalKills = Math.max(0, Math.floor(Number(profile.totalKills) || 0));
+
+  profile.ownedCharacters = compactIdList(profile.ownedCharacters, DATA.roles);
+  if (!profile.ownedCharacters.includes(firstCharacterId)) {
+    profile.ownedCharacters.unshift(firstCharacterId);
+  }
+  profile.characterLevels = normalizeLevelMap(profile.characterLevels, profile.ownedCharacters, defaults.characterLevels);
+  profile.ownedCharacters.forEach((id) => {
+    if (!profile.characterLevels[id]) profile.characterLevels[id] = 1;
+  });
+
+  profile.ownedArtifacts = compactIdList(profile.ownedArtifacts, DATA.artifacts);
+  defaults.ownedArtifacts.forEach((id) => {
+    if (!profile.ownedArtifacts.includes(id)) profile.ownedArtifacts.unshift(id);
+  });
+  profile.artifactLevels = normalizeLevelMap(profile.artifactLevels, profile.ownedArtifacts);
+
+  profile.unlockedFormations = compactIdList(profile.unlockedFormations, DATA.formations);
+  defaults.unlockedFormations.forEach((id) => {
+    if (!profile.unlockedFormations.includes(id)) profile.unlockedFormations.unshift(id);
+  });
+  profile.formationLevels = normalizeLevelMap(profile.formationLevels, profile.unlockedFormations);
+
+  profile.maxDeploySlots = typeof getMaxDeploySlots === "function" ? getMaxDeploySlots(profile.playerLevel) : Math.max(1, Number(profile.maxDeploySlots) || 1);
+  profile.arrayCoreLevel = Math.max(1, Math.floor(Number(profile.arrayCoreLevel) || defaults.arrayCoreLevel));
+  profile.arrayCoreBaseHpBonus = Math.max(0, Math.floor(Number(profile.arrayCoreBaseHpBonus) || defaults.arrayCoreBaseHpBonus));
+  profile.arrayCoreDefenseBonus = Math.max(0, Math.floor(Number(profile.arrayCoreDefenseBonus) || defaults.arrayCoreDefenseBonus));
+
+  return {
+    playerLevel: profile.playerLevel,
+    playerExp: profile.playerExp,
+    spiritStones: profile.spiritStones,
+    highestWave: profile.highestWave,
+    totalKills: profile.totalKills,
+    ownedCharacters: profile.ownedCharacters,
+    characterLevels: profile.characterLevels,
+    ownedArtifacts: profile.ownedArtifacts,
+    artifactLevels: profile.artifactLevels,
+    unlockedFormations: profile.unlockedFormations,
+    formationLevels: profile.formationLevels,
+    maxDeploySlots: profile.maxDeploySlots,
+    arrayCoreLevel: profile.arrayCoreLevel,
+    arrayCoreBaseHpBonus: profile.arrayCoreBaseHpBonus,
+    arrayCoreDefenseBonus: profile.arrayCoreDefenseBonus,
+  };
+}
+
+function loadPlayerProfile() {
+  try {
+    const text = localStorage.getItem(PLAYER_PROFILE_STORAGE_KEY);
+    if (!text) {
+      playerProfileLoadedFromStorage = false;
+      return createDefaultPlayerProfile();
+    }
+    const parsed = JSON.parse(text);
+    playerProfileLoadedFromStorage = true;
+    return normalizePlayerProfile(parsed);
+  } catch (error) {
+    console.warn("[PlayerProfile] Failed to load profile, fallback to default.", error);
+    playerProfileLoadedFromStorage = false;
+    return createDefaultPlayerProfile();
+  }
+}
+
+function applyPlayerProfile(profile) {
+  Object.assign(playerMeta, normalizePlayerProfile(profile));
+  syncPlayerMetaAliases();
+}
+
+function savePlayerProfile() {
+  try {
+    if (playerProfileSaveSuppressed) return false;
+    const profileToSave = normalizePlayerProfile(playerMeta);
+    Object.assign(playerMeta, profileToSave);
+    syncPlayerMetaAliases();
+    localStorage.setItem(PLAYER_PROFILE_STORAGE_KEY, JSON.stringify(profileToSave));
+    return true;
+  } catch (error) {
+    console.warn("[PlayerProfile] Failed to save profile.", error);
+    return false;
+  }
+}
+
 function getNextCharacterUnlock() {
   return PLAYER_LEVEL_UNLOCKS.find(
     (unlock) => unlock.level > playerMeta.playerLevel && !playerMeta.ownedCharacters.includes(unlock.characterId),
@@ -282,11 +432,13 @@ function grantCharacter(characterId, source = "unlock") {
   if (playerMeta.ownedCharacters.includes(characterId)) {
     if (source === "gacha") playerMeta.spiritStones += DUPLICATE_GACHA_REFUND;
     syncPlayerMetaAliases();
+    savePlayerProfile();
     return false;
   }
   playerMeta.ownedCharacters.push(characterId);
   playerMeta.characterLevels[characterId] = playerMeta.characterLevels[characterId] || 1;
   syncPlayerMetaAliases();
+  savePlayerProfile();
   return true;
 }
 
@@ -299,6 +451,7 @@ function applyPlayerLevelUnlocks() {
   });
   playerMeta.maxDeploySlots = getMaxDeploySlots(playerMeta.playerLevel);
   syncPlayerMetaAliases();
+  savePlayerProfile();
   return unlocked;
 }
 
@@ -370,6 +523,7 @@ function upgradeCharacter(characterId) {
   syncPlayerMetaAliases();
   setStatus(`${character.name} 提升到 ${level + 1} 级，战斗伤害提高。`);
   renderLobby();
+  savePlayerProfile();
   return true;
 }
 
@@ -395,6 +549,7 @@ function performGacha() {
   syncPlayerMetaAliases();
   renderLobby();
   renderLoadout();
+  savePlayerProfile();
   setStatus(
     isNew
       ? `抽卡获得 ${result.rarity} ${result.name}。`
@@ -529,6 +684,7 @@ function getDebugActions() {
     grantPlayerExp: (amount) => {
       playerMeta.playerExp += amount;
       const rewards = checkPlayerLevelUp();
+      savePlayerProfile();
       renderLobby();
       updateUi();
       return { rewards, snapshot: getDebugSnapshot() };
@@ -536,6 +692,7 @@ function getDebugActions() {
     grantSpiritStones: (amount) => {
       playerMeta.spiritStones += amount;
       syncPlayerMetaAliases();
+      savePlayerProfile();
       renderLobby();
       updateUi();
       return getDebugSnapshot();
@@ -2783,6 +2940,10 @@ function endGame(win) {
   playerMeta.spiritStones += reward;
   playerMeta.playerExp += playerExp;
   const levelRewards = checkPlayerLevelUp();
+  playerMeta.highestWave = Math.max(playerMeta.highestWave || 0, state.highestWave);
+  playerMeta.totalKills = (playerMeta.totalKills || 0) + state.kills;
+  syncPlayerMetaAliases();
+  savePlayerProfile();
   settlementTitle.textContent = win ? "守山成功" : "阵眼破碎";
   settlementWave.textContent = state.highestWave;
   settlementKills.textContent = state.kills;
@@ -3028,7 +3189,11 @@ function getDebugSnapshot() {
     "profile.playerLevel": playerMeta.playerLevel,
     "profile.playerExp": playerMeta.playerExp,
     "profile.spiritStones": playerMeta.spiritStones,
+    "profile.loadedFromLocalStorage": playerProfileLoadedFromStorage,
+    "profile.highestWave": playerMeta.highestWave,
+    "profile.totalKills": playerMeta.totalKills,
     "profile.maxDeploySlots": playerMeta.maxDeploySlots,
+    "profile.ownedCharacterCount": playerMeta.ownedCharacters.length,
     "profile.ownedCharacters": playerMeta.ownedCharacters.join(","),
     "profile.characterLevels": JSON.stringify(playerMeta.characterLevels),
     martialArtLevels: JSON.stringify(state.martialArtLevels || {}),
@@ -3279,8 +3444,14 @@ function getDebugStateRows() {
     ["spiritQi / nextLevelSpiritQi", `${snapshot["player.spiritQi"]} / ${snapshot["player.nextLevelSpiritQi"]}`],
     ["enemies.length", snapshot["enemies.length"]],
     ["projectiles.length", snapshot["projectiles.length"]],
+    ["playerProfile.loadedFromLocalStorage", snapshot["profile.loadedFromLocalStorage"]],
     ["playerProfile.playerLevel", snapshot["profile.playerLevel"]],
+    ["playerProfile.playerExp", snapshot["profile.playerExp"]],
     ["playerProfile.spiritStones", snapshot["profile.spiritStones"]],
+    ["playerProfile.ownedCharacterCount", snapshot["profile.ownedCharacterCount"]],
+    ["playerProfile.characterLevels", snapshot["profile.characterLevels"]],
+    ["playerProfile.highestWave", snapshot["profile.highestWave"]],
+    ["playerProfile.totalKills", snapshot["profile.totalKills"]],
     ["当前上阵角色", state.deployedRoles.map((role) => DATA.roles[role.roleId]?.name || role.roleId).join(", ")],
     ["当前携带法宝", DATA.artifacts[state.selectedArtifactId]?.name || state.selectedArtifactId || ""],
   ].map(([key, value]) => ({ key, value }));
@@ -3567,7 +3738,9 @@ function renderDebugActions() {
     ["toggleEdit", debugEditMode ? "编辑模式：开" : "编辑模式：关"],
     ["applyRun", "应用本局"],
     ["save", "保存到本地调试数据"],
+    ["savePlayerProfile", "保存玩家存档"],
     ["reset", "重置调试数据"],
+    ["clearPlayerProfile", "清空玩家存档"],
     ["export", "导出 JSON"],
     ["grantLingqi100", "+100 灵气"],
     ["levelUp", "本局升一级"],
@@ -3581,7 +3754,6 @@ function renderDebugActions() {
     ["clearProjectiles", "清空弹道"],
     ["grantSpiritStones1000", "+1000 灵石"],
     ["unlockAllCharacters", "解锁全部角色"],
-    ["resetSave", "重置本地存档"],
   ];
   const renderKey = actions.map(([id, label]) => `${id}:${label}`).join("|");
   if (debugActionsRenderKey === renderKey) return;
@@ -3689,15 +3861,19 @@ function unlockAllCharacters() {
     playerMeta.characterLevels[id] = playerMeta.characterLevels[id] || 1;
   });
   syncPlayerMetaAliases();
+  savePlayerProfile();
 }
 
-function resetLocalSaveWithConfirm() {
-  if (!window.confirm("确定重置本地存档和调试数据？")) return;
-  localStorage.clear();
-  debugOverrides = createEmptyDebugOverrides();
-  debugValidationErrors = new Map();
-  applyDebugOverridesToData();
+function clearPlayerProfileWithConfirm() {
+  if (!window.confirm("确定清空玩家存档？")) return;
+  localStorage.removeItem(PLAYER_PROFILE_STORAGE_KEY);
+  playerProfileLoadedFromStorage = false;
+  applyPlayerProfile(createDefaultPlayerProfile());
+  playerProfileSaveSuppressed = true;
   resetGame();
+  playerProfileSaveSuppressed = false;
+  debugNoticeText = "玩家存档已清空";
+  setStatus("玩家存档已清空");
 }
 
 function updateDebugPanel() {
@@ -3724,7 +3900,14 @@ function runDebugAction(action) {
     },
     applyRun: () => applyDebugOverridesForRun(),
     save: () => saveDebugData(),
+    savePlayerProfile: () => {
+      if (savePlayerProfile()) {
+        debugNoticeText = "玩家存档已保存";
+        setStatus("玩家存档已保存");
+      }
+    },
     reset: () => resetDebugData(),
+    clearPlayerProfile: () => clearPlayerProfileWithConfirm(),
     export: () => exportDebugJson(),
     grantLingqi100: () => getDebugActions().grantLingqi(100),
     levelUp: () => getDebugActions().grantLingqi(Math.max(1, nextLevelRequirement() - state.lingqi)),
@@ -3742,14 +3925,13 @@ function runDebugAction(action) {
     },
     grantSpiritStones1000: () => getDebugActions().grantSpiritStones(1000),
     unlockAllCharacters: () => unlockAllCharacters(),
-    resetSave: () => resetLocalSaveWithConfirm(),
   };
   const handler = handlers[action];
   if (!handler) return;
   handler();
   if (action === "export") return;
   debugExportOpen = false;
-  if (action !== "applyRun") debugNoticeText = "";
+  if (!["applyRun", "savePlayerProfile", "clearPlayerProfile"].includes(action)) debugNoticeText = "";
   renderLobby();
   renderLoadout();
   updateUi();
@@ -3996,5 +4178,6 @@ debugContent.addEventListener("click", (event) => {
   }
 });
 
+applyPlayerProfile(loadPlayerProfile());
 resetGame();
 requestAnimationFrame(loop);
