@@ -116,6 +116,10 @@ const {
   selectedArtifactIds: getSystemSelectedArtifactIds,
 } = window.XM.Upgrades;
 const {
+  createEnemy: createSystemEnemy,
+  updateEnemies: updateSystemEnemies,
+} = window.XM.Enemies;
+const {
   createDefaultPlayerProfile: createStoredDefaultPlayerProfile,
   createEmptyDebugOverrides,
   deepClone,
@@ -651,7 +655,7 @@ function getDebugActions() {
       return getDebugSnapshot();
     },
     forceEnemyAtAttackLine: () => {
-      const enemy = new Enemy("enemy_armor_beast");
+      const enemy = createEnemy("enemy_armor_beast");
       enemy.hp = 9999;
       enemy.maxHp = 9999;
       state.enemies.unshift(enemy);
@@ -823,182 +827,44 @@ function startWave() {
   setStatus(`第 ${state.wave} 波：${wave.goal}`);
 }
 
-class Enemy {
-  constructor(enemyId) {
-    const config = DATA.enemies[enemyId];
-    this.id = makeId();
-    this.config = config;
-    this.lane = Math.floor(Math.random() * grid.columns);
-    this.x = this.lane * grid.cellW + grid.cellW / 2;
-    this.y = -grid.cellH * 0.35;
-    this.hp = config.hp;
-    this.maxHp = config.maxHp || config.hp;
-    this.moveSpeed = config.moveSpeed || config.speed;
-    this.attackDamage = config.attackDamage || config.baseDamage;
-    this.spiritQiReward = config.spiritQiReward || config.lingqiReward;
-    this.dead = false;
-    this.state = ENEMY_STATE.MOVING;
-    this.attackTimer = 0;
-    this.attackInterval = config.attackInterval || (this.config.isBoss ? 2.5 : 1.5);
-    this.progress = 0;
-    this.statuses = [];
-    this.abilityTimer = 0;
-  }
-
-  get radius() {
-    if (this.config.isBoss) return 24;
-    if (this.config.type === "坦克") return 18;
-    return 13;
-  }
-
-  get hitRadius() {
-    if (this.config.isBoss) return 32;
-    if (this.config.id === "enemy_swift_wolf") return 13;
-    if (this.config.id === "enemy_armor_beast") return 22;
-    if (this.config.id === "enemy_blood_cultivator") return 18;
-    return 14;
-  }
-
-  hasStatus(type) {
-    return this.statuses.some((status) => status.type === type);
-  }
-
-  addStatus(type, duration, value, options = {}) {
-    if (type === "slow" && this.config.id === "boss_outer_demon") return;
-    const existing = this.statuses.find((status) => status.type === type);
-    if (existing) {
-      existing.duration = Math.max(existing.duration, duration);
-      if (options.stack) {
-        existing.stacks = Math.min(options.maxStacks || 3, (existing.stacks || 1) + 1);
-        existing.value = value * existing.stacks;
-      } else {
-        existing.value = Math.max(existing.value, value);
-      }
-      return;
-    }
-    this.statuses.push({ type, duration, value, tick: 0, stacks: options.stack ? 1 : 0 });
-  }
-
-  takeDamage(rawAmount, source = "role", attacker = null) {
-    if (this.state === ENEMY_STATE.DEAD) return false;
-    let amount = rawAmount;
-    if (this.config.isBoss) amount *= state.bonuses.bossDamage;
-    if (this.hasStatus("slow")) amount *= 1 + state.bonuses.slowVulnerability;
-    this.hp -= amount;
-    state.floaters.push({
-      x: this.x,
-      y: this.y - this.radius,
-      text: Math.ceil(amount).toString(),
-      ttl: 0.55,
-      color: source === "formation" ? "#88f0b1" : "#f7e6a7",
-    });
-    if (this.hp <= 0) {
-      this.die(attacker);
-      return true;
-    }
-    return false;
-  }
-
-  die(attacker = null) {
-    if (this.state === ENEMY_STATE.DEAD) return;
-    this.dead = true;
-    this.state = ENEMY_STATE.DEAD;
-    state.kills += 1;
-    if (this.config.isBoss) {
-      state.bossKills.add(state.wave);
-    }
-    if (this.hasStatus("poison")) {
-      const poisonSpreadRole = state.deployedRoles.some((role) => DATA.roles[role.roleId]?.passiveSkill === "poison_stack");
-      if (poisonSpreadRole && Math.random() < 0.3 + state.bonuses.poisonSpreadChanceAdd) {
-        nearestEnemies(this, 3).forEach((enemy) => enemy.addStatus("poison", 3, 5));
-      }
-    }
-    gainLingqi(this.spiritQiReward);
-  }
-
-  enterAttackMode() {
-    if (this.state !== ENEMY_STATE.MOVING) return;
-    this.state = ENEMY_STATE.ATTACKING;
-    this.moveSpeed = 0;
-    this.y = attackLineY();
-    this.progress = Math.max(this.progress, 0.95);
-    this.attackTimer = 0;
-    setStatus(`${this.config.name} 抵达护山大阵前方，开始攻击阵眼血条。`);
-  }
-
-  update(dt) {
-    this.updateStatuses(dt);
-    this.updateBossAbility(dt);
-    if (this.state === ENEMY_STATE.DEAD) return;
-    if (this.state === ENEMY_STATE.ATTACKING) {
-      this.attackTimer += dt;
-      if (this.attackTimer >= this.attackInterval) {
-        this.attackTimer = 0;
-        const weaken = this.statuses
-          .filter((status) => status.type === "weaken_attack")
-          .reduce((max, status) => Math.max(max, status.value), 0);
-        damageArrayCore(this.attackDamage * (1 - weaken), this);
-      }
-      return;
-    }
-    const slow = this.statuses
-      .filter((status) => status.type === "slow")
-      .reduce((max, status) => Math.max(max, status.value), 0);
-    const frozen = this.hasStatus("freeze");
-    if (!frozen) {
-      this.progress += (this.moveSpeed * (1 - slow) * dt) / 6.1;
-      this.y = this.progress * (attackLineY() + grid.cellH * 0.35) - grid.cellH * 0.35;
-      this.x =
-        this.lane * grid.cellW +
-        grid.cellW / 2 +
-        Math.sin(this.progress * Math.PI * 3) * 10;
-    }
-    if (this.y >= attackLineY()) this.enterAttackMode();
-  }
-
-  updateStatuses(dt) {
-    this.statuses.forEach((status) => {
-      status.duration -= dt;
-      if (status.type === "poison" || status.type === "burn") {
-        status.tick += dt;
-        if (status.tick >= 0.5) {
-          this.takeDamage(status.value * status.tick, status.type);
-          status.tick = 0;
-        }
-      }
-    });
-    this.statuses = this.statuses.filter((status) => status.duration > 0);
-  }
-
-  updateBossAbility(dt) {
-    if (!this.config.isBoss || this.dead) return;
-    this.abilityTimer += dt;
-    if (this.config.id === "boss_blackwind" && this.abilityTimer >= 8) {
-      this.abilityTimer = 0;
-      for (let i = 0; i < 3; i += 1) {
-        state.enemies.push(new Enemy("enemy_little_yao"));
-      }
-      setStatus("黑风妖将召来山野小妖。");
-    }
-    if (this.config.id === "boss_bloodlotus" && this.abilityTimer >= 10) {
-      this.abilityTimer = 0;
-      state.enemies.forEach((enemy) => {
-        if (!enemy.dead && distance(this, enemy) <= grid.cellW * 2) {
-          enemy.hp = Math.min(enemy.maxHp, enemy.hp + 90);
-        }
-      });
-      setStatus("血莲魔修治疗附近敌人。");
-    }
-    if (this.config.id === "boss_outer_demon" && this.abilityTimer >= 7) {
-      this.abilityTimer = 0;
-      state.enemies.push(new Enemy("enemy_swift_wolf"));
-      state.enemies.push(new Enemy("enemy_little_yao"));
-      this.addStatus("freeze_immune", 2, 1);
-      setStatus("域外魔影召唤魔影小怪。");
-    }
-  }
+function createEnemyContext() {
+  return {
+    DATA,
+    state,
+    grid,
+    attackLineY,
+    callbacks: {
+      addFloater(floater) {
+        state.floaters.push(floater);
+      },
+      damageArrayCore,
+      gainLingqi,
+      makeId,
+      nearestEnemies,
+      setStatus,
+      spawnEnemy(enemyId) {
+        state.enemies.push(createEnemy(enemyId));
+      },
+    },
+    helpers: {
+      distance,
+    },
+  };
 }
 
+function createEnemy(enemyId) {
+  return createSystemEnemy({
+    enemyId,
+    context: createEnemyContext(),
+  });
+}
+
+function updateEnemies(dt) {
+  return updateSystemEnemies({
+    enemies: state.enemies,
+    deltaTime: dt,
+  });
+}
 function gainLingqi(amount) {
   state.lingqi += amount * state.bonuses.lingqiGain;
   let projectedLevel = state.runLevel + state.pendingLevelUps;
@@ -1625,13 +1491,13 @@ function update(dt) {
   state.spawnJobs.forEach((job) => {
     job.nextSpawn -= dt;
     while (job.remaining > 0 && job.nextSpawn <= 0) {
-      state.enemies.push(new Enemy(job.enemyId));
+      state.enemies.push(createEnemy(job.enemyId));
       job.remaining -= 1;
       job.nextSpawn += job.spawnInterval;
     }
   });
 
-  state.enemies.forEach((enemy) => enemy.update(dt));
+  updateEnemies(dt);
   state.enemies = state.enemies.filter((enemy) => !enemy.dead);
   state.deployedRoles.forEach((role) => updateRole(role, dt));
   updateProjectiles(dt);
@@ -3269,3 +3135,4 @@ debugContent.addEventListener("click", (event) => {
 applyPlayerProfile(loadPlayerProfile());
 resetGame();
 requestAnimationFrame(loop);
+
