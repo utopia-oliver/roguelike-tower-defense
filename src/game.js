@@ -58,9 +58,6 @@ const {
   CHARACTER_RARITY,
   GACHA_COST,
   DUPLICATE_GACHA_REFUND,
-  PLAYER_PROFILE_STORAGE_KEY,
-  DEBUG_STORAGE_KEY,
-  DEBUG_OVERRIDES_KEY,
   DEBUG_TABS,
 } = window.XM.Constants;
 
@@ -68,13 +65,18 @@ const PLAYER_LEVEL_UNLOCKS = DATA.playerLevelUnlocks || [];
 const DEPLOY_SLOT_UNLOCKS = DATA.deploySlotUnlocks || [];
 const { distance, distancePointToSegment } = window.XM.Math;
 const {
+  createDefaultPlayerProfile: createStoredDefaultPlayerProfile,
   createEmptyDebugOverrides,
   deepClone,
   loadDebugOverrides,
+  loadPlayerProfile: loadStoredPlayerProfile,
   mergeObject,
   normalizeDebugOverrides,
+  normalizePlayerProfile: normalizeStoredPlayerProfile,
   resetDebugData: resetStoredDebugData,
+  resetPlayerProfile: resetStoredPlayerProfile,
   saveDebugData: saveStoredDebugData,
+  savePlayerProfile: saveStoredPlayerProfile,
 } = window.XM.Storage;
 let activeDebugTab = "状态";
 let debugEditMode = false;
@@ -274,128 +276,30 @@ function getMaxDeploySlots(level = playerMeta.playerLevel) {
   );
 }
 
-function initialCharacterId() {
-  return DATA.initial.roles[0] || "lu_qingya";
-}
-
-function initialCharacterLevels() {
-  return Object.fromEntries(DATA.initial.roles.map((id) => [id, 1]));
-}
-
-function compactIdList(ids, collection) {
-  return [...new Set((Array.isArray(ids) ? ids : []).filter((id) => !collection || collection[id]))];
+function playerProfileStorageHelpers() {
+  return {
+    initialRoles: DATA.initial.roles,
+    initialArtifact: DATA.initial.artifact,
+    initialFormation: DATA.initial.formation,
+    roles: DATA.roles,
+    artifacts: DATA.artifacts,
+    formations: DATA.formations,
+    getMaxDeploySlots,
+  };
 }
 
 function createDefaultPlayerProfile() {
-  const ownedArtifacts = DATA.initial.artifact ? [DATA.initial.artifact] : [];
-  const unlockedFormations = DATA.initial.formation ? [DATA.initial.formation] : [];
-  return {
-    playerLevel: 1,
-    playerExp: 0,
-    spiritStones: 0,
-    highestWave: 0,
-    totalKills: 0,
-    ownedCharacters: [...DATA.initial.roles],
-    characterLevels: initialCharacterLevels(),
-    ownedArtifacts,
-    artifactLevels: {},
-    unlockedFormations,
-    formationLevels: {},
-    maxDeploySlots: 1,
-    arrayCoreLevel: 1,
-    arrayCoreBaseHpBonus: 0,
-    arrayCoreDefenseBonus: 0,
-  };
+  return createStoredDefaultPlayerProfile(playerProfileStorageHelpers());
 }
 
-function normalizeLevelMap(value, validIds, fallbackLevels = {}) {
-  const result = {};
-  if (value && typeof value === "object") {
-    Object.entries(value).forEach(([id, level]) => {
-      if (!validIds.includes(id)) return;
-      result[id] = Math.max(1, Math.floor(Number(level) || 1));
-    });
-  }
-  Object.entries(fallbackLevels).forEach(([id, level]) => {
-    if (validIds.includes(id) && !result[id]) result[id] = Math.max(1, Math.floor(Number(level) || 1));
-  });
-  return result;
-}
-
-function normalizePlayerProfile(raw) {
-  const defaults = createDefaultPlayerProfile();
-  const profile = {
-    ...defaults,
-    ...(raw || {}),
-  };
-  const firstCharacterId = initialCharacterId();
-
-  profile.playerLevel = Math.max(1, Math.floor(Number(profile.playerLevel) || 1));
-  profile.playerExp = Math.max(0, Math.floor(Number(profile.playerExp) || 0));
-  profile.spiritStones = Math.max(0, Math.floor(Number(profile.spiritStones) || 0));
-  profile.highestWave = Math.max(0, Math.floor(Number(profile.highestWave) || 0));
-  profile.totalKills = Math.max(0, Math.floor(Number(profile.totalKills) || 0));
-
-  profile.ownedCharacters = compactIdList(profile.ownedCharacters, DATA.roles);
-  if (!profile.ownedCharacters.includes(firstCharacterId)) {
-    profile.ownedCharacters.unshift(firstCharacterId);
-  }
-  profile.characterLevels = normalizeLevelMap(profile.characterLevels, profile.ownedCharacters, defaults.characterLevels);
-  profile.ownedCharacters.forEach((id) => {
-    if (!profile.characterLevels[id]) profile.characterLevels[id] = 1;
-  });
-
-  profile.ownedArtifacts = compactIdList(profile.ownedArtifacts, DATA.artifacts);
-  defaults.ownedArtifacts.forEach((id) => {
-    if (!profile.ownedArtifacts.includes(id)) profile.ownedArtifacts.unshift(id);
-  });
-  profile.artifactLevels = normalizeLevelMap(profile.artifactLevels, profile.ownedArtifacts);
-
-  profile.unlockedFormations = compactIdList(profile.unlockedFormations, DATA.formations);
-  defaults.unlockedFormations.forEach((id) => {
-    if (!profile.unlockedFormations.includes(id)) profile.unlockedFormations.unshift(id);
-  });
-  profile.formationLevels = normalizeLevelMap(profile.formationLevels, profile.unlockedFormations);
-
-  profile.maxDeploySlots = typeof getMaxDeploySlots === "function" ? getMaxDeploySlots(profile.playerLevel) : Math.max(1, Number(profile.maxDeploySlots) || 1);
-  profile.arrayCoreLevel = Math.max(1, Math.floor(Number(profile.arrayCoreLevel) || defaults.arrayCoreLevel));
-  profile.arrayCoreBaseHpBonus = Math.max(0, Math.floor(Number(profile.arrayCoreBaseHpBonus) || defaults.arrayCoreBaseHpBonus));
-  profile.arrayCoreDefenseBonus = Math.max(0, Math.floor(Number(profile.arrayCoreDefenseBonus) || defaults.arrayCoreDefenseBonus));
-
-  return {
-    playerLevel: profile.playerLevel,
-    playerExp: profile.playerExp,
-    spiritStones: profile.spiritStones,
-    highestWave: profile.highestWave,
-    totalKills: profile.totalKills,
-    ownedCharacters: profile.ownedCharacters,
-    characterLevels: profile.characterLevels,
-    ownedArtifacts: profile.ownedArtifacts,
-    artifactLevels: profile.artifactLevels,
-    unlockedFormations: profile.unlockedFormations,
-    formationLevels: profile.formationLevels,
-    maxDeploySlots: profile.maxDeploySlots,
-    arrayCoreLevel: profile.arrayCoreLevel,
-    arrayCoreBaseHpBonus: profile.arrayCoreBaseHpBonus,
-    arrayCoreDefenseBonus: profile.arrayCoreDefenseBonus,
-  };
+function normalizePlayerProfile(profile) {
+  return normalizeStoredPlayerProfile(profile, playerProfileStorageHelpers());
 }
 
 function loadPlayerProfile() {
-  try {
-    const text = localStorage.getItem(PLAYER_PROFILE_STORAGE_KEY);
-    if (!text) {
-      playerProfileLoadedFromStorage = false;
-      return createDefaultPlayerProfile();
-    }
-    const parsed = JSON.parse(text);
-    playerProfileLoadedFromStorage = true;
-    return normalizePlayerProfile(parsed);
-  } catch (error) {
-    console.warn("[PlayerProfile] Failed to load profile, fallback to default.", error);
-    playerProfileLoadedFromStorage = false;
-    return createDefaultPlayerProfile();
-  }
+  const result = loadStoredPlayerProfile(playerProfileStorageHelpers());
+  playerProfileLoadedFromStorage = result.loadedFromStorage;
+  return result.profile;
 }
 
 function applyPlayerProfile(profile) {
@@ -404,17 +308,11 @@ function applyPlayerProfile(profile) {
 }
 
 function savePlayerProfile() {
-  try {
-    if (playerProfileSaveSuppressed) return false;
-    const profileToSave = normalizePlayerProfile(playerMeta);
-    Object.assign(playerMeta, profileToSave);
-    syncPlayerMetaAliases();
-    localStorage.setItem(PLAYER_PROFILE_STORAGE_KEY, JSON.stringify(profileToSave));
-    return true;
-  } catch (error) {
-    console.warn("[PlayerProfile] Failed to save profile.", error);
-    return false;
-  }
+  if (playerProfileSaveSuppressed) return false;
+  const result = saveStoredPlayerProfile(playerMeta, playerProfileStorageHelpers());
+  Object.assign(playerMeta, result.profile);
+  syncPlayerMetaAliases();
+  return result.saved;
 }
 
 function getNextCharacterUnlock() {
@@ -3866,7 +3764,7 @@ function unlockAllCharacters() {
 
 function clearPlayerProfileWithConfirm() {
   if (!window.confirm("确定清空玩家存档？")) return;
-  localStorage.removeItem(PLAYER_PROFILE_STORAGE_KEY);
+  resetStoredPlayerProfile();
   playerProfileLoadedFromStorage = false;
   applyPlayerProfile(createDefaultPlayerProfile());
   playerProfileSaveSuppressed = true;
