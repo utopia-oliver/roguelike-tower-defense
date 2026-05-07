@@ -57,9 +57,208 @@
     };
   }
 
+  function fireProjectileAttack({
+    state,
+    data,
+    role,
+    target,
+    attackParams,
+    callbacks = {},
+    helpers = {},
+  }) {
+    const volleyCount = Math.max(1, attackParams.volleyCount || 1);
+    const volleyInterval = Math.max(0.04, attackParams.volleyInterval || 0.1);
+    const fireOneVolley = () => {
+      if (state.appState !== helpers.battleState) return;
+      const stats = callbacks.roleStats(role);
+      const liveTarget =
+        state.enemies.find((enemy) => enemy.id === target.id && !enemy.dead) ||
+        callbacks.chooseTarget(role, stats.range);
+      if (!liveTarget) return;
+      createRoleProjectiles({
+        state,
+        data,
+        role,
+        target: liveTarget,
+        damage: attackParams.damage,
+        projectileCount: attackParams.projectileCount,
+        callbacks,
+        helpers,
+      });
+    };
+    for (let volleyIndex = 0; volleyIndex < volleyCount; volleyIndex += 1) {
+      if (volleyIndex === 0) {
+        fireOneVolley();
+      } else {
+        setTimeout(fireOneVolley, volleyIndex * volleyInterval * 1000);
+      }
+    }
+  }
+
+  function createRoleProjectiles({
+    state,
+    data,
+    role,
+    target,
+    damage,
+    projectileCount,
+    callbacks = {},
+    helpers = {},
+  }) {
+    const config = data.roles[role.roleId];
+    const art = callbacks.martialBonuses(role.roleId);
+    const defaults = projectileDefaults(config, art);
+    const predicted = getPredictedTargetPosition(role, target, defaults.speed, {
+      pathPixelDistance: helpers.pathPixelDistance,
+    });
+    const dx = predicted.x - role.x;
+    const dy = predicted.y - role.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const baseVx = dx / len;
+    const baseVy = dy / len;
+    const normalX = -baseVy;
+    const normalY = baseVx;
+    const actualCount = art.giantSword ? 1 : projectileCount;
+    const spreadAngles = projectileSpreadAngles(actualCount);
+    for (let i = 0; i < actualCount; i += 1) {
+      const centered = i - (actualCount - 1) / 2;
+      const angle = ((spreadAngles[i] || 0) * Math.PI) / 180;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const vx = baseVx * cos - baseVy * sin;
+      const vy = baseVx * sin + baseVy * cos;
+      const sideDamage = art.giantSword ? art.giantSwordDamageMult : centered === 0 ? 1 : art.sideDamageScale;
+      const offset = art.giantSword ? 0 : centered * 4;
+      const pierceCount = art.giantSword ? 6 + state.bonuses.pierceAdd : art.pierceAdd + state.bonuses.pierceAdd;
+      state.projectiles.push({
+        id: callbacks.makeId(),
+        ownerCharacterId: role.roleId,
+        ownerRoleId: role.id,
+        type: art.giantSword ? "giant_sword_projectile" : config.projectileType || config.trajectoryType || "projectile",
+        trajectoryType: config.trajectoryType,
+        x: role.x + normalX * offset,
+        y: role.y + normalY * offset,
+        lastX: role.x + normalX * offset,
+        lastY: role.y + normalY * offset,
+        vx,
+        vy,
+        speed: defaults.speed,
+        damage: damage * sideDamage,
+        width: defaults.width,
+        length: defaults.length,
+        radius: defaults.radius,
+        hitRadius: defaults.hitRadius || defaults.radius,
+        collisionPadding: defaults.collisionPadding || 0,
+        pierce: pierceCount > 0,
+        remainingPierce: pierceCount,
+        hitEnemyIds: new Set(),
+        lifetime: 0,
+        maxLifetime: defaults.maxLifetime,
+        effectType: config.trajectoryType,
+        color: defaults.color,
+        trailColor: defaults.trailColor,
+        sourceRole: role,
+        sourceConfig: config,
+        splashRadius: art.giantSwordSplashRadius,
+        splashDamageMultiplier: art.giantSwordSplashDamage,
+        eliteBossDamageMultiplier: art.giantSwordEliteDamageMult,
+        attackLineDamageMultiplier: art.attackLineDamageMult,
+      });
+    }
+  }
+
+  function updateProjectiles({
+    state,
+    deltaTime,
+    callbacks = {},
+    helpers = {},
+  }) {
+    state.projectiles.forEach((projectile) => {
+      if (projectile.visualOnly) {
+        projectile.ttl -= deltaTime;
+        return;
+      }
+      projectile.lastX = projectile.x;
+      projectile.lastY = projectile.y;
+      projectile.x += projectile.vx * projectile.speed * deltaTime;
+      projectile.y += projectile.vy * projectile.speed * deltaTime;
+      projectile.lifetime += deltaTime;
+      checkProjectileCollision({
+        state,
+        projectile,
+        callbacks,
+        helpers,
+      });
+    });
+    state.projectiles = state.projectiles.filter((projectile) => {
+      if (projectile.visualOnly) return projectile.ttl > 0;
+      const inBounds =
+        projectile.x > -80 &&
+        projectile.x < helpers.canvasWidth + 80 &&
+        projectile.y > -80 &&
+        projectile.y < helpers.canvasHeight + 80;
+      return !projectile.dead && projectile.lifetime < projectile.maxLifetime && inBounds;
+    });
+  }
+
+  function checkProjectileCollision({
+    state,
+    projectile,
+    callbacks = {},
+    helpers = {},
+  }) {
+    for (const enemy of state.enemies) {
+      if (enemy.dead || projectile.hitEnemyIds.has(enemy.id)) continue;
+      if (!checkProjectileHitEnemy(projectile, enemy, helpers)) continue;
+      projectile.hitEnemyIds.add(enemy.id);
+      const eliteBossMultiplier = enemy.config.isBoss || enemy.config.type === "精英"
+        ? projectile.eliteBossDamageMultiplier || 1
+        : 1;
+      const attackLineMultiplier = enemy.state === helpers.attackingEnemyState
+        ? projectile.attackLineDamageMultiplier || 1
+        : 1;
+      const hitDamage = projectile.damage * eliteBossMultiplier * attackLineMultiplier;
+      callbacks.applyRoleHit(projectile.sourceRole, enemy, hitDamage);
+      if (projectile.splashRadius > 0 && projectile.splashDamageMultiplier > 0) {
+        callbacks.areaDamage(enemy.x, enemy.y, projectile.splashRadius, hitDamage * projectile.splashDamageMultiplier, "role");
+      }
+      if (!projectile.pierce) {
+        projectile.dead = true;
+        return;
+      }
+      projectile.remainingPierce -= 1;
+      if (projectile.remainingPierce < 0) {
+        projectile.dead = true;
+        return;
+      }
+    }
+  }
+
+  function checkProjectileHitEnemy(projectile, enemy, helpers = {}) {
+    const radius =
+      (projectile.hitRadius || projectile.radius || 0) +
+      (enemy.hitRadius || enemy.radius || 0) +
+      (projectile.collisionPadding || 0);
+    return (
+      helpers.distancePointToSegment(
+        enemy.x,
+        enemy.y,
+        projectile.lastX ?? projectile.x,
+        projectile.lastY ?? projectile.y,
+        projectile.x,
+        projectile.y,
+      ) <= radius
+    );
+  }
+
   Object.assign(window.XM.Projectiles, {
+    checkProjectileCollision,
+    checkProjectileHitEnemy,
+    createRoleProjectiles,
+    fireProjectileAttack,
     getPredictedTargetPosition,
     projectileDefaults,
     projectileSpreadAngles,
+    updateProjectiles,
   });
 })();

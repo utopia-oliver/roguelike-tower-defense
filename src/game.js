@@ -65,9 +65,14 @@ const PLAYER_LEVEL_UNLOCKS = DATA.playerLevelUnlocks || [];
 const DEPLOY_SLOT_UNLOCKS = DATA.deploySlotUnlocks || [];
 const { distance, distancePointToSegment } = window.XM.Math;
 const {
+  checkProjectileCollision: checkSystemProjectileCollision,
+  checkProjectileHitEnemy: checkSystemProjectileHitEnemy,
+  createRoleProjectiles: createSystemRoleProjectiles,
+  fireProjectileAttack: fireSystemProjectileAttack,
   getPredictedTargetPosition,
   projectileDefaults,
   projectileSpreadAngles,
+  updateProjectiles: updateSystemProjectiles,
 } = window.XM.Projectiles;
 const {
   createDefaultPlayerProfile: createStoredDefaultPlayerProfile,
@@ -1499,87 +1504,41 @@ function fireRole(role, targetId) {
 }
 
 function fireProjectileAttack(role, target, attackParams) {
-  const volleyCount = Math.max(1, attackParams.volleyCount || 1);
-  const volleyInterval = Math.max(0.04, attackParams.volleyInterval || 0.1);
-  const fireOneVolley = () => {
-    if (state.appState !== APP_STATE.BATTLE) return;
-    const stats = roleStats(role);
-    const liveTarget =
-      state.enemies.find((enemy) => enemy.id === target.id && !enemy.dead) ||
-      chooseTarget(role, stats.range);
-    if (!liveTarget) return;
-    createRoleProjectiles(role, liveTarget, attackParams.damage, attackParams.projectileCount);
-  };
-  for (let volleyIndex = 0; volleyIndex < volleyCount; volleyIndex += 1) {
-    if (volleyIndex === 0) {
-      fireOneVolley();
-    } else {
-      setTimeout(fireOneVolley, volleyIndex * volleyInterval * 1000);
-    }
-  }
+  return fireSystemProjectileAttack({
+    state,
+    data: DATA,
+    role,
+    target,
+    attackParams,
+    callbacks: {
+      chooseTarget,
+      martialBonuses,
+      makeId,
+      roleStats,
+    },
+    helpers: {
+      battleState: APP_STATE.BATTLE,
+      pathPixelDistance: attackLineY() + grid.cellH * 0.35,
+    },
+  });
 }
 
 function createRoleProjectiles(role, target, damage, projectileCount) {
-  const config = DATA.roles[role.roleId];
-  const art = martialBonuses(role.roleId);
-  const defaults = projectileDefaults(config, art);
-  const predicted = getPredictedTargetPosition(role, target, defaults.speed, {
-    pathPixelDistance: attackLineY() + grid.cellH * 0.35,
+  return createSystemRoleProjectiles({
+    state,
+    data: DATA,
+    role,
+    target,
+    damage,
+    projectileCount,
+    callbacks: {
+      martialBonuses,
+      makeId,
+    },
+    helpers: {
+      pathPixelDistance: attackLineY() + grid.cellH * 0.35,
+    },
   });
-  const dx = predicted.x - role.x;
-  const dy = predicted.y - role.y;
-  const len = Math.hypot(dx, dy) || 1;
-  const baseVx = dx / len;
-  const baseVy = dy / len;
-  const normalX = -baseVy;
-  const normalY = baseVx;
-  const actualCount = art.giantSword ? 1 : projectileCount;
-  const spreadAngles = projectileSpreadAngles(actualCount);
-  for (let i = 0; i < actualCount; i += 1) {
-    const centered = i - (actualCount - 1) / 2;
-    const angle = (spreadAngles[i] || 0) * Math.PI / 180;
-    const cos = Math.cos(angle);
-    const sin = Math.sin(angle);
-    const vx = baseVx * cos - baseVy * sin;
-    const vy = baseVx * sin + baseVy * cos;
-    const sideDamage = art.giantSword ? art.giantSwordDamageMult : centered === 0 ? 1 : art.sideDamageScale;
-    const offset = art.giantSword ? 0 : centered * 4;
-    const pierceCount = art.giantSword ? 6 + state.bonuses.pierceAdd : art.pierceAdd + state.bonuses.pierceAdd;
-    state.projectiles.push({
-      id: makeId(),
-      ownerCharacterId: role.roleId,
-      ownerRoleId: role.id,
-      type: art.giantSword ? "giant_sword_projectile" : config.projectileType || config.trajectoryType || "projectile",
-      trajectoryType: config.trajectoryType,
-      x: role.x + normalX * offset,
-      y: role.y + normalY * offset,
-      lastX: role.x + normalX * offset,
-      lastY: role.y + normalY * offset,
-      vx,
-      vy,
-      speed: defaults.speed,
-      damage: damage * sideDamage,
-      width: defaults.width,
-      length: defaults.length,
-      radius: defaults.radius,
-      hitRadius: defaults.hitRadius || defaults.radius,
-      collisionPadding: defaults.collisionPadding || 0,
-      pierce: pierceCount > 0,
-      remainingPierce: pierceCount,
-      hitEnemyIds: new Set(),
-      lifetime: 0,
-      maxLifetime: defaults.maxLifetime,
-      effectType: config.trajectoryType,
-      color: defaults.color,
-      trailColor: defaults.trailColor,
-      sourceRole: role,
-      sourceConfig: config,
-      splashRadius: art.giantSwordSplashRadius,
-      splashDamageMultiplier: art.giantSwordSplashDamage,
-      eliteBossDamageMultiplier: art.giantSwordEliteDamageMult,
-      attackLineDamageMultiplier: art.attackLineDamageMult,
-    });
-  }
 }
 
 function applyRoleHit(role, target, damage) {
@@ -1770,72 +1729,41 @@ function drawShot(x, y, tx, ty, color) {
 }
 
 function updateProjectiles(dt) {
-  state.projectiles.forEach((projectile) => {
-    if (projectile.visualOnly) {
-      projectile.ttl -= dt;
-      return;
-    }
-    projectile.lastX = projectile.x;
-    projectile.lastY = projectile.y;
-    projectile.x += projectile.vx * projectile.speed * dt;
-    projectile.y += projectile.vy * projectile.speed * dt;
-    projectile.lifetime += dt;
-    checkProjectileCollision(projectile);
-  });
-  state.projectiles = state.projectiles.filter((projectile) => {
-    if (projectile.visualOnly) return projectile.ttl > 0;
-    const inBounds =
-      projectile.x > -80 &&
-      projectile.x < canvas.width + 80 &&
-      projectile.y > -80 &&
-      projectile.y < canvas.height + 80;
-    return !projectile.dead && projectile.lifetime < projectile.maxLifetime && inBounds;
+  return updateSystemProjectiles({
+    state,
+    deltaTime: dt,
+    callbacks: {
+      applyRoleHit,
+      areaDamage,
+    },
+    helpers: {
+      attackingEnemyState: ENEMY_STATE.ATTACKING,
+      canvasHeight: canvas.height,
+      canvasWidth: canvas.width,
+      distancePointToSegment,
+    },
   });
 }
 
 function checkProjectileCollision(projectile) {
-  for (const enemy of state.enemies) {
-    if (enemy.dead || projectile.hitEnemyIds.has(enemy.id)) continue;
-    if (!checkProjectileHitEnemy(projectile, enemy)) continue;
-    projectile.hitEnemyIds.add(enemy.id);
-    const eliteBossMultiplier = enemy.config.isBoss || enemy.config.type === "精英"
-      ? projectile.eliteBossDamageMultiplier || 1
-      : 1;
-    const attackLineMultiplier = enemy.state === ENEMY_STATE.ATTACKING
-      ? projectile.attackLineDamageMultiplier || 1
-      : 1;
-    const hitDamage = projectile.damage * eliteBossMultiplier * attackLineMultiplier;
-    applyRoleHit(projectile.sourceRole, enemy, hitDamage);
-    if (projectile.splashRadius > 0 && projectile.splashDamageMultiplier > 0) {
-      areaDamage(enemy.x, enemy.y, projectile.splashRadius, hitDamage * projectile.splashDamageMultiplier, "role");
-    }
-    if (!projectile.pierce) {
-      projectile.dead = true;
-      return;
-    }
-    projectile.remainingPierce -= 1;
-    if (projectile.remainingPierce < 0) {
-      projectile.dead = true;
-      return;
-    }
-  }
+  return checkSystemProjectileCollision({
+    state,
+    projectile,
+    callbacks: {
+      applyRoleHit,
+      areaDamage,
+    },
+    helpers: {
+      attackingEnemyState: ENEMY_STATE.ATTACKING,
+      distancePointToSegment,
+    },
+  });
 }
 
 function checkProjectileHitEnemy(projectile, enemy) {
-  const radius =
-    (projectile.hitRadius || projectile.radius || 0) +
-    (enemy.hitRadius || enemy.radius || 0) +
-    (projectile.collisionPadding || 0);
-  return (
-    distancePointToSegment(
-      enemy.x,
-      enemy.y,
-      projectile.lastX ?? projectile.x,
-      projectile.lastY ?? projectile.y,
-      projectile.x,
-      projectile.y,
-    ) <= radius
-  );
+  return checkSystemProjectileHitEnemy(projectile, enemy, {
+    distancePointToSegment,
+  });
 }
 
 function update(dt) {
