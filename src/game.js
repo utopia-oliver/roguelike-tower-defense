@@ -179,6 +179,14 @@ const {
   saveDebugData: saveStoredDebugData,
   savePlayerProfile: saveStoredPlayerProfile,
 } = window.XM.Storage;
+const {
+  createDefaultRunState: createSystemDefaultRunState,
+  createInitialMartialBranchState,
+  createInitialModifiers,
+  createInitialRuntimeCollections,
+  defaultRunBonuses: createSystemDefaultRunBonuses,
+  syncPlayerMetaAliases: syncSystemPlayerMetaAliases,
+} = window.XM.State;
 let activeDebugTab = "状态";
 let debugEditMode = false;
 let debugExportOpen = false;
@@ -321,39 +329,14 @@ let playerProfileLoadedFromStorage = false;
 let playerProfileSaveSuppressed = false;
 
 function defaultRunBonuses() {
-  return {
-    roleDamage: 1,
-    roleAttackSpeed: 1,
-    roleRangeAdd: 0,
-    critChance: 0,
-    critMult: 1.8,
-    pierceAdd: 0,
-    sideProjectiles: 0,
-    multishot: 0,
-    formationDamage: 1,
-    formationCooldown: 1,
-    formationRadiusAdd: 0,
-    lingqiGain: 1,
-    bossDamage: 1,
-    slowVulnerability: 0,
-    passiveMultiplier: 1,
-    burnMultiplier: 1,
-    controlMultiplier: 1,
-    poisonDurationAdd: 0,
-    poisonSpreadChanceAdd: 0,
-    artifactDamage: 1,
-    artifactCooldown: 1,
-    horizontalBonus: 0,
-    chainBonus: 0,
-  };
+  return createSystemDefaultRunBonuses();
 }
 
 function syncPlayerMetaAliases() {
-  playerMeta.level = playerMeta.playerLevel;
-  playerMeta.lingstone = playerMeta.spiritStones;
-  playerMeta.ownedRoles = playerMeta.ownedCharacters;
-  playerMeta.unlockedCharacterIds = playerMeta.ownedCharacters;
-  playerMeta.maxDeploySlots = getMaxDeploySlots(playerMeta.playerLevel);
+  return syncSystemPlayerMetaAliases({
+    playerMeta,
+    getMaxDeploySlots,
+  });
 }
 
 function getPlayerLevelExpRequirement(level) {
@@ -597,40 +580,25 @@ function resetGame() {
     runLevel: 1,
     lingqi: 0,
     kills: 0,
-    bossKills: new Set(),
+    ...createInitialRuntimeCollections(),
     loadoutFormationId: "",
     loadoutRoleIds: [],
     loadoutArtifactId: "",
     selectedFormationId: "",
     selectedRoleId: "",
     selectedArtifactId: "",
-    availableRoles: [],
-    deployedRoles: [],
-    enemies: [],
-    projectiles: [],
-    floaters: [],
-    zones: [],
-    spawnJobs: [],
     waveActive: false,
     martialArtLevels: {},
-    martialArtBranches: {},
+    martialArtBranches: createInitialMartialBranchState(),
     formationCooldown: 0,
     artifactCooldown: 0,
-    pendingLevelUps: 0,
     animationFrameRunning: false,
     frameCount: 0,
     lastError: "",
     lastTime: 0,
     status: "山门待命。先在外部系统进入战前配置。",
     bonuses: defaultRunBonuses(),
-    modifiers: {
-      martialArt: {},
-      character: {},
-      artifact: {},
-      projectileType: {},
-      majorEvolution: {},
-    },
-    acquiredPerks: new Set(),
+    modifiers: createInitialModifiers(),
   });
   perkModal.classList.add("hidden");
   window.__SHOUSHANMEN_DEBUG__ = getDebugSnapshot;
