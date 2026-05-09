@@ -126,6 +126,10 @@ const {
   updateWaveSpawns: updateSystemWaveSpawns,
 } = window.XM.Waves;
 const {
+  getArtifactModifier: getSystemArtifactModifier,
+  updateArtifacts: updateSystemArtifacts,
+} = window.XM.Artifacts;
+const {
   createDefaultPlayerProfile: createStoredDefaultPlayerProfile,
   createEmptyDebugOverrides,
   deepClone,
@@ -930,12 +934,7 @@ function getMartialArtModifier(artId) {
 }
 
 function getArtifactModifier(artifactId) {
-  const modifier = getScopedModifier("artifact", artifactId);
-  modifier.damageMultiplier = modifier.damageMultiplier || 1;
-  modifier.cooldownMultiplier = modifier.cooldownMultiplier || 1;
-  modifier.extraCast = modifier.extraCast || 0;
-  modifier.pierceAdd = modifier.pierceAdd || 0;
-  return modifier;
+  return getSystemArtifactModifier({ state, artifactId });
 }
 
 function getPerkTargetId(perk) {
@@ -1534,29 +1533,23 @@ function update(dt) {
 }
 
 function updateArtifact(dt) {
-  const artifact = DATA.artifacts[state.selectedArtifactId];
-  if (!artifact) return;
-  const artifactModifier = getArtifactModifier(state.selectedArtifactId);
-  state.artifactCooldown -= dt;
-  if (state.artifactCooldown > 0) return;
-  const targets = state.enemies
-    .filter((enemy) => !enemy.dead)
-    .sort((a, b) => b.progress - a.progress)
-    .slice(0, 3);
-  if (!targets.length) return;
-  const origin = { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
-  targets.forEach((enemy) => {
-    enemy.takeDamage(artifact.damage * artifactModifier.damageMultiplier, "artifact");
-    drawShot(origin.x, origin.y, enemy.x, enemy.y, "#f6d365");
+  return updateSystemArtifacts({
+    state,
+    DATA,
+    dt,
+    callbacks: {
+      addFloater(floater) {
+        state.floaters.push(floater);
+      },
+      damageEnemy(enemy, damage, source) {
+        enemy.takeDamage(damage, source);
+      },
+      drawShot,
+      getArtifactOrigin() {
+        return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
+      },
+    },
   });
-  state.floaters.push({
-    x: origin.x,
-    y: origin.y - 18,
-    text: artifact.name.slice(0, 4),
-    ttl: 0.7,
-    color: "#f6d365",
-  });
-  state.artifactCooldown = Math.max(2, artifact.cooldown * artifactModifier.cooldownMultiplier);
 }
 
 function showDamageNumber(amount, target) {
