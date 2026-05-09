@@ -196,6 +196,17 @@ const {
   renderSetupLists: renderSystemSetupLists,
   renderSettlement: renderSystemSettlement,
 } = window.XM.Render;
+const {
+  draw: drawCanvas,
+  drawBossBar: drawCanvasBossBar,
+  drawEnemy: drawCanvasEnemy,
+  drawFloater: drawCanvasFloater,
+  drawFormationArea: drawCanvasFormationArea,
+  drawGrid: drawCanvasGrid,
+  drawProjectile: drawCanvasProjectile,
+  drawRole: drawCanvasRole,
+  drawZone: drawCanvasZone,
+} = window.XM.CanvasRender;
 let activeDebugTab = "状态";
 let debugEditMode = false;
 let debugExportOpen = false;
@@ -241,7 +252,7 @@ const GENERIC_PERKS = [
   },
   {
     id: "generic_array_defense_2",
-    name: "玄岳守势",
+    name: "玄河守势",
     rarity: "普通",
     scope: "array_core",
     description: "护山阵眼防御 +2。",
@@ -523,7 +534,7 @@ function performGacha() {
   setStatus(
     result.isNew
       ? `抽卡获得 ${result.character.rarity} ${result.character.name}。`
-      : `抽到重复角色 ${result.character.rarity} ${result.character.name}，返还${DUPLICATE_GACHA_REFUND}灵石。`,
+      : `抽到重复角色 ${result.character.rarity} ${result.character.name}，返还 ${DUPLICATE_GACHA_REFUND} 灵石。`,
   );
 }
 
@@ -962,7 +973,7 @@ const QINGYA_BRANCH_UPGRADES = [
     name: "青崖剑诀·剑气分光 III",
     type: "normal",
     requires: ["qingya_projectile_2"],
-    description: "每波剑气弹道数量再+1，最多形成更宽的剑气覆盖。",
+    description: "每波剑气弹道数量再+1，形成更宽的剑气覆盖。",
     valueText: "projectileCount +1",
     effects: { projectileAdd: 1 },
   },
@@ -1287,7 +1298,7 @@ function applyRoleHit(role, target, damage) {
     nearestEnemies(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
     if (art.paralyze > 0) target.addStatus("slow", 0.8, art.paralyze);
     if (art.bossPriorityLightning) {
-      const elite = state.enemies.find((enemy) => !enemy.dead && (enemy.config.isBoss || enemy.config.type === "绮捐嫳"));
+      const elite = state.enemies.find((enemy) => !enemy.dead && (enemy.config.isBoss || enemy.config.type === "精英"));
       if (elite) elite.takeDamage(damage * 0.9, "role", role);
     }
   }
@@ -2623,7 +2634,6 @@ function renderDebugActions() {
   debugActionsRenderKey = renderKey;
   debugActionsPanel.innerHTML = actions.map(([id, label]) => `<button type="button" data-debug-action="${id}">${safeText(label)}</button>`).join("");
 }
-
 function renderDebugContent() {
   const rarityOptions = ["SR", "SSR", "UR", "SP", "初始", "普通", "稀有", "史诗", "传说"];
   if (activeDebugTab === "状态") {
@@ -2811,157 +2821,55 @@ function runDebugAction(action) {
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawGrid();
-  drawFormationArea();
-  state.zones.forEach(drawZone);
-  state.deployedRoles.forEach(drawRole);
-  state.enemies.forEach(drawEnemy);
-  state.projectiles.forEach(drawProjectile);
-  state.floaters.forEach(drawFloater);
-  drawBossBar();
+  return drawCanvas(createCanvasRenderContext());
+}
+
+function createCanvasRenderContext() {
+  return {
+    ctx,
+    canvas,
+    state,
+    DATA,
+    grid,
+    colors,
+    helpers: {
+      attackLineY,
+      isDeployable,
+    },
+  };
 }
 
 function drawGrid() {
-  for (let row = 0; row < grid.rows; row += 1) {
-    for (let col = 0; col < grid.columns; col += 1) {
-      ctx.fillStyle =
-        row === 0
-          ? "#263a2b"
-          : row === grid.rows - 1
-          ? "#3b2f25"
-          : "#20362a";
-      ctx.fillRect(col * grid.cellW, row * grid.cellH, grid.cellW - 1, grid.cellH - 1);
-      if (isDeployable(col, row)) {
-        ctx.strokeStyle = "rgba(222, 204, 147, 0.34)";
-        ctx.strokeRect(col * grid.cellW + 5, row * grid.cellH + 5, grid.cellW - 10, grid.cellH - 10);
-      }
-    }
-  }
-  ctx.fillStyle = "#e8d28b";
-  ctx.font = "16px Microsoft YaHei";
-  ctx.textAlign = "left";
-  ctx.fillText("妖门区：怪物出生点", 18, 34);
-  ctx.fillText("妖兽行进区", 18, grid.cellH + 28);
-  ctx.fillText("护山大阵 / 护山阵眼区", 18, canvas.height - 28);
-  for (let col = 0; col < grid.columns; col += 1) {
-    ctx.strokeStyle = "rgba(216, 172, 82, 0.35)";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(col * grid.cellW + grid.cellW / 2, 0);
-    ctx.lineTo(col * grid.cellW + grid.cellW / 2, canvas.height);
-    ctx.stroke();
-  }
+  return drawCanvasGrid(createCanvasRenderContext());
 }
 
 function drawFormationArea() {
-  const formation = DATA.formations[state.selectedFormationId];
-  if (!formation) return;
-  ctx.strokeStyle = "rgba(92, 219, 149, 0.75)";
-  ctx.lineWidth = 3;
-  ctx.strokeRect(2, (grid.rows - 1) * grid.cellH + 2, canvas.width - 4, grid.cellH - 4);
-  ctx.strokeStyle = "rgba(255, 154, 118, 0.65)";
-  ctx.setLineDash([8, 6]);
-  ctx.beginPath();
-  ctx.moveTo(0, attackLineY());
-  ctx.lineTo(canvas.width, attackLineY());
-  ctx.stroke();
-  ctx.setLineDash([]);
+  return drawCanvasFormationArea(createCanvasRenderContext());
 }
 
 function drawRole(role) {
-  const config = DATA.roles[role.roleId];
-  ctx.fillStyle = colors[config.school] || "#e5e7eb";
-  ctx.beginPath();
-  ctx.arc(role.x, role.y, 24, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#152018";
-  ctx.font = "bold 14px Microsoft YaHei";
-  ctx.textAlign = "center";
-  ctx.fillText(config.name.slice(0, 2), role.x, role.y + 5);
-  ctx.fillStyle = "#fff2cd";
-  ctx.font = "12px Microsoft YaHei";
-  ctx.fillText(config.school, role.x, role.y + 39);
+  return drawCanvasRole({ ...createCanvasRenderContext(), role });
 }
 
 function drawEnemy(enemy) {
-  ctx.fillStyle = colors[enemy.config.id] || "#a3a3a3";
-  ctx.beginPath();
-  ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-  ctx.fill();
-  if (enemy.hasStatus("slow")) {
-    ctx.strokeStyle = "#93ddf8";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  }
-  if (enemy.hasStatus("poison")) {
-    ctx.strokeStyle = "#c084fc";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  }
-  ctx.fillStyle = "#271a17";
-  ctx.fillRect(enemy.x - 22, enemy.y - enemy.radius - 11, 44, 5);
-  ctx.fillStyle = enemy.config.isBoss ? "#d94668" : "#e45d4f";
-  ctx.fillRect(enemy.x - 22, enemy.y - enemy.radius - 11, 44 * Math.max(0, enemy.hp / enemy.maxHp), 5);
+  return drawCanvasEnemy({ ...createCanvasRenderContext(), enemy });
 }
 
 function drawProjectile(projectile) {
-  if (projectile.visualOnly) {
-    ctx.strokeStyle = projectile.color;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(projectile.x, projectile.y);
-    ctx.lineTo(projectile.tx, projectile.ty);
-    ctx.stroke();
-    return;
-  }
-  const angle = Math.atan2(projectile.vy, projectile.vx);
-  ctx.save();
-  ctx.translate(projectile.x, projectile.y);
-  ctx.rotate(angle);
-  ctx.lineCap = "round";
-  ctx.strokeStyle = projectile.trailColor || "rgba(255,255,255,0.2)";
-  ctx.lineWidth = projectile.width + 5;
-  ctx.beginPath();
-  ctx.moveTo(-projectile.length * 0.75, 0);
-  ctx.lineTo(projectile.length * 0.35, 0);
-  ctx.stroke();
-  ctx.strokeStyle = projectile.color;
-  ctx.lineWidth = projectile.width;
-  ctx.beginPath();
-  ctx.moveTo(-projectile.length / 2, 0);
-  ctx.lineTo(projectile.length / 2, 0);
-  ctx.stroke();
-  ctx.restore();
+  return drawCanvasProjectile({ ...createCanvasRenderContext(), projectile });
 }
 
 function drawZone(zone) {
-  ctx.fillStyle = zone.color;
-  ctx.beginPath();
-  ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
-  ctx.fill();
+  return drawCanvasZone({ ...createCanvasRenderContext(), zone });
 }
 
 function drawFloater(floater) {
-  ctx.fillStyle = floater.color;
-  ctx.font = "bold 16px Microsoft YaHei";
-  ctx.textAlign = "center";
-  ctx.fillText(floater.text, floater.x, floater.y);
+  return drawCanvasFloater({ ...createCanvasRenderContext(), floater });
 }
 
 function drawBossBar() {
-  const boss = state.enemies.find((enemy) => enemy.config.isBoss && !enemy.dead);
-  if (!boss) return;
-  ctx.fillStyle = "rgba(0, 0, 0, 0.55)";
-  ctx.fillRect(70, 16, canvas.width - 140, 18);
-  ctx.fillStyle = "#c2410c";
-  ctx.fillRect(70, 16, (canvas.width - 140) * Math.max(0, boss.hp / boss.maxHp), 18);
-  ctx.fillStyle = "#fff7df";
-  ctx.font = "13px Microsoft YaHei";
-  ctx.textAlign = "center";
-  ctx.fillText(boss.config.name, canvas.width / 2, 30);
+  return drawCanvasBossBar(createCanvasRenderContext());
 }
-
 function makeId() {
   if (window.crypto && typeof window.crypto.randomUUID === "function") {
     return window.crypto.randomUUID();
