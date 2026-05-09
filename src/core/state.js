@@ -30,10 +30,10 @@
     };
   }
 
-  function createInitialRuntimeCollections() {
-    return {
-      availableRoles: [],
-      deployedRoles: [],
+  function createInitialRuntimeCollections(options = {}) {
+    const includeAvailableRoles = options.includeAvailableRoles !== false;
+    const includeDeployedRoles = options.includeDeployedRoles !== false;
+    const collections = {
       enemies: [],
       projectiles: [],
       floaters: [],
@@ -43,6 +43,9 @@
       acquiredPerks: new Set(),
       pendingLevelUps: 0,
     };
+    if (includeAvailableRoles) collections.availableRoles = [];
+    if (includeDeployedRoles) collections.deployedRoles = [];
+    return collections;
   }
 
   function createInitialModifiers() {
@@ -57,6 +60,61 @@
 
   function createInitialMartialBranchState() {
     return {};
+  }
+
+  function resetRunProgress(state, options = {}) {
+    Object.assign(state, {
+      wave: options.wave || 1,
+      highestWave: options.highestWave || 1,
+      runLevel: options.runLevel || 1,
+      lingqi: options.lingqi || 0,
+      kills: options.kills || 0,
+      gameOver: false,
+      running: Boolean(options.running),
+      paused: false,
+      waveActive: false,
+    });
+    return state;
+  }
+
+  function resetRunModifiers(state) {
+    state.bonuses = defaultRunBonuses();
+    state.modifiers = createInitialModifiers();
+    return state;
+  }
+
+  function resetMartialBranchesForRun(state) {
+    state.martialArtBranches = createInitialMartialBranchState();
+    return state;
+  }
+
+  function createRunStatePatch(options = {}) {
+    return {
+      phase: options.phase || "combat",
+      running: options.running !== false,
+      paused: false,
+      gameOver: false,
+      wave: options.wave || 1,
+      highestWave: options.highestWave || 1,
+      runLevel: options.runLevel || 1,
+      lingqi: options.lingqi || 0,
+      kills: options.kills || 0,
+      waveActive: false,
+      formationCooldown: 0,
+      artifactCooldown: 0,
+      martialArtBranches: createInitialMartialBranchState(),
+      bonuses: defaultRunBonuses(),
+      modifiers: createInitialModifiers(),
+      ...createInitialRuntimeCollections({
+        includeAvailableRoles: false,
+        includeDeployedRoles: false,
+      }),
+    };
+  }
+
+  function resetRunStateForNewRun(state, options = {}) {
+    Object.assign(state, createRunStatePatch(options));
+    return state;
   }
 
   function createDefaultRunState(options = {}) {
@@ -100,8 +158,8 @@
     };
   }
 
-  function resetRuntimeCollections(state) {
-    Object.assign(state, createInitialRuntimeCollections());
+  function resetRuntimeCollections(state, options) {
+    Object.assign(state, createInitialRuntimeCollections(options));
     return state;
   }
 
@@ -122,7 +180,12 @@
     createInitialMartialBranchState,
     createInitialModifiers,
     createInitialRuntimeCollections,
+    createRunStatePatch,
     defaultRunBonuses,
+    resetMartialBranchesForRun,
+    resetRunModifiers,
+    resetRunProgress,
+    resetRunStateForNewRun,
     resetRuntimeCollections,
     syncPlayerMetaAliases,
   });

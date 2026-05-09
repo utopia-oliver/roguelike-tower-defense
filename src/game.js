@@ -185,6 +185,7 @@ const {
   createInitialModifiers,
   createInitialRuntimeCollections,
   defaultRunBonuses: createSystemDefaultRunBonuses,
+  resetRunStateForNewRun,
   syncPlayerMetaAliases: syncSystemPlayerMetaAliases,
 } = window.XM.State;
 let activeDebugTab = "状态";
@@ -783,10 +784,11 @@ function startRun() {
     setStatus("请先部署所有出战宗门角色，再开始战斗。");
     return;
   }
+  resetRunStateForNewRun(state, {
+    phase: "combat",
+    running: true,
+  });
   state.appState = APP_STATE.BATTLE;
-  state.phase = "combat";
-  state.running = true;
-  state.paused = false;
   startButton.disabled = true;
   setStatus("妖潮来袭，角色和法宝自动攻击；阵法会在敌人靠近阵眼时触发。");
   renderSetupLists();
