@@ -59,6 +59,29 @@
     return "";
   }
 
+  function buildEffectPreview(perk) {
+    if (perk.valueText) return perk.valueText;
+    if (perk.actualEffectPreview) return perk.actualEffectPreview;
+
+    const effect = perk.effect || {};
+    const effectType = perk.effectType || effect.type;
+    const value = perk.value ?? effect.value;
+    switch (effectType) {
+      case "artifact_damage_bonus":
+      case "artifact_damage_mult":
+        return `伤害 +${Math.round((Number(value) || 0) * 100)}%`;
+      case "artifact_cooldown_mult":
+        if (typeof value === "number") return `冷却 -${Math.round((1 - value) * 100)}%`;
+        return "冷却降低";
+      case "artifact_projectile_count_add":
+        return `飞剑数量 +${value ?? 1}`;
+      case "artifact_pierce_add":
+        return `穿透 +${value ?? 1}`;
+      default:
+        return perk.description || "效果将在本局生效";
+    }
+  }
+
   function createMartialArtPerk({ state, art }) {
     const currentLevel = state.martialArtLevels[art.id] || 0;
     const next = art.levels.find((level) => level.level === currentLevel + 1);
@@ -266,9 +289,10 @@
         targetType: "artifact",
         targetId: artifactId,
         effectType: "artifact_damage_bonus",
-        description: `${artifact.name}伤害提升20%。`,
-        valueText: "浼ゅ +20%",
-        effect: { type: "artifact_damage_bonus", artifactId, value: 0.2 },
+        description: `${artifact.name}伤害提升25%。`,
+        valueText: "伤害 +25%",
+        actualEffectPreview: "伤害 +25%",
+        effect: { type: "artifact_damage_bonus", artifactId, value: 0.25 },
       },
       {
         id: `artifact_${artifactId}_cooldown`,
@@ -282,7 +306,8 @@
         targetId: artifactId,
         effectType: "artifact_cooldown_mult",
         description: `${artifact.name}冷却降低15%。`,
-        valueText: "鍐峰嵈 -15%",
+        valueText: "冷却 -15%",
+        actualEffectPreview: "冷却 -15%",
         effect: { type: "artifact_cooldown_mult", artifactId, value: 0.85 },
       },
     ];
@@ -326,6 +351,7 @@
       const normalized = { ...perk, effectType: perk.effect?.type || perk.effectType || "unimplemented" };
       normalized.targetId = getPerkTargetId(normalized);
       if (!normalized.targetType) normalized.targetType = normalized.scope;
+      normalized.actualEffectPreview = buildEffectPreview(normalized);
       return normalized;
     }
     let effectType = perk.effect?.type || perk.effectType || "unimplemented";
@@ -384,6 +410,7 @@
     }
     if (id.includes("vertical") || id.includes("pierce")) normalized.targetTrajectoryType = "vertical";
     if (id.includes("horizontal")) normalized.targetTrajectoryType = "horizontal";
+    normalized.actualEffectPreview = buildEffectPreview(normalized);
     return normalized;
   }
 
@@ -612,6 +639,7 @@
 
   Object.assign(window.XM.Upgrades, {
     artifactPerksForRun,
+    buildEffectPreview,
     createMartialArtPerk,
     createQingyaBranchPerk,
     createQingyaBranchPerks,

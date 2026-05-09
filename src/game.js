@@ -130,6 +130,17 @@ const {
   updateArtifacts: updateSystemArtifacts,
 } = window.XM.Artifacts;
 const {
+  areaDamage: areaDamageSystem,
+  baseArrayCoreDefense: getSystemBaseArrayCoreDefense,
+  baseArrayCoreMaxHp: getSystemBaseArrayCoreMaxHp,
+  damageArrayCore: damageSystemArrayCore,
+  healArrayCoreFull: healSystemArrayCoreFull,
+  initialArrayCoreState: getSystemInitialArrayCoreState,
+  initializeArrayCoreForRun: initializeSystemArrayCoreForRun,
+  syncBaseHpAliases: syncSystemBaseHpAliases,
+  updateFormation: updateSystemFormation,
+} = window.XM.Formations;
+const {
   createDefaultPlayerProfile: createStoredDefaultPlayerProfile,
   createEmptyDebugOverrides,
   deepClone,
@@ -511,36 +522,44 @@ function performGacha() {
 }
 
 function baseArrayCoreMaxHp() {
-  return DATA.config.arrayCore?.maxHp || DATA.config.baseHp || DEFAULT_ARRAY_CORE_MAX_HP;
+  return getSystemBaseArrayCoreMaxHp({
+    DATA,
+    defaults: { maxHp: DEFAULT_ARRAY_CORE_MAX_HP },
+  });
 }
 
 function baseArrayCoreDefense() {
-  return DATA.config.arrayCore?.defense || DEFAULT_ARRAY_CORE_DEFENSE;
+  return getSystemBaseArrayCoreDefense({
+    DATA,
+    defaults: { defense: DEFAULT_ARRAY_CORE_DEFENSE },
+  });
 }
 
 function initialArrayCoreState() {
-  const maxHp = baseArrayCoreMaxHp() + (playerMeta.arrayCoreBaseHpBonus || 0);
-  const defense = baseArrayCoreDefense() + (playerMeta.arrayCoreDefenseBonus || 0);
-  return {
-    arrayCoreMaxHp: maxHp,
-    arrayCoreHp: maxHp,
-    arrayCoreDefense: defense,
-    arrayCoreDamageReduction: DATA.config.arrayCore?.damageReductionRate || 0,
-  };
+  return getSystemInitialArrayCoreState({
+    DATA,
+    playerProfile: playerMeta,
+    defaults: {
+      maxHp: DEFAULT_ARRAY_CORE_MAX_HP,
+      defense: DEFAULT_ARRAY_CORE_DEFENSE,
+    },
+  });
 }
 
 function initializeArrayCoreForRun() {
-  const core = initialArrayCoreState();
-  state.arrayCoreMaxHp = core.arrayCoreMaxHp;
-  state.arrayCoreHp = core.arrayCoreHp;
-  state.arrayCoreDefense = core.arrayCoreDefense;
-  state.arrayCoreDamageReduction = core.arrayCoreDamageReduction;
-  syncBaseHpAliases();
+  return initializeSystemArrayCoreForRun({
+    state,
+    DATA,
+    playerProfile: playerMeta,
+    defaults: {
+      maxHp: DEFAULT_ARRAY_CORE_MAX_HP,
+      defense: DEFAULT_ARRAY_CORE_DEFENSE,
+    },
+  });
 }
 
 function syncBaseHpAliases() {
-  state.maxBaseHp = state.arrayCoreMaxHp;
-  state.baseHp = state.arrayCoreHp;
+  return syncSystemBaseHpAliases({ state });
 }
 
 function resetGame() {
@@ -1429,46 +1448,50 @@ function nearestEnemies(target, count) {
 }
 
 function updateFormation(dt) {
-  state.formationCooldown -= dt;
-  if (state.formationCooldown > 0) return;
-  const formation = DATA.formations[state.selectedFormationId];
-  const base = { x: canvas.width / 2, y: canvas.height - grid.cellH / 2 };
-  const radius = (formation.triggerRadius + state.bonuses.formationRadiusAdd) * grid.cellH;
-  const targets = state.enemies
-    .filter((enemy) => !enemy.dead && distance(enemy, base) <= radius)
-    .sort((a, b) => b.progress - a.progress)
-    .slice(0, formation.maxTargets);
-  if (!targets.length) return;
-  const formationBoost = state.deployedRoles.some(
-    (role) => DATA.roles[role.roleId]?.passiveSkill === "global_formation_boost",
-  )
-    ? 1.1
-    : 1;
-  const damage = 34 * state.bonuses.formationDamage * formationBoost;
-  targets.forEach((enemy) => {
-    enemy.takeDamage(damage, "formation");
-    if (formation.effectType === "knockback_slow") {
-      enemy.progress = Math.max(0, enemy.progress - 0.04);
-      enemy.addStatus("slow", 2, 0.5);
-    }
-    if (formation.effectType === "freeze") enemy.addStatus("freeze", 0.8, 1);
-    if (formation.effectType === "burning_area") enemy.addStatus("burn", 2, 8);
+  return updateSystemFormation({
+    state,
+    DATA,
+    dt,
+    callbacks: {
+      addZone(zone) {
+        state.zones.push(zone);
+      },
+      damageEnemy(enemy, damage, source) {
+        enemy.takeDamage(damage, source);
+      },
+      getFormationBase() {
+        return { x: canvas.width / 2, y: canvas.height - grid.cellH / 2 };
+      },
+      nearestEnemies,
+      setStatus,
+    },
+    helpers: {
+      distance,
+      grid,
+    },
   });
-  if (formation.effectType === "chain_lightning") {
-    nearestEnemies(targets[0], 3).forEach((enemy) => enemy.takeDamage(damage * 0.7, "formation"));
-  }
-  state.zones.push({ x: base.x, y: base.y, radius, ttl: 0.45, color: "rgba(92, 219, 149, 0.22)" });
-  state.formationCooldown = Math.max(3, formation.cooldown * state.bonuses.formationCooldown);
-  setStatus(`${formation.name} 被动触发。`);
 }
 
 function areaDamage(x, y, radius, damage, source) {
-  state.enemies.forEach((enemy) => {
-    if (!enemy.dead && distance({ x, y }, enemy) <= radius) {
-      enemy.takeDamage(damage, source);
-    }
+  return areaDamageSystem({
+    state,
+    x,
+    y,
+    radius,
+    damage,
+    source,
+    callbacks: {
+      addZone(zone) {
+        state.zones.push(zone);
+      },
+      damageEnemy(enemy, finalDamage, finalSource) {
+        enemy.takeDamage(finalDamage, finalSource);
+      },
+    },
+    helpers: {
+      distance,
+    },
   });
-  state.zones.push({ x, y, radius, ttl: 0.28, color: "rgba(239, 123, 69, 0.2)" });
 }
 
 function drawShot(x, y, tx, ty, color) {
@@ -1564,19 +1587,21 @@ function showDamageNumber(amount, target) {
 }
 
 function damageArrayCore(rawDamage, enemy = null) {
-  const defense = state.arrayCoreDefense || 0;
-  const finalDamage = Math.max(1, rawDamage - defense);
-  state.arrayCoreHp = Math.max(0, state.arrayCoreHp - finalDamage);
-  syncBaseHpAliases();
-  showDamageNumber(finalDamage, "arrayCore");
-  const enemyName = enemy?.config?.name || "敌人";
-  setStatus(`${enemyName} 正在攻击护山大阵 / 护山阵眼，阵眼HP -${Math.ceil(finalDamage)}。`);
-  if (state.arrayCoreHp <= 0) {
-    state.arrayCoreHp = 0;
-    syncBaseHpAliases();
-    endGame(false);
-  }
-  return finalDamage;
+  return damageSystemArrayCore({
+    state,
+    rawDamage,
+    enemy,
+    callbacks: {
+      addFloater(floater) {
+        state.floaters.push(floater);
+      },
+      endGame,
+      getDamageNumberPosition() {
+        return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.65 };
+      },
+      setStatus,
+    },
+  });
 }
 
 function updateEffects(dt) {
@@ -1603,7 +1628,7 @@ function showPerkChoices() {
   choices.forEach((perk) => {
     const button = document.createElement("button");
     button.className = "perk-card";
-    button.innerHTML = `<small>${perk.rarity} · ${perk.category}</small><strong>${perk.name}</strong><p>${perk.description}</p><p>${perk.valueText}</p>`;
+    button.innerHTML = `<small>${perk.rarity} · ${perk.category}</small><strong>${perk.name}</strong><p>${perk.description}</p>`;
     button.addEventListener("click", () => {
       chooseLevelUpPerk(perk);
     });
@@ -2592,7 +2617,7 @@ function getDebugPerkRows() {
       weight: perkUpgradeWeight(perk),
       enabled: valid,
       finalWeight: valid ? perkUpgradeWeight(perk) : 0,
-      actualEffectPreview: perk.valueText || JSON.stringify(perk.effect || {}),
+      actualEffectPreview: perk.actualEffectPreview || perk.valueText || perk.description || "效果将在本局生效",
     };
   });
 }
@@ -2821,8 +2846,7 @@ function jumpToWave(wave) {
 }
 
 function healArrayCoreFull() {
-  state.arrayCoreHp = state.arrayCoreMaxHp;
-  syncBaseHpAliases();
+  return healSystemArrayCoreFull({ state });
 }
 
 function unlockAllCharacters() {
