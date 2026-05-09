@@ -141,6 +141,23 @@ const {
   updateFormation: updateSystemFormation,
 } = window.XM.Formations;
 const {
+  applyPlayerLevelUnlocks: applySystemPlayerLevelUnlocks,
+  checkPlayerLevelUp: checkSystemPlayerLevelUp,
+  drawGachaRarity: drawSystemGachaRarity,
+  getCharacterBaseFinalDamage: getSystemCharacterBaseFinalDamage,
+  getCharacterLevel: getSystemCharacterLevel,
+  getCharacterUpgradeCost: getSystemCharacterUpgradeCost,
+  getFlatDamageGrowthByRarity: getSystemFlatDamageGrowthByRarity,
+  getMaxDeploySlots: getSystemMaxDeploySlots,
+  getNextCharacterUnlock: getSystemNextCharacterUnlock,
+  getNextDeploySlotUnlock: getSystemNextDeploySlotUnlock,
+  getPercentGrowthByRarity: getSystemPercentGrowthByRarity,
+  getPlayerLevelExpRequirement: getSystemPlayerLevelExpRequirement,
+  grantCharacter: grantSystemCharacter,
+  performGacha: performSystemGacha,
+  upgradeCharacter: upgradeSystemCharacter,
+} = window.XM.Characters;
+const {
   createDefaultPlayerProfile: createStoredDefaultPlayerProfile,
   createEmptyDebugOverrides,
   deepClone,
@@ -332,14 +349,11 @@ function syncPlayerMetaAliases() {
 }
 
 function getPlayerLevelExpRequirement(level) {
-  return Math.floor(100 + (level - 1) * 60 + Math.pow(level - 1, 1.35) * 25);
+  return getSystemPlayerLevelExpRequirement(level);
 }
 
 function getMaxDeploySlots(level = playerMeta.playerLevel) {
-  return DEPLOY_SLOT_UNLOCKS.reduce(
-    (slots, unlock) => (level >= unlock.level ? unlock.deploySlots : slots),
-    1,
-  );
+  return getSystemMaxDeploySlots({ level, deploySlotUnlocks: DEPLOY_SLOT_UNLOCKS });
 }
 
 function playerProfileStorageHelpers() {
@@ -382,142 +396,134 @@ function savePlayerProfile() {
 }
 
 function getNextCharacterUnlock() {
-  return PLAYER_LEVEL_UNLOCKS.find(
-    (unlock) => unlock.level > playerMeta.playerLevel && !playerMeta.ownedCharacters.includes(unlock.characterId),
-  );
+  return getSystemNextCharacterUnlock({
+    playerProfile: playerMeta,
+    playerLevelUnlocks: PLAYER_LEVEL_UNLOCKS,
+  });
 }
 
 function getNextDeploySlotUnlock() {
-  return DEPLOY_SLOT_UNLOCKS.find((unlock) => unlock.level > playerMeta.playerLevel);
+  return getSystemNextDeploySlotUnlock({
+    playerProfile: playerMeta,
+    deploySlotUnlocks: DEPLOY_SLOT_UNLOCKS,
+  });
 }
 
 function grantCharacter(characterId, source = "unlock") {
-  if (!DATA.roles[characterId]) return false;
-  if (playerMeta.ownedCharacters.includes(characterId)) {
-    if (source === "gacha") playerMeta.spiritStones += DUPLICATE_GACHA_REFUND;
-    syncPlayerMetaAliases();
-    savePlayerProfile();
-    return false;
-  }
-  playerMeta.ownedCharacters.push(characterId);
-  playerMeta.characterLevels[characterId] = playerMeta.characterLevels[characterId] || 1;
-  syncPlayerMetaAliases();
-  savePlayerProfile();
-  return true;
+  const result = grantSystemCharacter({
+    playerProfile: playerMeta,
+    DATA,
+    characterId,
+    source,
+    duplicateRefund: DUPLICATE_GACHA_REFUND,
+    callbacks: {
+      savePlayerProfile,
+      syncPlayerMetaAliases,
+    },
+  });
+  return Boolean(result.isNew);
 }
 
 function applyPlayerLevelUnlocks() {
-  const unlocked = [];
-  PLAYER_LEVEL_UNLOCKS.forEach((unlock) => {
-    if (unlock.type === "character" && playerMeta.playerLevel >= unlock.level) {
-      if (grantCharacter(unlock.characterId, "level")) unlocked.push(unlock.description);
-    }
+  return applySystemPlayerLevelUnlocks({
+    playerProfile: playerMeta,
+    DATA,
+    playerLevelUnlocks: PLAYER_LEVEL_UNLOCKS,
+    deploySlotUnlocks: DEPLOY_SLOT_UNLOCKS,
+    callbacks: {
+      savePlayerProfile,
+      syncPlayerMetaAliases,
+    },
   });
-  playerMeta.maxDeploySlots = getMaxDeploySlots(playerMeta.playerLevel);
-  syncPlayerMetaAliases();
-  savePlayerProfile();
-  return unlocked;
 }
 
 function checkPlayerLevelUp() {
-  const rewards = [];
-  while (playerMeta.playerExp >= getPlayerLevelExpRequirement(playerMeta.playerLevel)) {
-    playerMeta.playerExp -= getPlayerLevelExpRequirement(playerMeta.playerLevel);
-    playerMeta.playerLevel += 1;
-    rewards.push(`玩家等级提升到 ${playerMeta.playerLevel}`);
-    rewards.push(...applyPlayerLevelUnlocks());
-  }
-  syncPlayerMetaAliases();
-  return rewards;
+  return checkSystemPlayerLevelUp({
+    playerProfile: playerMeta,
+    DATA,
+    playerLevelUnlocks: PLAYER_LEVEL_UNLOCKS,
+    deploySlotUnlocks: DEPLOY_SLOT_UNLOCKS,
+    callbacks: {
+      savePlayerProfile,
+      syncPlayerMetaAliases,
+    },
+  });
 }
 
 function getCharacterLevel(characterId) {
-  return playerMeta.characterLevels[characterId] || 1;
+  return getSystemCharacterLevel({ playerProfile: playerMeta, characterId });
 }
 
 function getFlatDamageGrowthByRarity(rarity) {
-  if (rarity === CHARACTER_RARITY.UR) return 5;
-  if (rarity === CHARACTER_RARITY.SSR) return 4;
-  return 3;
+  return getSystemFlatDamageGrowthByRarity({ rarity, characterRarity: CHARACTER_RARITY });
 }
 
 function getPercentGrowthByRarity(rarity) {
-  if (rarity === CHARACTER_RARITY.UR) return 0.12;
-  if (rarity === CHARACTER_RARITY.SSR) return 0.1;
-  return 0.08;
+  return getSystemPercentGrowthByRarity({ rarity, characterRarity: CHARACTER_RARITY });
 }
 
 function getCharacterBaseFinalDamage(character) {
-  const level = getCharacterLevel(character.id);
-  const levelDelta = level - 1;
-  return (
-    character.baseDamage +
-    levelDelta * getFlatDamageGrowthByRarity(character.rarity) +
-    character.baseDamage * levelDelta * getPercentGrowthByRarity(character.rarity)
-  );
+  return getSystemCharacterBaseFinalDamage({
+    playerProfile: playerMeta,
+    character,
+    characterRarity: CHARACTER_RARITY,
+  });
 }
 
 function getCharacterUpgradeCost(characterLevel, rarity) {
-  const rarityBase = {
-    SR: 80,
-    SSR: 140,
-    UR: 240,
-    SP: 360,
-  };
-  const rarityGrowth = {
-    SR: 1.5,
-    SSR: 1.6,
-    UR: 1.7,
-    SP: 1.8,
-  };
-  return Math.floor((rarityBase[rarity] || rarityBase.SR) * Math.pow(rarityGrowth[rarity] || rarityGrowth.SR, characterLevel - 1));
+  return getSystemCharacterUpgradeCost({ characterLevel, rarity });
 }
 
 function upgradeCharacter(characterId) {
-  if (!playerMeta.ownedCharacters.includes(characterId)) return false;
-  const character = DATA.roles[characterId];
-  const level = getCharacterLevel(characterId);
-  const cost = getCharacterUpgradeCost(level, character.rarity);
-  if (playerMeta.spiritStones < cost) {
-    setStatus(`灵石不足，${character.name} 升级需要 ${cost} 灵石。`);
+  const result = upgradeSystemCharacter({
+    playerProfile: playerMeta,
+    DATA,
+    characterId,
+    callbacks: {
+      savePlayerProfile,
+      syncPlayerMetaAliases,
+    },
+  });
+  if (!result.ok) {
+    if (result.reason === "not_enough_spirit_stones") {
+      setStatus(`灵石不足，${result.character.name} 升级需要 ${result.cost} 灵石。`);
+    }
     return false;
   }
-  playerMeta.spiritStones -= cost;
-  playerMeta.characterLevels[characterId] = level + 1;
-  syncPlayerMetaAliases();
-  setStatus(`${character.name} 提升到 ${level + 1} 级，战斗伤害提高。`);
+  setStatus(`${result.character.name} 提升到 ${result.newLevel} 级，战斗伤害提高。`);
   renderLobby();
-  savePlayerProfile();
   return true;
 }
 
 function drawGachaRarity() {
-  const roll = Math.random();
-  if (roll < 0.05) return CHARACTER_RARITY.UR;
-  if (roll < 0.3) return CHARACTER_RARITY.SSR;
-  return CHARACTER_RARITY.SR;
+  return drawSystemGachaRarity({ characterRarity: CHARACTER_RARITY });
 }
 
 function performGacha() {
-  if (playerMeta.spiritStones < GACHA_COST) {
-    setStatus(`灵石不足，抽卡需要 ${GACHA_COST} 灵石。`);
+  const result = performSystemGacha({
+    playerProfile: playerMeta,
+    DATA,
+    gachaCost: GACHA_COST,
+    duplicateRefund: DUPLICATE_GACHA_REFUND,
+    characterRarity: CHARACTER_RARITY,
+    callbacks: {
+      savePlayerProfile,
+      syncPlayerMetaAliases,
+    },
+  });
+  if (!result.ok) {
+    if (result.reason === "not_enough_spirit_stones") {
+      setStatus(`灵石不足，抽卡需要 ${GACHA_COST} 灵石。`);
+    }
     return;
   }
-  playerMeta.spiritStones -= GACHA_COST;
-  const pool = Object.values(DATA.roles).filter((role) => role.unlockType === "gacha");
-  const rarity = drawGachaRarity();
-  const rarityPool = pool.filter((role) => role.rarity === rarity);
-  const candidates = rarityPool.length ? rarityPool : pool;
-  const result = candidates[Math.floor(Math.random() * candidates.length)];
-  const isNew = grantCharacter(result.id, "gacha");
   syncPlayerMetaAliases();
   renderLobby();
   renderLoadout();
-  savePlayerProfile();
   setStatus(
-    isNew
-      ? `抽卡获得 ${result.rarity} ${result.name}。`
-      : `抽到重复角色 ${result.rarity} ${result.name}，返还${DUPLICATE_GACHA_REFUND}灵石。`,
+    result.isNew
+      ? `抽卡获得 ${result.character.rarity} ${result.character.name}。`
+      : `抽到重复角色 ${result.character.rarity} ${result.character.name}，返还${DUPLICATE_GACHA_REFUND}灵石。`,
   );
 }
 
