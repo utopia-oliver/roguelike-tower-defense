@@ -188,6 +188,14 @@ const {
   resetRunStateForNewRun,
   syncPlayerMetaAliases: syncSystemPlayerMetaAliases,
 } = window.XM.State;
+const {
+  renderHud: renderSystemHud,
+  renderLoadout: renderSystemLoadout,
+  renderLobby: renderSystemLobby,
+  renderPerkChoiceCard: renderSystemPerkChoiceCard,
+  renderSetupLists: renderSystemSetupLists,
+  renderSettlement: renderSystemSettlement,
+} = window.XM.Render;
 let activeDebugTab = "状态";
 let debugEditMode = false;
 let debugExportOpen = false;
@@ -1539,7 +1547,7 @@ function showPerkChoices() {
   choices.forEach((perk) => {
     const button = document.createElement("button");
     button.className = "perk-card";
-    button.innerHTML = `<small>${perk.rarity} · ${perk.category}</small><strong>${perk.name}</strong><p>${perk.description}</p>`;
+    button.innerHTML = renderSystemPerkChoiceCard(perk);
     button.addEventListener("click", () => {
       chooseLevelUpPerk(perk);
     });
@@ -1548,7 +1556,12 @@ function showPerkChoices() {
   if (!choices.length) {
     const button = document.createElement("button");
     button.className = "perk-card";
-    button.innerHTML = "<strong>武学稳固</strong><p>没有可用机缘时，当前武学伤害+5%。</p>";
+    button.innerHTML = renderSystemPerkChoiceCard({
+      rarity: "",
+      category: "",
+      name: "武学稳固",
+      description: "没有可用机缘时，当前武学伤害+5%。",
+    });
     button.addEventListener("click", () => {
       const fallbackArt = martialArtForCharacter(currentRunCharacters()[0]?.id);
       chooseLevelUpPerk({
@@ -1870,86 +1883,78 @@ function endGame(win) {
   playerMeta.totalKills = (playerMeta.totalKills || 0) + state.kills;
   syncPlayerMetaAliases();
   savePlayerProfile();
-  settlementTitle.textContent = win ? "守山成功" : "阵眼破碎";
-  settlementWave.textContent = state.highestWave;
-  settlementKills.textContent = state.kills;
-  settlementLingstone.textContent = `${reward}灵石 / ${playerExp}经验${levelRewards.length ? ` / ${levelRewards.join("，")}` : ""}`;
+  renderSystemSettlement({
+    elements: {
+      settlementTitle,
+      settlementWave,
+      settlementKills,
+      settlementLingstone,
+    },
+    win,
+    state,
+    reward,
+    playerExp,
+    levelRewards,
+  });
   showView(settlementView);
   updateDebugPanel();
 }
 
 function renderLobby() {
-  syncPlayerMetaAliases();
-  metaLevel.textContent = `${playerMeta.playerLevel}（${playerMeta.playerExp}/${getPlayerLevelExpRequirement(playerMeta.playerLevel)}）`;
-  metaLingstone.textContent = playerMeta.spiritStones;
-  ownedRolesList.innerHTML = "";
-  Object.values(DATA.roles).forEach((role) => {
-    const owned = playerMeta.ownedCharacters.includes(role.id);
-    const level = getCharacterLevel(role.id);
-    const damage = Math.round(getCharacterBaseFinalDamage(role) * 10) / 10;
-    const item = document.createElement("div");
-    item.className = `character-card ${owned ? "owned" : "locked"}`;
-    const source = role.unlockType === "gacha" ? "抽卡获得" : `${role.unlockLevel}级解锁`;
-    item.innerHTML = `
-      <strong>${role.name} <small>${role.rarity}</small></strong>
-      <span>${role.rankTitle || role.rank} · ${role.school} · ${role.role}</span>
-      <span>等级 ${owned ? level : "-"} · 伤害 ${owned ? damage : role.baseDamage} · ${role.trajectoryType}</span>
-      <span>${owned ? "已拥有" : source}</span>
-      <p>${owned ? role.designValue : role.description}</p>
-    `;
-    if (owned) {
-      const button = document.createElement("button");
-      button.className = "secondary";
-      button.textContent = `升级 ${getCharacterUpgradeCost(level, role.rarity)}灵石`;
-      button.addEventListener("click", () => upgradeCharacter(role.id));
-      item.appendChild(button);
-    }
-    ownedRolesList.appendChild(item);
+  renderSystemLobby({
+    elements: {
+      metaLevel,
+      metaLingstone,
+      ownedRolesList,
+      ownedArtifactsList,
+      unlockedFormationsList,
+    },
+    DATA,
+    playerProfile: playerMeta,
+    helpers: {
+      getCharacterBaseFinalDamage,
+      getCharacterLevel,
+      getCharacterUpgradeCost,
+      getNextCharacterUnlock,
+      getNextDeploySlotUnlock,
+      getPlayerLevelExpRequirement,
+      syncPlayerMetaAliases,
+    },
   });
-  const nextCharacter = getNextCharacterUnlock();
-  const nextSlot = getNextDeploySlotUnlock();
-  const tips = [];
-  if (nextCharacter) tips.push(`${nextCharacter.level}级解锁：${DATA.roles[nextCharacter.characterId].name}`);
-  if (nextSlot) tips.push(`${nextSlot.level}级解锁第${nextSlot.deploySlots}个上阵位`);
-  if (tips.length) {
-    const tip = document.createElement("span");
-    tip.className = "unlock-tip";
-    tip.textContent = tips.join(" · ");
-    ownedRolesList.prepend(tip);
-  }
-  ownedArtifactsList.innerHTML = playerMeta.ownedArtifacts
-    .map((id) => `<span>${DATA.artifacts[id].name}</span>`)
-    .join("");
-  unlockedFormationsList.innerHTML = playerMeta.unlockedFormations
-    .map((id) => `<span>${DATA.formations[id].name}</span>`)
-    .join("");
+  ownedRolesList.querySelectorAll("[data-role-upgrade-id]").forEach((button) => {
+    button.addEventListener("click", () => upgradeCharacter(button.dataset.roleUpgradeId));
+  });
 }
 
 function renderLoadout() {
-  loadoutFormationList.innerHTML = "";
-  playerMeta.unlockedFormations.forEach((id) => {
-    const formation = DATA.formations[id];
-    const button = document.createElement("button");
-    button.className = "choice";
-    button.classList.toggle("selected", state.loadoutFormationId === id);
-    button.innerHTML = `<strong>${formation.name}</strong><span>被动 · ${formation.triggerRadius}格 · ${formation.cooldown}秒</span>`;
+  renderSystemLoadout({
+    elements: {
+      loadoutFormationList,
+      loadoutRoleList,
+      loadoutArtifactList,
+      loadoutStatus,
+      enterDeployButton,
+    },
+    state,
+    playerProfile: playerMeta,
+    DATA,
+    helpers: {
+      getCharacterLevel,
+      getNextDeploySlotUnlock,
+      loadoutReady,
+    },
+  });
+  loadoutFormationList.querySelectorAll("[data-loadout-formation-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.loadoutFormationId = id;
+      state.loadoutFormationId = button.dataset.loadoutFormationId;
       renderLoadout();
       updateUi();
     });
-    loadoutFormationList.appendChild(button);
   });
-
-  loadoutRoleList.innerHTML = "";
-  playerMeta.ownedCharacters.forEach((id) => {
-    const role = DATA.roles[id];
-    const selected = state.loadoutRoleIds.includes(id);
-    const button = document.createElement("button");
-    button.className = "choice";
-    button.classList.toggle("selected", selected);
-    button.innerHTML = `<strong>${role.name}</strong><span>${role.rarity} · ${role.rankTitle || role.rank} · Lv${getCharacterLevel(id)} · ${role.trajectoryType}</span>`;
+  loadoutRoleList.querySelectorAll("[data-loadout-role-id]").forEach((button) => {
     button.addEventListener("click", () => {
+      const id = button.dataset.loadoutRoleId;
+      const selected = state.loadoutRoleIds.includes(id);
       if (selected) {
         state.loadoutRoleIds = state.loadoutRoleIds.filter((roleId) => roleId !== id);
       } else if (state.loadoutRoleIds.length < playerMeta.maxDeploySlots) {
@@ -1960,70 +1965,33 @@ function renderLoadout() {
       renderLoadout();
       updateUi();
     });
-    loadoutRoleList.appendChild(button);
   });
-
-  loadoutArtifactList.innerHTML = "";
-  playerMeta.ownedArtifacts.forEach((id) => {
-    const artifact = DATA.artifacts[id];
-    const button = document.createElement("button");
-    button.className = "choice";
-    button.classList.toggle("selected", state.loadoutArtifactId === id);
-    button.innerHTML = `<strong>${artifact.name}</strong><span>法宝 · ${artifact.damage}伤害 · ${artifact.cooldown}秒</span>`;
+  loadoutArtifactList.querySelectorAll("[data-loadout-artifact-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.loadoutArtifactId = id;
+      state.loadoutArtifactId = button.dataset.loadoutArtifactId;
       renderLoadout();
       updateUi();
     });
-    loadoutArtifactList.appendChild(button);
   });
-
-  const roleText = `${state.loadoutRoleIds.length}/${playerMeta.maxDeploySlots}`;
-  const nextSlot = getNextDeploySlotUnlock();
-  loadoutStatus.textContent = loadoutReady()
-    ? `配置完成：1个阵法，${roleText} 名角色，1个法宝。`
-    : `配置未完成：需要 1 个阵法、至少1名角色、1 个法宝。当前上阵位：${roleText}。`;
-  if (nextSlot) {
-    loadoutStatus.textContent += ` ${nextSlot.level}级解锁第${nextSlot.deploySlots}个上阵位。`;
-  }
-  enterDeployButton.disabled = !loadoutReady();
 }
 
 function renderSetupLists() {
-  formationList.innerHTML = "";
-  if (state.selectedFormationId) {
-    const formation = DATA.formations[state.selectedFormationId];
-    const item = document.createElement("div");
-    item.className = "choice selected";
-    item.innerHTML = `<strong>${formation.name}</strong><span>战斗中不可更换</span>`;
-    formationList.appendChild(item);
-  }
-
-  roleList.innerHTML = "";
-  state.availableRoles.forEach((roleId) => {
-    const role = DATA.roles[roleId];
-    const deployed = state.deployedRoles.some((item) => item.roleId === roleId);
-    const button = document.createElement("button");
-    button.className = "choice";
-    button.classList.toggle("selected", roleId === state.selectedRoleId);
-    button.classList.toggle("deployed", deployed);
-    button.innerHTML = `<strong>${role.name}</strong><span>${role.rarity} · ${role.rankTitle || role.rank} · ${role.school} · ${role.trajectoryType}</span>`;
-    button.disabled = state.appState !== APP_STATE.DEPLOY || deployed;
+  renderSystemSetupLists({
+    elements: {
+      formationList,
+      roleList,
+      artifactList,
+    },
+    state,
+    DATA,
+    deployState: APP_STATE.DEPLOY,
+  });
+  roleList.querySelectorAll("[data-setup-role-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.selectedRoleId = roleId;
+      state.selectedRoleId = button.dataset.setupRoleId;
       renderSetupLists();
     });
-    roleList.appendChild(button);
   });
-
-  artifactList.innerHTML = "";
-  if (state.selectedArtifactId) {
-    const artifact = DATA.artifacts[state.selectedArtifactId];
-    const item = document.createElement("div");
-    item.className = "choice selected";
-    item.innerHTML = `<strong>${artifact.name}</strong><span>自动攻击 · 战斗中不可更换</span>`;
-    artifactList.appendChild(item);
-  }
 }
 
 function updateUi() {
@@ -2034,22 +2002,20 @@ function updateUi() {
   }
   if (state.appState === APP_STATE.SETTLEMENT) showView(settlementView);
   renderLobby();
-  waveText.textContent = `${state.wave} / ${DATA.config.maxWaves}`;
-  hpText.textContent = `${Math.max(0, Math.ceil(state.arrayCoreHp))} / ${state.arrayCoreMaxHp}${
-    state.arrayCoreDefense > 0 ? `\n防御：${state.arrayCoreDefense}` : ""
-  }`;
-  const next = nextLevelRequirement();
-  lingqiText.textContent =
-    next < Infinity
-      ? `Lv${state.runLevel} · ${Math.floor(state.lingqi)} / ${next}`
-      : `Lv${state.runLevel} · 已满`;
-  runStatus.textContent = state.status;
-  startButton.textContent = state.appState === APP_STATE.DEPLOY ? "开始战斗" : "战斗中";
-  startButton.disabled = state.appState !== APP_STATE.DEPLOY || state.deployedRoles.length !== state.availableRoles.length;
-  deployHint.textContent =
-    state.appState === APP_STATE.DEPLOY
-      ? `已部署 ${state.deployedRoles.length}/${state.availableRoles.length}。只能放在最底部 5 个护山大阵 / 护山阵眼格。`
-      : "战斗中角色会自动攻击，不能消耗灵石建造。";
+  renderSystemHud({
+    elements: {
+      waveText,
+      hpText,
+      lingqiText,
+      runStatus,
+      startButton,
+      deployHint,
+      deployState: APP_STATE.DEPLOY,
+    },
+    state,
+    DATA,
+    nextLevelRequirement,
+  });
   if (state.appState === APP_STATE.LOADOUT) renderLoadout();
   updateDebugPanel();
 }
