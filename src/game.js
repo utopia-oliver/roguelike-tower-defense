@@ -120,6 +120,12 @@ const {
   updateEnemies: updateSystemEnemies,
 } = window.XM.Enemies;
 const {
+  advanceWave: advanceSystemWave,
+  jumpToWave: jumpToSystemWave,
+  startWave: startSystemWave,
+  updateWaveSpawns: updateSystemWaveSpawns,
+} = window.XM.Waves;
+const {
   createDefaultPlayerProfile: createStoredDefaultPlayerProfile,
   createEmptyDebugOverrides,
   deepClone,
@@ -816,17 +822,15 @@ function startRun() {
 }
 
 function startWave() {
-  const wave = DATA.waves.find((item) => item.wave === state.wave);
-  state.spawnJobs = wave.segments.map((segment) => ({
-    ...segment,
-    remaining: segment.count,
-    nextSpawn: segment.startDelay,
-  }));
-  state.waveActive = true;
-  state.highestWave = Math.max(state.highestWave, state.wave);
-  setStatus(`第 ${state.wave} 波：${wave.goal}`);
+  return startSystemWave({
+    state,
+    DATA,
+    waveNumber: state.wave,
+    callbacks: {
+      setStatus,
+    },
+  });
 }
-
 function createEnemyContext() {
   return {
     DATA,
@@ -865,6 +869,32 @@ function updateEnemies(dt) {
     deltaTime: dt,
   });
 }
+
+function updateWaveSpawns(dt) {
+  return updateSystemWaveSpawns({
+    state,
+    DATA,
+    dt,
+    callbacks: {
+      createEnemy,
+      addEnemy(enemy) {
+        state.enemies.push(enemy);
+      },
+    },
+  });
+}
+
+function advanceWave() {
+  return advanceSystemWave({
+    state,
+    DATA,
+    callbacks: {
+      endGame,
+      setStatus,
+    },
+  });
+}
+
 function gainLingqi(amount) {
   state.lingqi += amount * state.bonuses.lingqiGain;
   let projectedLevel = state.runLevel + state.pendingLevelUps;
@@ -1488,14 +1518,7 @@ function update(dt) {
   if (state.appState !== APP_STATE.BATTLE || state.gameOver) return;
   if (!state.waveActive) startWave();
 
-  state.spawnJobs.forEach((job) => {
-    job.nextSpawn -= dt;
-    while (job.remaining > 0 && job.nextSpawn <= 0) {
-      state.enemies.push(createEnemy(job.enemyId));
-      job.remaining -= 1;
-      job.nextSpawn += job.spawnInterval;
-    }
-  });
+  updateWaveSpawns(dt);
 
   updateEnemies(dt);
   state.enemies = state.enemies.filter((enemy) => !enemy.dead);
@@ -1506,16 +1529,7 @@ function update(dt) {
   updateEffects(dt);
   state.enemies = state.enemies.filter((enemy) => enemy.state !== ENEMY_STATE.DEAD);
 
-  const allSpawned = state.spawnJobs.every((job) => job.remaining <= 0);
-  if (state.waveActive && allSpawned && state.enemies.length === 0) {
-    if (state.wave >= DATA.config.maxWaves) {
-      endGame(true);
-    } else {
-      state.wave += 1;
-      state.waveActive = false;
-      setStatus("本波已清除，下一波即将到来。");
-    }
-  }
+  advanceWave();
   updateUi();
 }
 
@@ -2798,10 +2812,19 @@ function setQingyaDebugLevel(level) {
 }
 
 function jumpToWave(wave) {
-  state.wave = wave;
-  state.waveActive = false;
-  state.spawnJobs = [];
-  state.enemies = [];
+  return jumpToSystemWave({
+    state,
+    DATA,
+    waveNumber: wave,
+    callbacks: {
+      clearEnemies() {
+        state.enemies = [];
+      },
+      clearProjectiles() {
+        state.projectiles = [];
+      },
+    },
+  });
 }
 
 function healArrayCoreFull() {
