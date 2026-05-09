@@ -8,6 +8,12 @@
     return fn(...args);
   }
 
+  function isEnemyTargetable(enemy) {
+    const shared = window.XM.Enemies?.isEnemyTargetable;
+    if (typeof shared === "function") return shared(enemy);
+    return Boolean(enemy && enemy.hp > 0 && !enemy.dead && !enemy.isDead && enemy.state !== "dead" && enemy.state !== "DYING" && !enemy.markedForRemoval);
+  }
+
   function baseArrayCoreMaxHp({ DATA, defaults = {} }) {
     return DATA.config.arrayCore?.maxHp || DATA.config.baseHp || defaults.maxHp;
   }
@@ -81,7 +87,7 @@
   function areaDamage({ state, x, y, radius, damage, source, callbacks, helpers = {} }) {
     const distance = helpers.distance;
     state.enemies.forEach((enemy) => {
-      if (!enemy.dead && distance({ x, y }, enemy) <= radius) {
+      if (isEnemyTargetable(enemy) && distance({ x, y }, enemy) <= radius) {
         call(callbacks, "damageEnemy", enemy, damage, source);
       }
     });
@@ -100,7 +106,7 @@
     const base = call(callbacks, "getFormationBase") || { x: 0, y: 0 };
     const radius = (formation.triggerRadius + state.bonuses.formationRadiusAdd) * grid.cellH;
     const targets = state.enemies
-      .filter((enemy) => !enemy.dead && distance(enemy, base) <= radius)
+      .filter((enemy) => isEnemyTargetable(enemy) && distance(enemy, base) <= radius)
       .sort((a, b) => b.progress - a.progress)
       .slice(0, formation.maxTargets);
     if (!targets.length) return false;

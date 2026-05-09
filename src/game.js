@@ -118,6 +118,7 @@ const {
 } = window.XM.Upgrades;
 const {
   createEnemy: createSystemEnemy,
+  isEnemyTargetable,
   updateEnemies: updateSystemEnemies,
 } = window.XM.Enemies;
 const {
@@ -1262,7 +1263,7 @@ function createRoleProjectiles(role, target, damage, projectileCount) {
 }
 
 function applyRoleHit(role, target, damage) {
-  if (!target || target.dead) return;
+  if (!isEnemyTargetable(target)) return;
   if (role?.sourceType === "artifact") {
     target.takeDamage(damage, role.bondId ? "artifact_bond" : "artifact", role);
     if (role.splashRadius > 0 && role.splashDamageMultiplier > 0) {
@@ -1283,7 +1284,7 @@ function applyRoleHit(role, target, damage) {
       let chainDamage = damage * role.chainDamageMultiplier;
       for (let i = 0; i < role.chainCount; i += 1) {
         const next = state.enemies
-          .filter((enemy) => !enemy.dead && !hitIds.has(enemy.id) && distance(enemy, current) <= role.chainRadius)
+          .filter((enemy) => isEnemyTargetable(enemy) && !hitIds.has(enemy.id) && distance(enemy, current) <= role.chainRadius)
           .sort((a, b) => distance(a, current) - distance(b, current))[0];
         if (!next) break;
         hitIds.add(next.id);
@@ -1317,7 +1318,7 @@ function applyRoleHit(role, target, damage) {
     enemiesBehind(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.65, "role", role));
     if (art.verticalColumns > 1) {
       state.enemies
-        .filter((enemy) => !enemy.dead && enemy !== target && Math.abs(enemy.x - target.x) <= grid.cellW * 1.2)
+        .filter((enemy) => isEnemyTargetable(enemy) && enemy !== target && Math.abs(enemy.x - target.x) <= grid.cellW * 1.2)
         .slice(0, 6)
         .forEach((enemy) => enemy.takeDamage(damage * 0.45, "role", role));
     }
@@ -1353,7 +1354,7 @@ function applyRoleHit(role, target, damage) {
     nearestEnemies(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
     if (art.paralyze > 0) target.addStatus("slow", 0.8, art.paralyze);
     if (art.bossPriorityLightning) {
-      const elite = state.enemies.find((enemy) => !enemy.dead && (enemy.config.isBoss || enemy.config.type === "精英"));
+      const elite = state.enemies.find((enemy) => isEnemyTargetable(enemy) && (enemy.config.isBoss || enemy.config.type === "精英"));
       if (elite) elite.takeDamage(damage * 0.9, "role", role);
     }
   }
@@ -1394,7 +1395,7 @@ function chooseTarget(source, range) {
 function sideTargets(target, count) {
   if (count <= 0) return [];
   return state.enemies
-    .filter((enemy) => !enemy.dead && enemy !== target && Math.abs(enemy.y - target.y) < grid.cellH * 0.8)
+    .filter((enemy) => isEnemyTargetable(enemy) && enemy !== target && Math.abs(enemy.y - target.y) < grid.cellH * 0.8)
     .sort((a, b) => Math.abs(a.x - target.x) - Math.abs(b.x - target.x))
     .slice(0, count);
 }
@@ -1403,7 +1404,7 @@ function horizontalTargets(target, count) {
   return state.enemies
     .filter(
       (enemy) =>
-        !enemy.dead &&
+        isEnemyTargetable(enemy) &&
         enemy !== target &&
         Math.abs(enemy.y - target.y) <= grid.cellH * 0.65,
     )
@@ -1415,7 +1416,7 @@ function enemiesBehind(target, count) {
   return state.enemies
     .filter(
       (enemy) =>
-        !enemy.dead &&
+        isEnemyTargetable(enemy) &&
         enemy !== target &&
         enemy.lane === target.lane &&
         enemy.progress < target.progress &&
@@ -1427,7 +1428,7 @@ function enemiesBehind(target, count) {
 
 function nearestEnemies(target, count) {
   return state.enemies
-    .filter((enemy) => !enemy.dead && enemy !== target)
+    .filter((enemy) => isEnemyTargetable(enemy) && enemy !== target)
     .sort((a, b) => distance(a, target) - distance(b, target))
     .slice(0, count);
 }
@@ -1485,18 +1486,28 @@ function drawShot(x, y, tx, ty, color) {
 
 function spawnArtifactProjectile(payload) {
   const { artifact, bond, target, origin, projectileIndex = 0, projectileCount = 1 } = payload;
-  if (!target || target.dead) return;
+  if (!isEnemyTargetable(target)) return;
   const dx = target.x - origin.x;
   const dy = target.y - origin.y;
   const len = Math.hypot(dx, dy) || 1;
   const baseVx = dx / len;
   const baseVy = dy / len;
-  const angleOffset = ((projectileSpreadAngles(projectileCount)[projectileIndex] || 0) * Math.PI) / 180;
-  const vx = baseVx * Math.cos(angleOffset) - baseVy * Math.sin(angleOffset);
-  const vy = baseVx * Math.sin(angleOffset) + baseVy * Math.cos(angleOffset);
   const centered = projectileIndex - (projectileCount - 1) / 2;
   const normalX = -baseVy;
   const normalY = baseVx;
+  const maxAimOffset = len > 420 ? 42 : 36;
+  const aimStep = projectileCount <= 1 ? 0 : Math.min(14, maxAimOffset / Math.max(1, (projectileCount - 1) / 2));
+  const aimOffset = Math.max(-maxAimOffset, Math.min(maxAimOffset, centered * aimStep));
+  const aimX = target.x + normalX * aimOffset;
+  const aimY = target.y + normalY * aimOffset;
+  const aimDx = aimX - origin.x;
+  const aimDy = aimY - origin.y;
+  const aimLen = Math.hypot(aimDx, aimDy) || 1;
+  const aimBaseVx = aimDx / aimLen;
+  const aimBaseVy = aimDy / aimLen;
+  const angleOffset = ((projectileSpreadAngles(projectileCount)[projectileIndex] || 0) * Math.PI) / 180;
+  const vx = aimBaseVx * Math.cos(angleOffset) - aimBaseVy * Math.sin(angleOffset);
+  const vy = aimBaseVx * Math.sin(angleOffset) + aimBaseVy * Math.cos(angleOffset);
   const offset = centered * 5;
   state.projectiles.push({
     id: makeId(),
@@ -1514,14 +1525,14 @@ function spawnArtifactProjectile(payload) {
     damage: payload.damage || 0,
     width: 9,
     length: 30,
-    radius: payload.hitRadius || 14,
-    hitRadius: payload.hitRadius || 14,
-    collisionPadding: 6,
+    radius: payload.hitRadius || 16,
+    hitRadius: payload.hitRadius || 16,
+    collisionPadding: 8,
     pierce: (payload.pierceCount || 0) > 0,
     remainingPierce: payload.pierceCount || 0,
     hitEnemyIds: new Set(),
     lifetime: 0,
-    maxLifetime: 1.8,
+    maxLifetime: 2.4,
     effectType: "artifact",
     color: payload.color || "#a7f3ff",
     trailColor: "rgba(167, 243, 255, 0.28)",

@@ -141,6 +141,12 @@
     return fn(...args);
   }
 
+  function isEnemyTargetable(enemy) {
+    const shared = window.XM.Enemies?.isEnemyTargetable;
+    if (typeof shared === "function") return shared(enemy);
+    return Boolean(enemy && enemy.hp > 0 && !enemy.dead && !enemy.isDead && enemy.state !== "dead" && enemy.state !== "DYING" && !enemy.markedForRemoval);
+  }
+
   function getSelectedArtifactIds(state) {
     if (Array.isArray(state.selectedArtifactIds)) return state.selectedArtifactIds.filter(Boolean);
     return state.selectedArtifactId ? [state.selectedArtifactId] : [];
@@ -221,7 +227,7 @@
   }
 
   function liveEnemies(state) {
-    return (state.enemies || []).filter((enemy) => !enemy.dead);
+    return (state.enemies || []).filter(isEnemyTargetable);
   }
 
   function nearestEnemy(state, origin = { x: 0, y: 0 }) {

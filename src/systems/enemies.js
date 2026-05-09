@@ -27,6 +27,19 @@
     return typeof value === "function" ? value() : Number(value || 0);
   }
 
+  function isEnemyTargetable(enemy) {
+    return Boolean(
+      enemy &&
+        enemy.hp > 0 &&
+        !enemy.dead &&
+        !enemy.isDead &&
+        enemy.state !== ENEMY_STATE.DEAD &&
+        enemy.state !== "dead" &&
+        enemy.state !== "DYING" &&
+        !enemy.markedForRemoval,
+    );
+  }
+
   class Enemy {
     constructor(enemyId, context = {}) {
       const data = getData(context);
@@ -44,6 +57,8 @@
       this.attackDamage = config.attackDamage || config.baseDamage;
       this.spiritQiReward = config.spiritQiReward || config.lingqiReward;
       this.dead = false;
+      this.isDead = false;
+      this.markedForRemoval = false;
       this.state = ENEMY_STATE.MOVING;
       this.attackTimer = 0;
       this.attackInterval = config.attackInterval || (this.config.isBoss ? 2.5 : 1.5);
@@ -88,7 +103,7 @@
 
     takeDamage(rawAmount, source = "role", attacker = null) {
       const state = getState(this.context);
-      if (this.state === ENEMY_STATE.DEAD) return false;
+      if (!isEnemyTargetable(this)) return false;
       let amount = rawAmount;
       if (this.config.isBoss) amount *= state.bonuses.bossDamage;
       const vulnerable = this.statuses
@@ -116,6 +131,8 @@
       const data = getData(this.context);
       if (this.state === ENEMY_STATE.DEAD) return;
       this.dead = true;
+      this.isDead = true;
+      this.markedForRemoval = true;
       this.state = ENEMY_STATE.DEAD;
       state.kills += 1;
       if (this.config.isBoss) {
@@ -205,7 +222,7 @@
       if (this.config.id === "boss_bloodlotus" && this.abilityTimer >= 10) {
         this.abilityTimer = 0;
         state.enemies.forEach((enemy) => {
-          if (!enemy.dead && call(this.context, "distance", this, enemy) <= grid.cellW * 2) {
+          if (isEnemyTargetable(enemy) && call(this.context, "distance", this, enemy) <= grid.cellW * 2) {
             enemy.hp = Math.min(enemy.maxHp, enemy.hp + 90);
           }
         });
@@ -232,6 +249,7 @@
   Object.assign(window.XM.Enemies, {
     Enemy,
     createEnemy,
+    isEnemyTargetable,
     updateEnemies,
   });
 })();

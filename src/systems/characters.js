@@ -8,6 +8,12 @@
     return fn(...args);
   }
 
+  function isEnemyTargetable(enemy) {
+    const shared = window.XM.Enemies?.isEnemyTargetable;
+    if (typeof shared === "function") return shared(enemy);
+    return Boolean(enemy && enemy.hp > 0 && !enemy.dead && !enemy.isDead && enemy.state !== "dead" && enemy.state !== "DYING" && !enemy.markedForRemoval);
+  }
+
   function getPlayerLevelExpRequirement(level) {
     return Math.floor(100 + (level - 1) * 60 + Math.pow(level - 1, 1.35) * 25);
   }
@@ -323,7 +329,7 @@
 
   function fireRole({ state, DATA, role, targetId, appState, battleState, callbacks, helpers, random = Math.random }) {
     if (appState !== battleState) return false;
-    const target = state.enemies.find((enemy) => enemy.id === targetId && !enemy.dead);
+    const target = state.enemies.find((enemy) => enemy.id === targetId && isEnemyTargetable(enemy));
     if (!target) return false;
     const config = DATA.roles[role.roleId];
     const stats = helpers.roleStats(role);
@@ -354,7 +360,7 @@
   function chooseTarget({ state, DATA, source, range, helpers }) {
     const config = DATA.roles[source.roleId] || {};
     const candidates = state.enemies.filter(
-      (enemy) => !enemy.dead && helpers.distance(source, enemy) <= range,
+      (enemy) => isEnemyTargetable(enemy) && helpers.distance(source, enemy) <= range,
     );
     if (!candidates.length) return null;
     if (config.trajectoryType === "execute") {

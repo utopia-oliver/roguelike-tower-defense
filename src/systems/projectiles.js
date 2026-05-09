@@ -4,6 +4,12 @@
 
   const { colors } = window.XM.Constants;
 
+  function isEnemyTargetable(enemy) {
+    const shared = window.XM.Enemies?.isEnemyTargetable;
+    if (typeof shared === "function") return shared(enemy);
+    return Boolean(enemy && enemy.hp > 0 && !enemy.dead && !enemy.isDead && enemy.state !== "dead" && enemy.state !== "DYING" && !enemy.markedForRemoval);
+  }
+
   function projectileDefaults(config, art) {
     const type = config.projectileType || config.trajectoryType || "projectile";
     const defaults = {
@@ -11,20 +17,20 @@
       width: 7,
       length: 24,
       radius: 8,
-      hitRadius: 10,
-      collisionPadding: 4,
+      hitRadius: 14,
+      collisionPadding: 8,
       color: colors[config.school] || "#dbeafe",
       trailColor: "rgba(255,255,255,0.22)",
-      maxLifetime: 1.5,
+      maxLifetime: 2.4,
     };
-    if (type === "flying_sword") Object.assign(defaults, { speed: 360, width: 10, length: 34, radius: 14, hitRadius: 14, collisionPadding: 6, maxLifetime: 1.8, color: "#d9fbff", trailColor: "rgba(125, 211, 252, 0.28)" });
+    if (type === "flying_sword") Object.assign(defaults, { speed: 360, width: 10, length: 34, radius: 16, hitRadius: 18, collisionPadding: 10, maxLifetime: 2.6, color: "#d9fbff", trailColor: "rgba(125, 211, 252, 0.28)" });
     if (type === "fire_talisman") Object.assign(defaults, { speed: 350, width: 10, length: 18, radius: 10, color: "#ffb15c", trailColor: "rgba(239, 123, 69, 0.28)" });
     if (type === "frost_bolt") Object.assign(defaults, { speed: 370, width: 8, length: 22, radius: 9, color: "#9eeaff", trailColor: "rgba(114, 200, 238, 0.28)" });
     if (type === "poison_needle") Object.assign(defaults, { speed: 430, width: 5, length: 24, radius: 7, color: "#d8b4fe", trailColor: "rgba(169, 122, 216, 0.28)" });
-    if (type === "sword_wave") Object.assign(defaults, { speed: 400, width: 9, length: 34, radius: 9, color: "#e8eef8", trailColor: "rgba(215, 225, 236, 0.22)" });
+    if (type === "sword_wave") Object.assign(defaults, { speed: 400, width: 9, length: 34, radius: 12, hitRadius: 16, collisionPadding: 8, color: "#e8eef8", trailColor: "rgba(215, 225, 236, 0.22)" });
     if (type === "spear_arc") Object.assign(defaults, { speed: 390, width: 12, length: 42, radius: 11, color: "#f4d47c", trailColor: "rgba(214, 179, 106, 0.26)" });
     if (type === "thunder_arc") Object.assign(defaults, { speed: 440, width: 8, length: 26, radius: 9, color: "#ddd6fe", trailColor: "rgba(196, 181, 253, 0.3)" });
-    if (art?.giantSword) Object.assign(defaults, { speed: 430, width: 52, length: 160, radius: 54, hitRadius: 54, collisionPadding: 18, maxLifetime: 2.5, color: "#e9ffff", trailColor: "rgba(250, 204, 21, 0.34)" });
+    if (art?.giantSword) Object.assign(defaults, { speed: 430, width: 52, length: 160, radius: 54, hitRadius: 54, collisionPadding: 18, maxLifetime: 2.8, color: "#e9ffff", trailColor: "rgba(250, 204, 21, 0.34)" });
     defaults.speed *= art?.speedMult || 1;
     if (art?.giantSword) defaults.speed *= art.giantSwordSpeedMult || 1;
     defaults.width += art?.widthAdd || 0;
@@ -37,12 +43,30 @@
 
   function projectileSpreadAngles(count) {
     if (count <= 1) return [0];
-    if (count === 2) return [-5, 5];
-    if (count === 3) return [-7, 0, 7];
-    if (count === 4) return [-9, -3, 3, 9];
-    if (count === 5) return [-12, -6, 0, 6, 12];
-    const step = 24 / Math.max(1, count - 1);
-    return Array.from({ length: count }, (_, index) => -12 + step * index);
+    if (count === 2) return [-3, 3];
+    if (count === 3) return [-4, 0, 4];
+    if (count === 4) return [-5, -2, 2, 5];
+    if (count === 5) return [-7, -3.5, 0, 3.5, 7];
+    const maxAngle = 8;
+    const step = (maxAngle * 2) / Math.max(1, count - 1);
+    return Array.from({ length: count }, (_, index) => -maxAngle + step * index);
+  }
+
+  function projectileAimOffsets(count, distanceToTarget = 0) {
+    if (count <= 1) return [0];
+    const scale = Math.min(1.18, Math.max(0.85, distanceToTarget / 360));
+    const maxOffset = distanceToTarget > 420 ? 42 : 36;
+    const presets = {
+      2: [-10, 10],
+      3: [-14, 0, 14],
+      4: [-20, -7, 7, 20],
+      5: [-26, -13, 0, 13, 26],
+    };
+    const offsets = presets[count] || Array.from({ length: count }, (_, index) => {
+      const centered = index - (count - 1) / 2;
+      return centered * Math.min(14, maxOffset / Math.max(1, (count - 1) / 2));
+    });
+    return offsets.map((offset) => Math.max(-maxOffset, Math.min(maxOffset, offset * scale)));
   }
 
   function getPredictedTargetPosition(source, target, projectileSpeed, options = {}) {
@@ -72,7 +96,7 @@
       if (state.appState !== helpers.battleState) return;
       const stats = callbacks.roleStats(role);
       const liveTarget =
-        state.enemies.find((enemy) => enemy.id === target.id && !enemy.dead) ||
+        (target && state.enemies.find((enemy) => enemy.id === target.id && isEnemyTargetable(enemy))) ||
         callbacks.chooseTarget(role, stats.range);
       if (!liveTarget) return;
       createRoleProjectiles({
@@ -120,13 +144,21 @@
     const normalY = baseVx;
     const actualCount = art.giantSword ? 1 : projectileCount;
     const spreadAngles = projectileSpreadAngles(actualCount);
+    const aimOffsets = projectileAimOffsets(actualCount, len);
     for (let i = 0; i < actualCount; i += 1) {
       const centered = i - (actualCount - 1) / 2;
+      const aimX = predicted.x + normalX * (aimOffsets[i] || 0);
+      const aimY = predicted.y + normalY * (aimOffsets[i] || 0);
+      const aimDx = aimX - role.x;
+      const aimDy = aimY - role.y;
+      const aimLen = Math.hypot(aimDx, aimDy) || 1;
+      const aimBaseVx = aimDx / aimLen;
+      const aimBaseVy = aimDy / aimLen;
       const angle = ((spreadAngles[i] || 0) * Math.PI) / 180;
       const cos = Math.cos(angle);
       const sin = Math.sin(angle);
-      const vx = baseVx * cos - baseVy * sin;
-      const vy = baseVx * sin + baseVy * cos;
+      const vx = aimBaseVx * cos - aimBaseVy * sin;
+      const vy = aimBaseVx * sin + aimBaseVy * cos;
       const sideDamage = art.giantSword ? art.giantSwordDamageMult : centered === 0 ? 1 : art.sideDamageScale;
       const offset = art.giantSword ? 0 : centered * 4;
       const pierceCount = art.giantSword ? 6 + state.bonuses.pierceAdd : art.pierceAdd + state.bonuses.pierceAdd;
@@ -208,7 +240,7 @@
     helpers = {},
   }) {
     for (const enemy of state.enemies) {
-      if (enemy.dead || projectile.hitEnemyIds.has(enemy.id)) continue;
+      if (!isEnemyTargetable(enemy) || projectile.hitEnemyIds.has(enemy.id)) continue;
       if (!checkProjectileHitEnemy(projectile, enemy, helpers)) continue;
       projectile.hitEnemyIds.add(enemy.id);
       const eliteBossMultiplier = enemy.config.isBoss || enemy.config.type === "精英"
