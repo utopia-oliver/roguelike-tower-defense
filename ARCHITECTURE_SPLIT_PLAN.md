@@ -186,7 +186,8 @@ src/
     formations.js
   ui/
     render.js
-    debug-panel.js
+    canvas-render.js
+    debug-panel.js  # 暂缓拆分，不加载
   utils/
     math.js
 ```
@@ -240,9 +241,11 @@ src/
   - DOM 渲染：大厅、战前配置、布阵列表、HUD、结算、机缘弹窗。
   - 最后拆，因为它依赖最多，也最容易和事件监听互相影响。
 
+- `src/ui/canvas-render.js`
+  - Canvas 绘制模块，负责地图区域、护山大阵、角色、怪物、弹道、浮动文字和 Boss 血条。
+
 - `src/ui/debug-panel.js`
-  - 调试面板状态、数据表、调试覆盖、调试按钮、导出、测试快照。
-  - 可以在核心系统稳定后拆，因为它横跨所有运行时数据。
+  - 暂缓拆分，不在 index.html 中加载；开发者调试面板继续保留在 src/game.js，稳定性优先。
 
 ## 四、低风险拆分顺序
 
@@ -423,3 +426,42 @@ node scripts\debug_panel_acceptance_test.js
 - 本步骤没有拆分任何运行时代码。
 - 本步骤不应修改 `src/game.js`、`data/game-data.js`、`index.html` 的功能代码。
 - 本步骤不影响游戏运行。
+
+## 当前模块职责 v2
+
+- `src/core/constants.js`
+  - 维护运行状态、敌人状态、颜色、稀有度、抽卡成本、调试 Tab、本地存储 key 等共享常量。
+- `src/core/storage.js`
+  - 维护玩家局外存档与调试覆盖数据的 localStorage 读写、默认值、归一化和基础对象合并工具。
+- `src/core/state.js`
+  - 维护局内默认状态、运行时集合、默认 modifiers、武学分支初始状态，以及新开一局时的运行时状态重置辅助。
+- `src/utils/math.js`
+  - 维护无状态数学工具，例如距离、线段碰撞距离等纯函数。
+- `src/systems/projectiles.js`
+  - 维护 projectile 默认配置、发射、移动、生命周期、碰撞检测、命中处理入口和弹道辅助函数。
+- `src/systems/martial-arts.js`
+  - 维护先天武学绑定、武学等级查询、青崖剑诀分支状态、分支加成和 attackParams 计算。
+- `src/systems/upgrades.js`
+  - 维护局内升级候选生成、过滤、权重、去重、有效性判断和机缘卡牌基础 HTML。
+- `src/systems/enemies.js`
+  - 维护 `Enemy` 类、怪物移动、攻击阵眼、受击、死亡、状态效果和特殊能力入口。
+- `src/systems/waves.js`
+  - 维护波次启动、出怪队列推进、波次完成判断、跳波和下一波推进辅助。
+- `src/systems/artifacts.js`
+  - 维护法宝配置读取、运行时状态、冷却、触发、伤害和 modifier 应用入口。
+- `src/systems/formations.js`
+  - 维护护山大阵 / 阵眼初始化、阵眼受击、防御计算、回满血、阵法触发和范围伤害辅助。
+- `src/systems/characters.js`
+  - 维护局外角色成长、解锁、升级、抽卡、部署判断、部署、局内角色属性、目标选择和角色开火入口。
+- `src/ui/render.js`
+  - 维护普通 DOM UI 渲染，包括大厅、战前配置、布阵列表、HUD、结算和玩家机缘卡牌显示。
+- `src/ui/canvas-render.js`
+  - 维护 Canvas 绘制，包括地图区域、护山大阵、角色、怪物、弹道、浮动文字和 Boss 血条。
+- `src/game.js`
+  - 保留 APP_STATE 流程协调、`startRun` / `enterLoadout` / `enterDeploy` / `endGame`、主 `update` / `loop`、模块 callbacks/helpers 装配、DOM 事件绑定、Canvas 点击部署、局内升级弹窗主流程、`applyPerk`、开发者调试面板、浏览器测试接口和玩家存档保存时机协调。
+
+当前约定：
+
+- `src/ui/debug-panel.js` 暂不拆分、不加载；开发者调试面板继续保留在 `src/game.js`。
+- `src/game.js` 中允许保留薄包装函数，用于统一向模块传入 `state`、`DATA`、callbacks 和 helpers，避免大范围改调用点。
+- 普通 `<script>` 加载和 `window.XM.*` 命名空间方案继续保留，不改为 `type="module"`。
