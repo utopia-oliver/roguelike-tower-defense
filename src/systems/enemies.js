@@ -91,6 +91,10 @@
       if (this.state === ENEMY_STATE.DEAD) return false;
       let amount = rawAmount;
       if (this.config.isBoss) amount *= state.bonuses.bossDamage;
+      const vulnerable = this.statuses
+        .filter((status) => status.type === "vulnerable")
+        .reduce((max, status) => Math.max(max, status.value), 0);
+      if (vulnerable > 0) amount *= 1 + vulnerable;
       if (this.hasStatus("slow")) amount *= 1 + state.bonuses.slowVulnerability;
       this.hp -= amount;
       call(this.context, "addFloater", {

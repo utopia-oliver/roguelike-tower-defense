@@ -172,9 +172,14 @@ window.GAME_DATA = {
     "artifacts": [
       "qingming_sword_box",
       "lihuo_gourd",
-      "zhenyao_bell",
+      "zhenmo_bell",
       "xuanbing_mirror",
-      "leiwen_seal"
+      "leiwen_seal",
+      "wandu_orb",
+      "shanhe_seal",
+      "xingyun_board",
+      "guiyuan_banner",
+      "zhanyao_blades"
     ]
   },
   "formations": {
@@ -617,20 +622,21 @@ window.GAME_DATA = {
       "attackText": "每隔一段时间向敌人密集区域释放离火爆裂，造成范围伤害。",
       "description": "范围爆发型法宝，偏群伤和清小怪。"
     },
-    "zhenyao_bell": {
-      "id": "zhenyao_bell",
-      "name": "镇妖铃",
+    "zhenmo_bell": {
+      "id": "zhenmo_bell",
+      "name": "镇魔铃",
       "rarity": "稀有",
-      "role": "控制辅助",
-      "type": "control_area",
-      "damage": 8.0,
-      "cooldown": 6.5,
+      "role": "削弱易伤",
+      "type": "debuff_area",
+      "damage": 6.0,
+      "cooldown": 6.0,
       "areaRadius": 120,
-      "slowMultiplier": 0.65,
-      "slowDuration": 2.0,
+      "vulnerableMultiplier": 1.18,
+      "attackDamageMultiplier": 0.85,
+      "debuffDuration": 3.0,
       "targetRule": "nearest_to_core",
-      "attackText": "每隔一段时间震荡靠近阵眼的敌人，造成少量伤害并附加减速。",
-      "description": "控制辅助型法宝，偏减速、打断、阵前减压。"
+      "attackText": "震慑靠近阵眼的敌人，使其进入破魔状态，受到伤害提高且攻击阵眼伤害降低。",
+      "description": "削弱 / 易伤型法宝，不做减速主控场，专门压制阵前威胁。"
     },
     "xuanbing_mirror": {
       "id": "xuanbing_mirror",
@@ -663,6 +669,80 @@ window.GAME_DATA = {
       "targetRule": "highest_hp_or_nearest",
       "attackText": "每隔一段时间召下一道雷击命中一个敌人，并向附近敌人跳跃。",
       "description": "雷击连锁型法宝，偏跳跃伤害、打密集怪、补刀。"
+    },
+    "wandu_orb": {
+      "id": "wandu_orb",
+      "name": "万毒珠",
+      "rarity": "史诗",
+      "role": "持续伤害",
+      "type": "poison_area",
+      "damage": 6.0,
+      "cooldown": 5.8,
+      "areaRadius": 80,
+      "poisonDamage": 4,
+      "poisonDuration": 4.0,
+      "poisonTickInterval": 1.0,
+      "targetRule": "densest_cluster",
+      "attackText": "向敌人密集区域释放毒雾，使范围内敌人中毒，持续扣血。",
+      "description": "持续伤害型法宝，偏中毒、磨血、打高血量怪。"
+    },
+    "shanhe_seal": {
+      "id": "shanhe_seal",
+      "name": "山河印",
+      "rarity": "史诗",
+      "role": "重压控制",
+      "type": "crush_area",
+      "damage": 12.0,
+      "cooldown": 7.0,
+      "areaRadius": 95,
+      "stunDuration": 0.4,
+      "knockbackDistance": 20,
+      "targetRule": "nearest_to_core",
+      "attackText": "在敌人靠近阵眼时落下山河印，对范围内敌人造成伤害，并短暂停顿。",
+      "description": "重压控制型法宝，偏压制、短暂停顿和范围打断。"
+    },
+    "xingyun_board": {
+      "id": "xingyun_board",
+      "name": "星陨棋盘",
+      "rarity": "传说",
+      "role": "随机落点",
+      "type": "meteor",
+      "damage": 10.0,
+      "cooldown": 5.2,
+      "meteorCount": 3,
+      "areaRadius": 45,
+      "targetRule": "random_enemies",
+      "attackText": "每隔一段时间在多个敌人附近落下星陨，造成小范围伤害。",
+      "description": "随机落点型法宝，偏持续覆盖、随机陨星和战场压制。"
+    },
+    "guiyuan_banner": {
+      "id": "guiyuan_banner",
+      "name": "归元灵幡",
+      "rarity": "传说",
+      "role": "回复增益",
+      "type": "support",
+      "heal": 18,
+      "cooldown": 8.0,
+      "targetRule": "array_core",
+      "attackText": "周期性为护山阵眼回复生命。",
+      "description": "回复 / 增益型法宝，偏阵眼续航和局内容错。"
+    },
+    "zhanyao_blades": {
+      "id": "zhanyao_blades",
+      "name": "斩妖飞刃",
+      "rarity": "稀有",
+      "role": "散射弹道",
+      "type": "projectile",
+      "damage": 9.0,
+      "cooldown": 3.8,
+      "projectileType": "artifact_blade_projectile",
+      "projectileCount": 3,
+      "pierceCount": 0,
+      "speed": 460,
+      "hitRadius": 12,
+      "targetRule": "multiple_nearest",
+      "attackText": "向多个不同敌人发射飞刃 projectile。",
+      "description": "散射弹道型法宝，偏多目标、低伤高频、清残血。"
     }
   },
   "levels": [

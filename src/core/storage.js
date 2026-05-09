@@ -28,7 +28,10 @@
   }
 
   function compactIdList(ids, collection) {
-    return [...new Set((Array.isArray(ids) ? ids : []).filter((id) => !collection || collection[id]))];
+    const idAliases = {
+      zhenyao_bell: "zhenmo_bell",
+    };
+    return [...new Set((Array.isArray(ids) ? ids : []).map((id) => idAliases[id] || id).filter((id) => !collection || collection[id]))];
   }
 
   function normalizeLevelMap(value, validIds, fallbackLevels = {}) {

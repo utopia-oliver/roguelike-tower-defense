@@ -90,6 +90,16 @@
         return `连锁范围 +${Math.round(((Number(value) || 1) - 1) * 100)}%`;
       case "artifact_freeze_chance_add":
         return `冻结概率 +${Math.round((Number(value) || 0) * 100)}%`;
+      case "artifact_poison_duration_add":
+        return `中毒时间 +${value ?? 1}秒`;
+      case "artifact_poison_damage_mult":
+        return `毒伤 +${Math.round((Number(value) || 0) * 100)}%`;
+      case "artifact_heal_mult":
+        return `治疗 +${Math.round((Number(value) || 0) * 100)}%`;
+      case "artifact_debuff_duration_add":
+        return `破魔时间 +${value ?? 1}秒`;
+      case "artifact_vulnerable_mult":
+        return "易伤提升";
       default:
         return perk.description || "效果将在本局生效";
     }
@@ -300,11 +310,11 @@
         ["volley", "连珠火落", "离火葫芦额外爆裂1次。", "额外爆裂 +1", "artifact_volley_count_add", 1],
         ["cooldown", "灵火自生", "离火葫芦冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
       ],
-      zhenyao_bell: [
-        ["slow_duration", "镇魂余响", "镇妖铃减速持续时间增加0.8秒。", "减速时间 +0.8秒", "artifact_slow_duration_add", 0.8],
-        ["damage", "铃音震魄", "镇妖铃伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
-        ["area", "摄妖清音", "镇妖铃影响范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
-        ["cooldown", "灵响回环", "镇妖铃冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      zhenmo_bell: [
+        ["vulnerable", "魔音破甲", "镇魔铃破魔易伤效果提升。", "易伤提升", "artifact_vulnerable_mult", 0.08],
+        ["debuff_duration", "镇魄余响", "镇魔铃破魔持续时间增加0.8秒。", "破魔时间 +0.8秒", "artifact_debuff_duration_add", 0.8],
+        ["area", "铃音扩散", "镇魔铃影响范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
+        ["cooldown", "灵响回环", "镇魔铃冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
       ],
       xuanbing_mirror: [
         ["damage", "寒镜凝霜", "玄冰玉镜伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
@@ -317,6 +327,36 @@
         ["chain", "雷走群妖", "雷纹法印连锁次数 +1。", "连锁次数 +1", "artifact_chain_count_add", 1],
         ["chain_radius", "引雷入阵", "雷纹法印连锁范围提升20%。", "连锁范围 +20%", "artifact_chain_radius_mult", 1.2],
         ["cooldown", "灵雷自转", "雷纹法印冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+      wandu_orb: [
+        ["area", "毒雾弥散", "万毒珠毒雾范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
+        ["poison_damage", "蚀骨毒息", "万毒珠毒伤提升25%。", "毒伤 +25%", "artifact_poison_damage_mult", 0.25],
+        ["poison_duration", "毒入经脉", "万毒珠中毒持续时间增加1秒。", "中毒时间 +1秒", "artifact_poison_duration_add", 1],
+        ["cooldown", "毒珠自转", "万毒珠冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+      shanhe_seal: [
+        ["damage", "重岳压顶", "山河印伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["area", "山势扩张", "山河印范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
+        ["slow_duration", "镇地余威", "山河印停顿时间增加0.5秒。", "停顿时间 +0.5秒", "artifact_slow_duration_add", 0.5],
+        ["cooldown", "灵印自鸣", "山河印冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+      xingyun_board: [
+        ["damage", "星火增辉", "星陨棋盘伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["volley", "群星落子", "星陨棋盘陨星数量 +1。", "陨星数量 +1", "artifact_volley_count_add", 1],
+        ["area", "星域扩张", "星陨棋盘爆裂范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
+        ["cooldown", "星机轮转", "星陨棋盘冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+      guiyuan_banner: [
+        ["heal", "灵息回流", "归元灵幡治疗量提升25%。", "治疗 +25%", "artifact_heal_mult", 0.25],
+        ["volley", "幡影护阵", "归元灵幡额外回复一次小治疗。", "额外回复 +1", "artifact_volley_count_add", 1],
+        ["cooldown", "灵机不绝", "归元灵幡冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+        ["low_hp", "回元生息", "阵眼低血时归元灵幡治疗量额外提升。", "低血治疗提升", "artifact_heal_mult", 0.35],
+      ],
+      zhanyao_blades: [
+        ["projectile", "刃影连发", "斩妖飞刃飞刃数量 +1。", "飞刃数量 +1", "artifact_projectile_count_add", 1],
+        ["damage", "斩妖锋芒", "斩妖飞刃伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["cooldown", "飞刃疾走", "斩妖飞刃冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+        ["execute", "追妖寻隙", "斩妖飞刃优先攻击残血敌人。", "优先残血", "artifact_vulnerable_mult", 0],
       ],
     };
     return artifactIds.flatMap((artifactId) => {

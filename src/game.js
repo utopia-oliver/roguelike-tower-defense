@@ -1271,6 +1271,27 @@ function applyRoleHit(role, target, damage) {
     if (role.slowDuration > 0 && role.slowMultiplier) {
       target.addStatus("slow", role.slowDuration, Math.max(0, 1 - role.slowMultiplier));
     }
+    if (role.debuffDuration > 0 && role.vulnerableMultiplier) {
+      target.addStatus("vulnerable", role.debuffDuration, Math.max(0, role.vulnerableMultiplier - 1));
+    }
+    if (role.debuffDuration > 0 && role.attackDamageMultiplier) {
+      target.addStatus("weaken_attack", role.debuffDuration, Math.max(0, 1 - role.attackDamageMultiplier));
+    }
+    if (role.chainCount > 0 && role.chainRadius > 0) {
+      let current = target;
+      const hitIds = new Set([target.id]);
+      let chainDamage = damage * role.chainDamageMultiplier;
+      for (let i = 0; i < role.chainCount; i += 1) {
+        const next = state.enemies
+          .filter((enemy) => !enemy.dead && !hitIds.has(enemy.id) && distance(enemy, current) <= role.chainRadius)
+          .sort((a, b) => distance(a, current) - distance(b, current))[0];
+        if (!next) break;
+        hitIds.add(next.id);
+        next.takeDamage(chainDamage, role.bondId ? "artifact_bond" : "artifact", role);
+        current = next;
+        chainDamage *= role.chainDamageMultiplier;
+      }
+    }
     return;
   }
   const config = DATA.roles[role.roleId];
@@ -1514,6 +1535,12 @@ function spawnArtifactProjectile(payload) {
       splashDamageMultiplier: payload.splashDamageMultiplier || 0,
       slowMultiplier: payload.slowMultiplier,
       slowDuration: payload.slowDuration || 0,
+      vulnerableMultiplier: payload.vulnerableMultiplier,
+      attackDamageMultiplier: payload.attackDamageMultiplier,
+      debuffDuration: payload.debuffDuration || 0,
+      chainCount: payload.chainCount || 0,
+      chainRadius: payload.chainRadius || 0,
+      chainDamageMultiplier: payload.chainDamageMultiplier || 0.65,
     },
     sourceConfig: artifact,
     splashRadius: 0,
@@ -1596,6 +1623,17 @@ function updateArtifact(dt) {
       drawShot,
       getArtifactOrigin() {
         return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
+      },
+      healArrayCore(amount) {
+        state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + amount);
+        syncBaseHpAliases();
+        state.floaters.push({
+          x: canvas.width / 2,
+          y: canvas.height - grid.cellH * 0.7,
+          text: `+${Math.ceil(amount)}`,
+          ttl: 0.75,
+          color: "#86efac",
+        });
       },
       spawnArtifactProjectile,
     },
@@ -1914,6 +1952,21 @@ function applyPerk(perk) {
       break;
     case "artifact_freeze_chance_add":
       getArtifactModifier(effect.artifactId).freezeChanceAdd += effect.value;
+      break;
+    case "artifact_poison_duration_add":
+      getArtifactModifier(effect.artifactId).poisonDurationAdd += effect.value;
+      break;
+    case "artifact_poison_damage_mult":
+      getArtifactModifier(effect.artifactId).poisonDamageMultiplier *= 1 + effect.value;
+      break;
+    case "artifact_heal_mult":
+      getArtifactModifier(effect.artifactId).healMultiplier *= 1 + effect.value;
+      break;
+    case "artifact_debuff_duration_add":
+      getArtifactModifier(effect.artifactId).debuffDurationAdd += effect.value;
+      break;
+    case "artifact_vulnerable_mult":
+      getArtifactModifier(effect.artifactId).vulnerableMultiplier += effect.value;
       break;
     case "horizontal_bonus":
       state.bonuses.horizontalBonus += effect.value;
