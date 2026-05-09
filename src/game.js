@@ -142,8 +142,12 @@ const {
 } = window.XM.Formations;
 const {
   applyPlayerLevelUnlocks: applySystemPlayerLevelUnlocks,
+  cellCenter: getSystemCellCenter,
   checkPlayerLevelUp: checkSystemPlayerLevelUp,
+  chooseTarget: chooseSystemTarget,
+  deployRole: deploySystemRole,
   drawGachaRarity: drawSystemGachaRarity,
+  fireRole: fireSystemRole,
   getCharacterBaseFinalDamage: getSystemCharacterBaseFinalDamage,
   getCharacterLevel: getSystemCharacterLevel,
   getCharacterUpgradeCost: getSystemCharacterUpgradeCost,
@@ -154,7 +158,11 @@ const {
   getPercentGrowthByRarity: getSystemPercentGrowthByRarity,
   getPlayerLevelExpRequirement: getSystemPlayerLevelExpRequirement,
   grantCharacter: grantSystemCharacter,
+  isDeployable: isSystemDeployable,
   performGacha: performSystemGacha,
+  roleAt: getSystemRoleAt,
+  roleStats: getSystemRoleStats,
+  updateRole: updateSystemRole,
   upgradeCharacter: upgradeSystemCharacter,
 } = window.XM.Characters;
 const {
@@ -758,7 +766,7 @@ function nextLevelRequirement(level = state.runLevel) {
 }
 
 function isDeployable(col, row) {
-  return row === grid.rows - 1 && col >= 0 && col < grid.columns;
+  return isSystemDeployable({ grid, col, row });
 }
 
 function attackLineY() {
@@ -766,64 +774,31 @@ function attackLineY() {
 }
 
 function cellCenter(col, row) {
-  return {
-    x: col * grid.cellW + grid.cellW / 2,
-    y: row * grid.cellH + grid.cellH / 2,
-  };
+  return getSystemCellCenter({ grid, col, row });
 }
 
 function roleAt(col, row) {
-  return state.deployedRoles.find((role) => role.col === col && role.row === row);
+  return getSystemRoleAt({ state, col, row });
 }
 
 function deployRole(col, row) {
-  if (state.appState === APP_STATE.LOBBY) {
-    setStatus("请先点击进入备战，再部署角色。");
-    return;
-  }
-  if (state.appState !== APP_STATE.DEPLOY) {
-    setStatus("战斗已经开始，本局不再中途部署角色。");
-    return;
-  }
-  if (!isDeployable(col, row)) {
-    setStatus("只能部署在最底部的护山大阵 / 护山阵眼区。");
-    return;
-  }
-  if (roleAt(col, row)) {
-    setStatus("该格已有宗门角色。");
-    return;
-  }
-  if (state.deployedRoles.length >= playerMeta.maxDeploySlots) {
-    setStatus(`上阵位已满，本局最多部署 ${playerMeta.maxDeploySlots} 名角色。`);
-    return;
-  }
-  if (state.deployedRoles.some((role) => role.roleId === state.selectedRoleId)) {
-    setStatus("每名角色本局只能部署一次。");
-    return;
-  }
-  if (!state.availableRoles.includes(state.selectedRoleId)) {
-    setStatus("只能部署战前配置中选择的宗门角色。");
-    return;
-  }
-  const config = DATA.roles[state.selectedRoleId];
-  const pos = cellCenter(col, row);
-  state.deployedRoles.push({
-    id: makeId(),
-    roleId: config.id,
+  return deploySystemRole({
+    state,
+    DATA,
+    playerProfile: playerMeta,
+    grid,
     col,
     row,
-    x: pos.x,
-    y: pos.y,
-    cooldown: 0,
-    attacks: 0,
-    lastTargetId: null,
-    sameTargetStacks: 0,
-    personalDamage: 1,
-    personalSpeed: 1,
+    appState: state.appState,
+    deployState: APP_STATE.DEPLOY,
+    lobbyState: APP_STATE.LOBBY,
+    callbacks: {
+      makeId,
+      renderSetupLists,
+      setStatus,
+      updateUi,
+    },
   });
-  setStatus(`${config.name} 已入阵。`);
-  renderSetupLists();
-  updateUi();
 }
 
 function setStatus(text) {
@@ -1188,90 +1163,50 @@ function martialBonuses(roleId) {
 }
 
 function roleStats(role) {
-  const config = DATA.roles[role.roleId];
-  const art = martialBonuses(role.roleId);
-  const characterLevel = getCharacterLevel(role.roleId);
-  const hasGlobalBoost = state.deployedRoles.some(
-    (item) => DATA.roles[item.roleId]?.passiveSkill === "global_formation_boost",
-  );
-  const arrayCoreRatio = state.arrayCoreMaxHp > 0 ? state.arrayCoreHp / state.arrayCoreMaxHp : 1;
-  const sectLeaderBonus = hasGlobalBoost ? (arrayCoreRatio < 0.3 ? 1.1 : 1) : 1;
-  const elderSwordCount =
-    role.roleId === "role_yunhe_elder"
-      ? 1 + state.deployedRoles.filter((item) => DATA.roles[item.roleId].school === "剑").length * 0.08
-      : 1;
-  return {
-    damage:
-      getCharacterBaseFinalDamage(config) *
-      art.damageMult *
-      state.bonuses.roleDamage *
-      role.personalDamage *
-      sectLeaderBonus *
-      (hasGlobalBoost ? 1.1 : 1) *
-      elderSwordCount,
-    interval: ((config.attackInterval || 1 / (config.baseAttackSpeed || 1)) * art.attackIntervalMult * art.giantSwordIntervalMult) / (state.bonuses.roleAttackSpeed * role.personalSpeed * art.attackSpeed),
-    range: ((config.range || config.baseRange) + state.bonuses.roleRangeAdd + art.rangeAdd) * grid.cellH,
-    school: config.school,
-    projectile: config.trajectoryType || config.projectile,
-  };
+  return getSystemRoleStats({
+    state,
+    DATA,
+    grid,
+    role,
+    helpers: {
+      getCharacterBaseFinalDamage,
+      martialBonuses,
+    },
+  });
 }
 
 function updateRole(role, dt) {
-  role.cooldown -= dt;
-  if (role.cooldown > 0) return;
-  const stats = roleStats(role);
-  const target = chooseTarget(role, stats.range);
-  if (!target) return;
-
-  const config = DATA.roles[role.roleId];
-  let attacks = 1 + state.bonuses.multishot;
-  if (config.passiveSkill === "thunder_chain" && role.attacks % 4 === 3) {
-    attacks += 1;
-  }
-  if (state.acquiredPerks.has("perk_outer_disciple_breakthrough") && role.attacks % 5 === 4) {
-    attacks += 1;
-  }
-  for (let i = 0; i < attacks; i += 1) {
-    setTimeout(() => fireRole(role, target.id), i * 120);
-  }
-  role.attacks += 1;
-  role.cooldown = Math.max(0.12, stats.interval);
-  if ((config.talent || "").includes("连续攻击同一目标")) {
-    if (role.lastTargetId === target.id) {
-      role.sameTargetStacks = Math.min(5, role.sameTargetStacks + 1);
-    } else {
-      role.sameTargetStacks = 0;
-    }
-    role.lastTargetId = target.id;
-  }
+  return updateSystemRole({
+    state,
+    DATA,
+    role,
+    dt,
+    callbacks: {
+      fireRole,
+    },
+    helpers: {
+      chooseTarget,
+      roleStats,
+    },
+    timers: window,
+  });
 }
 
 function fireRole(role, targetId) {
-  if (state.appState !== APP_STATE.BATTLE) return;
-  const target = state.enemies.find((enemy) => enemy.id === targetId && !enemy.dead);
-  if (!target) return;
-  const config = DATA.roles[role.roleId];
-  const stats = roleStats(role);
-  const art = martialBonuses(role.roleId);
-  let damage = stats.damage;
-  if ((config.passiveSkill || config.talent || "").includes("连续攻击同一目标")) {
-    damage *= 1 + role.sameTargetStacks * 0.05 * state.bonuses.passiveMultiplier;
-  }
-  if (config.passiveSkill === "execute_low_hp" && target.hp / target.maxHp < 0.3) damage *= 1.8;
-  if (Math.random() < state.bonuses.critChance) {
-    damage *= state.bonuses.critMult;
-  }
-
-  const baseProjectileCount = config.trajectoryType === "multi" ? 3 : 1;
-  const projectileCount = Math.min(
-    art.giantSword ? 1 : 5,
-    Math.max(art.projectileSet || 0, baseProjectileCount + state.bonuses.sideProjectiles + art.projectileAdd),
-  );
-  fireProjectileAttack(role, target, {
-    projectileCount,
-    volleyCount: art.giantSword ? 1 : art.volleyCount,
-    volleyInterval: art.volleyInterval,
-    damage,
+  return fireSystemRole({
+    state,
+    DATA,
+    role,
+    targetId,
+    appState: state.appState,
+    battleState: APP_STATE.BATTLE,
+    callbacks: {
+      fireProjectileAttack,
+    },
+    helpers: {
+      martialBonuses,
+      roleStats,
+    },
   });
 }
 
@@ -1401,15 +1336,15 @@ function applyRoleHit(role, target, damage) {
 }
 
 function chooseTarget(source, range) {
-  const config = DATA.roles[source.roleId] || {};
-  const candidates = state.enemies.filter(
-    (enemy) => !enemy.dead && distance(source, enemy) <= range,
-  );
-  if (!candidates.length) return null;
-  if (config.trajectoryType === "execute") {
-    return candidates.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
-  }
-  return candidates.sort((a, b) => b.progress - a.progress)[0];
+  return chooseSystemTarget({
+    state,
+    DATA,
+    source,
+    range,
+    helpers: {
+      distance,
+    },
+  });
 }
 
 function sideTargets(target, count) {
