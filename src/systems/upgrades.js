@@ -19,6 +19,7 @@
   }
 
   function selectedArtifactIds({ state }) {
+    if (Array.isArray(state.selectedArtifactIds)) return state.selectedArtifactIds.filter(Boolean);
     return state.selectedArtifactId ? [state.selectedArtifactId] : [];
   }
 
@@ -77,6 +78,18 @@
         return `飞剑数量 +${value ?? 1}`;
       case "artifact_pierce_add":
         return `穿透 +${value ?? 1}`;
+      case "artifact_area_mult":
+        return `范围 +${Math.round(((Number(value) || 1) - 1) * 100)}%`;
+      case "artifact_volley_count_add":
+        return `额外爆裂 +${value ?? 1}`;
+      case "artifact_slow_duration_add":
+        return `减速时间 +${value ?? 1}秒`;
+      case "artifact_chain_count_add":
+        return `连锁次数 +${value ?? 1}`;
+      case "artifact_chain_radius_mult":
+        return `连锁范围 +${Math.round(((Number(value) || 1) - 1) * 100)}%`;
+      case "artifact_freeze_chance_add":
+        return `冻结概率 +${Math.round((Number(value) || 0) * 100)}%`;
       default:
         return perk.description || "效果将在本局生效";
     }
@@ -274,13 +287,47 @@
   function artifactPerksForRun({ state, data }) {
     const artifactIds = selectedArtifactIds({ state });
     if (!artifactIds.length) return [];
-    const artifactId = artifactIds[0];
-    const artifact = data.artifacts[artifactId];
-    if (!artifact) return [];
-    return [
-      {
-        id: `artifact_${artifactId}_damage`,
-        name: `${artifact.name}·开匣锋鸣`,
+    const definitions = {
+      qingming_sword_box: [
+        ["damage", "开匣锋鸣", "青冥剑匣伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["projectile", "剑影连发", "青冥剑匣每次触发额外释放1道飞剑。", "飞剑数量 +1", "artifact_projectile_count_add", 1],
+        ["pierce", "剑势贯妖", "青冥剑匣飞剑穿透 +1。", "穿透 +1", "artifact_pierce_add", 1],
+        ["cooldown", "灵机回转", "青冥剑匣冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+      lihuo_gourd: [
+        ["damage", "离火增炽", "离火葫芦伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["area", "火势蔓延", "离火葫芦爆裂范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
+        ["volley", "连珠火落", "离火葫芦额外爆裂1次。", "额外爆裂 +1", "artifact_volley_count_add", 1],
+        ["cooldown", "灵火自生", "离火葫芦冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+      zhenyao_bell: [
+        ["slow_duration", "镇魂余响", "镇妖铃减速持续时间增加0.8秒。", "减速时间 +0.8秒", "artifact_slow_duration_add", 0.8],
+        ["damage", "铃音震魄", "镇妖铃伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["area", "摄妖清音", "镇妖铃影响范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
+        ["cooldown", "灵响回环", "镇妖铃冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+      xuanbing_mirror: [
+        ["damage", "寒镜凝霜", "玄冰玉镜伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["area", "冰华扩散", "玄冰玉镜范围提升20%。", "范围 +20%", "artifact_area_mult", 1.2],
+        ["slow_duration", "寒意入骨", "玄冰玉镜减速持续时间增加0.8秒。", "减速时间 +0.8秒", "artifact_slow_duration_add", 0.8],
+        ["freeze", "霜封一瞬", "玄冰玉镜冻结概率提升10%。", "冻结概率 +10%", "artifact_freeze_chance_add", 0.1],
+      ],
+      leiwen_seal: [
+        ["damage", "雷火增鸣", "雷纹法印伤害提升25%。", "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["chain", "雷走群妖", "雷纹法印连锁次数 +1。", "连锁次数 +1", "artifact_chain_count_add", 1],
+        ["chain_radius", "引雷入阵", "雷纹法印连锁范围提升20%。", "连锁范围 +20%", "artifact_chain_radius_mult", 1.2],
+        ["cooldown", "灵雷自转", "雷纹法印冷却降低15%。", "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ],
+    };
+    return artifactIds.flatMap((artifactId) => {
+      const artifact = data.artifacts[artifactId];
+      if (!artifact) return [];
+      return (definitions[artifactId] || [
+        ["damage", "灵机温养", `${artifact.name}伤害提升25%。`, "伤害 +25%", "artifact_damage_mult", 0.25],
+        ["cooldown", "灵机回转", `${artifact.name}冷却降低15%。`, "冷却 -15%", "artifact_cooldown_mult", 0.85],
+      ]).map(([key, title, description, valueText, effectType, value]) => ({
+        id: `artifact_${artifactId}_${key}`,
+        name: `${artifact.name}·${title}`,
         category: "法宝·精修",
         rarity: "普通",
         scope: "artifact",
@@ -288,29 +335,13 @@
         targetName: artifact.name,
         targetType: "artifact",
         targetId: artifactId,
-        effectType: "artifact_damage_bonus",
-        description: `${artifact.name}伤害提升25%。`,
-        valueText: "伤害 +25%",
-        actualEffectPreview: "伤害 +25%",
-        effect: { type: "artifact_damage_bonus", artifactId, value: 0.25 },
-      },
-      {
-        id: `artifact_${artifactId}_cooldown`,
-        name: `${artifact.name}·灵机回转`,
-        category: "法宝·精修",
-        rarity: "普通",
-        scope: "artifact",
-        targetArtifactId: artifactId,
-        targetName: artifact.name,
-        targetType: "artifact",
-        targetId: artifactId,
-        effectType: "artifact_cooldown_mult",
-        description: `${artifact.name}冷却降低15%。`,
-        valueText: "冷却 -15%",
-        actualEffectPreview: "冷却 -15%",
-        effect: { type: "artifact_cooldown_mult", artifactId, value: 0.85 },
-      },
-    ];
+        effectType,
+        description,
+        valueText,
+        actualEffectPreview: valueText,
+        effect: { type: effectType, artifactId, value },
+      }));
+    });
   }
 
   function defensivePerksForRun({ state }) {

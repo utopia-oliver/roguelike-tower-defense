@@ -102,6 +102,9 @@
       waveActive: false,
       formationCooldown: 0,
       artifactCooldown: 0,
+      artifactCooldowns: {},
+      artifactRuntime: {},
+      artifactBondRuntime: {},
       martialArtBranches: createInitialMartialBranchState(),
       bonuses: defaultRunBonuses(),
       modifiers: createInitialModifiers(),
@@ -139,14 +142,19 @@
       loadoutFormationId: "",
       loadoutRoleIds: [],
       loadoutArtifactId: "",
+      loadoutArtifactIds: [],
       selectedFormationId: "",
       selectedRoleId: "",
       selectedArtifactId: "",
+      selectedArtifactIds: [],
       waveActive: false,
       martialArtLevels: {},
       martialArtBranches: createInitialMartialBranchState(),
       formationCooldown: 0,
       artifactCooldown: 0,
+      artifactCooldowns: {},
+      artifactRuntime: {},
+      artifactBondRuntime: {},
       animationFrameRunning: false,
       frameCount: 0,
       lastError: "",
@@ -163,7 +171,7 @@
     return state;
   }
 
-  function syncPlayerMetaAliases({ playerMeta, getMaxDeploySlots }) {
+  function syncPlayerMetaAliases({ playerMeta, getMaxDeploySlots, getMaxArtifactSlots }) {
     if (!playerMeta) return playerMeta;
     playerMeta.level = playerMeta.playerLevel;
     playerMeta.lingstone = playerMeta.spiritStones;
@@ -171,6 +179,9 @@
     playerMeta.unlockedCharacterIds = playerMeta.ownedCharacters;
     if (typeof getMaxDeploySlots === "function") {
       playerMeta.maxDeploySlots = getMaxDeploySlots(playerMeta.playerLevel);
+    }
+    if (typeof getMaxArtifactSlots === "function") {
+      playerMeta.maxArtifactSlots = getMaxArtifactSlots(playerMeta.playerLevel);
     }
     return playerMeta;
   }

@@ -168,7 +168,14 @@ window.GAME_DATA = {
     "roles": [
       "lu_qingya"
     ],
-    "artifact": "artifact_qingming_swordcase"
+    "artifact": "qingming_sword_box",
+    "artifacts": [
+      "qingming_sword_box",
+      "lihuo_gourd",
+      "zhenyao_bell",
+      "xuanbing_mirror",
+      "leiwen_seal"
+    ]
   },
   "formations": {
     "formation_qinglian": {
@@ -580,59 +587,82 @@ window.GAME_DATA = {
     }
   },
   "artifacts": {
-    "artifact_qingming_swordcase": {
-      "id": "artifact_qingming_swordcase",
+    "qingming_sword_box": {
+      "id": "qingming_sword_box",
       "name": "青冥剑匣",
       "rarity": "初始",
+      "role": "飞剑弹道",
+      "type": "projectile",
       "damage": 18.0,
-      "cooldown": 6.0,
-      "attackText": "每次释放3道飞剑攻击最近敌人",
-      "targeting": "最近敌人优先"
+      "cooldown": 3.5,
+      "projectileType": "artifact_sword_projectile",
+      "projectileCount": 1,
+      "pierceCount": 1,
+      "speed": 420,
+      "hitRadius": 16,
+      "targetRule": "nearest",
+      "attackText": "每隔一段时间自动向最近敌人释放飞剑 projectile。",
+      "description": "飞剑弹道型法宝，偏单体、穿透、补充弹道输出。"
     },
-    "artifact_zidian_seal": {
-      "id": "artifact_zidian_seal",
-      "name": "紫电雷印",
+    "lihuo_gourd": {
+      "id": "lihuo_gourd",
+      "name": "离火葫芦",
       "rarity": "稀有",
-      "damage": 22.0,
-      "cooldown": 7.0,
-      "attackText": "释放连锁雷击",
-      "targeting": "高血量敌人优先"
-    },
-    "artifact_xuanhuo_gourd": {
-      "id": "artifact_xuanhuo_gourd",
-      "name": "玄火葫芦",
-      "rarity": "稀有",
-      "damage": 20.0,
-      "cooldown": 8.0,
-      "attackText": "喷出火焰扇形区域",
-      "targeting": "前方区域"
-    },
-    "artifact_hanyu_bottle": {
-      "id": "artifact_hanyu_bottle",
-      "name": "寒玉净瓶",
-      "rarity": "史诗",
+      "role": "范围爆发",
+      "type": "area",
       "damage": 14.0,
-      "cooldown": 9.0,
-      "attackText": "释放寒潮，伤害并减速",
-      "targeting": "靠近阵眼敌人优先"
+      "cooldown": 5.5,
+      "areaRadius": 70,
+      "targetRule": "densest_cluster",
+      "attackText": "每隔一段时间向敌人密集区域释放离火爆裂，造成范围伤害。",
+      "description": "范围爆发型法宝，偏群伤和清小怪。"
     },
-    "artifact_zhenhun_bell": {
-      "id": "artifact_zhenhun_bell",
-      "name": "镇魂铃",
+    "zhenyao_bell": {
+      "id": "zhenyao_bell",
+      "name": "镇妖铃",
+      "rarity": "稀有",
+      "role": "控制辅助",
+      "type": "control_area",
+      "damage": 8.0,
+      "cooldown": 6.5,
+      "areaRadius": 120,
+      "slowMultiplier": 0.65,
+      "slowDuration": 2.0,
+      "targetRule": "nearest_to_core",
+      "attackText": "每隔一段时间震荡靠近阵眼的敌人，造成少量伤害并附加减速。",
+      "description": "控制辅助型法宝，偏减速、打断、阵前减压。"
+    },
+    "xuanbing_mirror": {
+      "id": "xuanbing_mirror",
+      "name": "玄冰玉镜",
       "rarity": "史诗",
-      "damage": 12.0,
-      "cooldown": 11.0,
-      "attackText": "震荡全场小范围，短暂眩晕",
-      "targeting": "敌人最密集区域"
+      "role": "冰霜控场",
+      "type": "frost_area",
+      "damage": 10.0,
+      "cooldown": 6.0,
+      "areaRadius": 85,
+      "slowMultiplier": 0.55,
+      "slowDuration": 1.6,
+      "freezeChance": 0.15,
+      "freezeDuration": 0.6,
+      "targetRule": "densest_cluster",
+      "attackText": "每隔一段时间向敌人密集区域释放寒霜镜光，对范围内敌人造成伤害并施加冰缓。",
+      "description": "冰霜控场型法宝，偏减速、冻结、范围控制。"
     },
-    "artifact_shanhe_seal": {
-      "id": "artifact_shanhe_seal",
-      "name": "山河印",
-      "rarity": "传说",
-      "damage": 45.0,
-      "cooldown": 12.0,
-      "attackText": "砸击高血量目标，范围击退",
-      "targeting": "血量最高敌人"
+    "leiwen_seal": {
+      "id": "leiwen_seal",
+      "name": "雷纹法印",
+      "rarity": "史诗",
+      "role": "雷击连锁",
+      "type": "chain",
+      "damage": 16.0,
+      "cooldown": 4.8,
+      "chainCount": 3,
+      "chainRadius": 90,
+      "chainDamageMultiplier": 0.75,
+      "targetRule": "highest_hp_or_nearest",
+      "attackText": "每隔一段时间召下一道雷击命中一个敌人，并向附近敌人跳跃。",
+      "description": "雷击连锁型法宝，偏跳跃伤害、打密集怪、补刀。"
     }
   },
   "levels": [
@@ -1970,6 +2000,14 @@ window.GAME_DATA.deploySlotUnlocks = [
   { level: 1, deploySlots: 1, description: "初始可上阵1名角色" },
   { level: 10, deploySlots: 2, description: "玩家10级解锁第2个上阵位" },
   { level: 20, deploySlots: 3, description: "玩家20级解锁第3个上阵位" }
+];
+
+window.GAME_DATA.artifactSlotUnlocks = [
+  { level: 1, artifactSlots: 1, description: "初始可携带1件法宝" },
+  { level: 5, artifactSlots: 2, description: "玩家5级解锁第2个法宝位" },
+  { level: 10, artifactSlots: 3, description: "玩家10级解锁第3个法宝位" },
+  { level: 20, artifactSlots: 4, description: "玩家20级解锁第4个法宝位" },
+  { level: 30, artifactSlots: 5, description: "玩家30级解锁第5个法宝位" }
 ];
 
 window.GAME_DATA.roles = {

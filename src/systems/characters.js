@@ -19,6 +19,13 @@
     );
   }
 
+  function getMaxArtifactSlots({ level, artifactSlotUnlocks }) {
+    return (artifactSlotUnlocks || []).reduce(
+      (slots, unlock) => (level >= unlock.level ? unlock.artifactSlots : slots),
+      1,
+    );
+  }
+
   function getNextCharacterUnlock({ playerProfile, playerLevelUnlocks }) {
     return playerLevelUnlocks.find(
       (unlock) => unlock.level > playerProfile.playerLevel && !playerProfile.ownedCharacters.includes(unlock.characterId),
@@ -44,7 +51,7 @@
     return { ok: true, reason: "new", characterId, isNew: true, refunded: 0 };
   }
 
-  function applyPlayerLevelUnlocks({ playerProfile, DATA, playerLevelUnlocks, deploySlotUnlocks, callbacks }) {
+  function applyPlayerLevelUnlocks({ playerProfile, DATA, playerLevelUnlocks, deploySlotUnlocks, artifactSlotUnlocks, callbacks }) {
     const unlocked = [];
     playerLevelUnlocks.forEach((unlock) => {
       if (unlock.type === "character" && playerProfile.playerLevel >= unlock.level) {
@@ -62,12 +69,16 @@
       level: playerProfile.playerLevel,
       deploySlotUnlocks,
     });
+    playerProfile.maxArtifactSlots = getMaxArtifactSlots({
+      level: playerProfile.playerLevel,
+      artifactSlotUnlocks,
+    });
     call(callbacks, "syncPlayerMetaAliases");
     call(callbacks, "savePlayerProfile");
     return unlocked;
   }
 
-  function checkPlayerLevelUp({ playerProfile, DATA, playerLevelUnlocks, deploySlotUnlocks, callbacks }) {
+  function checkPlayerLevelUp({ playerProfile, DATA, playerLevelUnlocks, deploySlotUnlocks, artifactSlotUnlocks, callbacks }) {
     const rewards = [];
     while (playerProfile.playerExp >= getPlayerLevelExpRequirement(playerProfile.playerLevel)) {
       playerProfile.playerExp -= getPlayerLevelExpRequirement(playerProfile.playerLevel);
@@ -79,6 +90,7 @@
           DATA,
           playerLevelUnlocks,
           deploySlotUnlocks,
+          artifactSlotUnlocks,
           callbacks,
         }),
       );
@@ -363,6 +375,7 @@
     getCharacterLevel,
     getCharacterUpgradeCost,
     getFlatDamageGrowthByRarity,
+    getMaxArtifactSlots,
     getMaxDeploySlots,
     getNextCharacterUnlock,
     getNextDeploySlotUnlock,

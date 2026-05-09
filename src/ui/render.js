@@ -89,24 +89,47 @@
       elements.loadoutRoleList.appendChild(button);
     });
 
+    const artifactSlots = Math.max(1, playerProfile.maxArtifactSlots || 1);
+    const selectedArtifactIds = Array.isArray(state.loadoutArtifactIds)
+      ? state.loadoutArtifactIds
+      : state.loadoutArtifactId
+        ? [state.loadoutArtifactId]
+        : [];
+    const activeBonds = helpers.getActiveArtifactBonds
+      ? helpers.getActiveArtifactBonds(selectedArtifactIds)
+      : [];
     elements.loadoutArtifactList.innerHTML = "";
+    const artifactSummary = document.createElement("div");
+    artifactSummary.className = "unlock-tip";
+    artifactSummary.innerHTML = `
+      <strong>法宝位：已选择 ${selectedArtifactIds.length} / ${artifactSlots}</strong>
+      <span>当前已选择：${selectedArtifactIds.length ? selectedArtifactIds.map((id) => safeText(DATA.artifacts[id]?.name || id)).join("、") : "无"}</span>
+      <span>${activeBonds.length ? `已激活羁绊：${activeBonds.map((bond) => safeText(bond.name)).join("、")}` : "当前未激活法宝羁绊"}</span>
+    `;
+    elements.loadoutArtifactList.appendChild(artifactSummary);
     playerProfile.ownedArtifacts.forEach((id) => {
       const artifact = DATA.artifacts[id];
       if (!artifact) return;
+      const selected = selectedArtifactIds.includes(id);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "choice";
-      button.classList.toggle("selected", state.loadoutArtifactId === id);
+      button.classList.toggle("selected", selected);
       button.dataset.loadoutArtifactId = id;
-      button.innerHTML = `<strong>${safeText(artifact.name)}</strong><span>法宝 · ${artifact.damage}伤害 · ${artifact.cooldown}秒</span>`;
+      button.innerHTML = `
+        <strong>${safeText(artifact.name)}${selected ? " · 已选择" : ""}</strong>
+        <span>${safeText(artifact.role || "法宝")} · ${safeText(artifact.attackText || artifact.description || "")}</span>
+        <span>基础：${artifact.damage}伤害 · ${artifact.cooldown}秒${artifact.areaRadius ? ` · ${artifact.areaRadius}范围` : ""}</span>
+      `;
       elements.loadoutArtifactList.appendChild(button);
     });
 
     const roleText = `${state.loadoutRoleIds.length}/${playerProfile.maxDeploySlots}`;
+    const artifactText = `${selectedArtifactIds.length}/${artifactSlots}`;
     const nextSlot = helpers.getNextDeploySlotUnlock();
     elements.loadoutStatus.textContent = helpers.loadoutReady()
-      ? `配置完成：1个阵法，${roleText} 名角色，1个法宝。`
-      : `配置未完成：需要 1 个阵法、至少 1 名角色、1 个法宝。当前上阵位：${roleText}。`;
+      ? `配置完成：1个阵法，${roleText} 名角色，法宝 ${artifactText}。`
+      : `配置未完成：需要 1 个阵法、至少 1 名角色；法宝可不携带。当前上阵位：${roleText}，法宝位：${artifactText}。`;
     if (nextSlot) {
       elements.loadoutStatus.textContent += ` ${nextSlot.level}级解锁第${nextSlot.deploySlots}个上阵位。`;
     }
@@ -142,15 +165,20 @@
     });
 
     elements.artifactList.innerHTML = "";
-    if (state.selectedArtifactId) {
-      const artifact = DATA.artifacts[state.selectedArtifactId];
+    const selectedArtifactIds = Array.isArray(state.selectedArtifactIds)
+      ? state.selectedArtifactIds
+      : state.selectedArtifactId
+        ? [state.selectedArtifactId]
+        : [];
+    selectedArtifactIds.forEach((artifactId) => {
+      const artifact = DATA.artifacts[artifactId];
       if (artifact) {
         const item = document.createElement("div");
         item.className = "choice selected";
         item.innerHTML = `<strong>${safeText(artifact.name)}</strong><span>自动攻击 · 战斗中不可更换</span>`;
         elements.artifactList.appendChild(item);
       }
-    }
+    });
   }
 
   function renderHud({ elements, state, DATA, nextLevelRequirement }) {

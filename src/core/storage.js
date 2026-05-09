@@ -9,14 +9,21 @@
 
   function playerProfileHelpers(helpers = {}) {
     const initialRoles = Array.isArray(helpers.initialRoles) && helpers.initialRoles.length ? helpers.initialRoles : ["lu_qingya"];
+    const initialArtifacts = Array.isArray(helpers.initialArtifacts) && helpers.initialArtifacts.length
+      ? helpers.initialArtifacts
+      : helpers.initialArtifact
+        ? [helpers.initialArtifact]
+        : [];
     return {
       initialRoles,
       initialArtifact: helpers.initialArtifact || "",
+      initialArtifacts,
       initialFormation: helpers.initialFormation || "",
       roles: helpers.roles || null,
       artifacts: helpers.artifacts || null,
       formations: helpers.formations || null,
       getMaxDeploySlots: helpers.getMaxDeploySlots,
+      getMaxArtifactSlots: helpers.getMaxArtifactSlots,
     };
   }
 
@@ -40,7 +47,7 @@
 
   function createDefaultPlayerProfile(helpers = {}) {
     const profileHelpers = playerProfileHelpers(helpers);
-    const ownedArtifacts = profileHelpers.initialArtifact ? [profileHelpers.initialArtifact] : [];
+    const ownedArtifacts = [...profileHelpers.initialArtifacts];
     const unlockedFormations = profileHelpers.initialFormation ? [profileHelpers.initialFormation] : [];
     return {
       playerLevel: 1,
@@ -55,6 +62,7 @@
       unlockedFormations,
       formationLevels: {},
       maxDeploySlots: 1,
+      maxArtifactSlots: 1,
       arrayCoreLevel: 1,
       arrayCoreBaseHpBonus: 0,
       arrayCoreDefenseBonus: 0,
@@ -101,6 +109,10 @@
       typeof profileHelpers.getMaxDeploySlots === "function"
         ? profileHelpers.getMaxDeploySlots(profile.playerLevel)
         : Math.max(1, Number(profile.maxDeploySlots) || 1);
+    profile.maxArtifactSlots =
+      typeof profileHelpers.getMaxArtifactSlots === "function"
+        ? profileHelpers.getMaxArtifactSlots(profile.playerLevel)
+        : Math.max(1, Number(profile.maxArtifactSlots) || 1);
     profile.arrayCoreLevel = Math.max(1, Math.floor(Number(profile.arrayCoreLevel) || defaults.arrayCoreLevel));
     profile.arrayCoreBaseHpBonus = Math.max(0, Math.floor(Number(profile.arrayCoreBaseHpBonus) || defaults.arrayCoreBaseHpBonus));
     profile.arrayCoreDefenseBonus = Math.max(0, Math.floor(Number(profile.arrayCoreDefenseBonus) || defaults.arrayCoreDefenseBonus));
@@ -118,6 +130,7 @@
       unlockedFormations: profile.unlockedFormations,
       formationLevels: profile.formationLevels,
       maxDeploySlots: profile.maxDeploySlots,
+      maxArtifactSlots: profile.maxArtifactSlots,
       arrayCoreLevel: profile.arrayCoreLevel,
       arrayCoreBaseHpBonus: profile.arrayCoreBaseHpBonus,
       arrayCoreDefenseBonus: profile.arrayCoreDefenseBonus,

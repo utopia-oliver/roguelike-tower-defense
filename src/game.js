@@ -63,6 +63,7 @@ const {
 
 const PLAYER_LEVEL_UNLOCKS = DATA.playerLevelUnlocks || [];
 const DEPLOY_SLOT_UNLOCKS = DATA.deploySlotUnlocks || [];
+const ARTIFACT_SLOT_UNLOCKS = DATA.artifactSlotUnlocks || [];
 const { distance, distancePointToSegment } = window.XM.Math;
 const {
   checkProjectileCollision: checkSystemProjectileCollision,
@@ -126,6 +127,7 @@ const {
   updateWaveSpawns: updateSystemWaveSpawns,
 } = window.XM.Waves;
 const {
+  getActiveArtifactBonds,
   getArtifactModifier: getSystemArtifactModifier,
   updateArtifacts: updateSystemArtifacts,
 } = window.XM.Artifacts;
@@ -152,6 +154,7 @@ const {
   getCharacterLevel: getSystemCharacterLevel,
   getCharacterUpgradeCost: getSystemCharacterUpgradeCost,
   getFlatDamageGrowthByRarity: getSystemFlatDamageGrowthByRarity,
+  getMaxArtifactSlots: getSystemMaxArtifactSlots,
   getMaxDeploySlots: getSystemMaxDeploySlots,
   getNextCharacterUnlock: getSystemNextCharacterUnlock,
   getNextDeploySlotUnlock: getSystemNextDeploySlotUnlock,
@@ -337,8 +340,9 @@ const playerMeta = {
   ownedRoles: [...DATA.initial.roles],
   characterLevels: Object.fromEntries(DATA.initial.roles.map((id) => [id, 1])),
   maxDeploySlots: 1,
-  ownedArtifacts: [DATA.initial.artifact],
+  ownedArtifacts: [...(DATA.initial.artifacts || [DATA.initial.artifact]).filter(Boolean)],
   artifactLevels: {},
+  maxArtifactSlots: 1,
   unlockedFormations: [DATA.initial.formation],
   formationLevels: {},
   arrayCoreLevel: 1,
@@ -356,6 +360,7 @@ function syncPlayerMetaAliases() {
   return syncSystemPlayerMetaAliases({
     playerMeta,
     getMaxDeploySlots,
+    getMaxArtifactSlots,
   });
 }
 
@@ -367,15 +372,21 @@ function getMaxDeploySlots(level = playerMeta.playerLevel) {
   return getSystemMaxDeploySlots({ level, deploySlotUnlocks: DEPLOY_SLOT_UNLOCKS });
 }
 
+function getMaxArtifactSlots(level = playerMeta.playerLevel) {
+  return getSystemMaxArtifactSlots({ level, artifactSlotUnlocks: ARTIFACT_SLOT_UNLOCKS });
+}
+
 function playerProfileStorageHelpers() {
   return {
     initialRoles: DATA.initial.roles,
     initialArtifact: DATA.initial.artifact,
+    initialArtifacts: DATA.initial.artifacts || [DATA.initial.artifact].filter(Boolean),
     initialFormation: DATA.initial.formation,
     roles: DATA.roles,
     artifacts: DATA.artifacts,
     formations: DATA.formations,
     getMaxDeploySlots,
+    getMaxArtifactSlots,
   };
 }
 
@@ -441,6 +452,7 @@ function applyPlayerLevelUnlocks() {
     DATA,
     playerLevelUnlocks: PLAYER_LEVEL_UNLOCKS,
     deploySlotUnlocks: DEPLOY_SLOT_UNLOCKS,
+    artifactSlotUnlocks: ARTIFACT_SLOT_UNLOCKS,
     callbacks: {
       savePlayerProfile,
       syncPlayerMetaAliases,
@@ -454,6 +466,7 @@ function checkPlayerLevelUp() {
     DATA,
     playerLevelUnlocks: PLAYER_LEVEL_UNLOCKS,
     deploySlotUnlocks: DEPLOY_SLOT_UNLOCKS,
+    artifactSlotUnlocks: ARTIFACT_SLOT_UNLOCKS,
     callbacks: {
       savePlayerProfile,
       syncPlayerMetaAliases,
@@ -604,14 +617,19 @@ function resetGame() {
     loadoutFormationId: "",
     loadoutRoleIds: [],
     loadoutArtifactId: "",
+    loadoutArtifactIds: [],
     selectedFormationId: "",
     selectedRoleId: "",
     selectedArtifactId: "",
+    selectedArtifactIds: [],
     waveActive: false,
     martialArtLevels: {},
     martialArtBranches: createInitialMartialBranchState(),
     formationCooldown: 0,
     artifactCooldown: 0,
+    artifactCooldowns: {},
+    artifactRuntime: {},
+    artifactBondRuntime: {},
     animationFrameRunning: false,
     frameCount: 0,
     lastError: "",
@@ -635,7 +653,8 @@ function getDebugActions() {
     selectLoadout: () => {
       state.loadoutFormationId = playerMeta.unlockedFormations[0];
       state.loadoutRoleIds = playerMeta.ownedCharacters.slice(0, playerMeta.maxDeploySlots);
-      state.loadoutArtifactId = playerMeta.ownedArtifacts[0];
+      state.loadoutArtifactIds = playerMeta.ownedArtifacts.slice(0, playerMeta.maxArtifactSlots);
+      state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
       renderLoadout();
       return getDebugSnapshot();
     },
@@ -711,6 +730,10 @@ function enterLoadout() {
   state.loadoutRoleIds = state.loadoutRoleIds
     .filter((id) => playerMeta.ownedCharacters.includes(id))
     .slice(0, playerMeta.maxDeploySlots);
+  state.loadoutArtifactIds = (state.loadoutArtifactIds || [])
+    .filter((id) => playerMeta.ownedArtifacts.includes(id))
+    .slice(0, playerMeta.maxArtifactSlots);
+  state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
   state.appState = APP_STATE.LOADOUT;
   state.phase = "loadout";
   setStatus("选择本局阵法、出战角色和法宝。");
@@ -723,13 +746,13 @@ function loadoutReady() {
     Boolean(state.loadoutFormationId) &&
     state.loadoutRoleIds.length > 0 &&
     state.loadoutRoleIds.length <= playerMeta.maxDeploySlots &&
-    Boolean(state.loadoutArtifactId)
+    (state.loadoutArtifactIds || []).length <= playerMeta.maxArtifactSlots
   );
 }
 
 function enterDeploy() {
   if (!loadoutReady()) {
-    setStatus("战前配置未完成：需要 1 个阵法、1-3 名角色、1 个法宝。");
+    setStatus("战前配置未完成：需要 1 个阵法、至少 1 名角色；法宝可以不携带。");
     renderLoadout();
     return;
   }
@@ -737,7 +760,8 @@ function enterDeploy() {
     state.phase = "deploy";
   initializeArrayCoreForRun();
   state.selectedFormationId = state.loadoutFormationId;
-  state.selectedArtifactId = state.loadoutArtifactId;
+  state.selectedArtifactIds = [...(state.loadoutArtifactIds || [])];
+  state.selectedArtifactId = state.selectedArtifactIds[0] || "";
   state.availableRoles = state.loadoutRoleIds
     .filter((id) => playerMeta.ownedCharacters.includes(id))
     .slice(0, playerMeta.maxDeploySlots);
@@ -1239,6 +1263,16 @@ function createRoleProjectiles(role, target, damage, projectileCount) {
 
 function applyRoleHit(role, target, damage) {
   if (!target || target.dead) return;
+  if (role?.sourceType === "artifact") {
+    target.takeDamage(damage, role.bondId ? "artifact_bond" : "artifact", role);
+    if (role.splashRadius > 0 && role.splashDamageMultiplier > 0) {
+      areaDamage(target.x, target.y, role.splashRadius, damage * role.splashDamageMultiplier, role.bondId ? "artifact_bond" : "artifact");
+    }
+    if (role.slowDuration > 0 && role.slowMultiplier) {
+      target.addStatus("slow", role.slowDuration, Math.max(0, 1 - role.slowMultiplier));
+    }
+    return;
+  }
   const config = DATA.roles[role.roleId];
   const art = martialBonuses(role.roleId);
   const projectile = config.trajectoryType || config.projectile;
@@ -1428,6 +1462,67 @@ function drawShot(x, y, tx, ty, color) {
   state.projectiles.push({ x, y, tx, ty, color, ttl: 0.16, visualOnly: true });
 }
 
+function spawnArtifactProjectile(payload) {
+  const { artifact, bond, target, origin, projectileIndex = 0, projectileCount = 1 } = payload;
+  if (!target || target.dead) return;
+  const dx = target.x - origin.x;
+  const dy = target.y - origin.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const baseVx = dx / len;
+  const baseVy = dy / len;
+  const angleOffset = ((projectileSpreadAngles(projectileCount)[projectileIndex] || 0) * Math.PI) / 180;
+  const vx = baseVx * Math.cos(angleOffset) - baseVy * Math.sin(angleOffset);
+  const vy = baseVx * Math.sin(angleOffset) + baseVy * Math.cos(angleOffset);
+  const centered = projectileIndex - (projectileCount - 1) / 2;
+  const normalX = -baseVy;
+  const normalY = baseVx;
+  const offset = centered * 5;
+  state.projectiles.push({
+    id: makeId(),
+    ownerCharacterId: artifact.id,
+    ownerRoleId: artifact.id,
+    type: payload.projectileType || "artifact_sword_projectile",
+    trajectoryType: "artifact",
+    x: origin.x + normalX * offset,
+    y: origin.y + normalY * offset,
+    lastX: origin.x + normalX * offset,
+    lastY: origin.y + normalY * offset,
+    vx,
+    vy,
+    speed: payload.speed || 420,
+    damage: payload.damage || 0,
+    width: 9,
+    length: 30,
+    radius: payload.hitRadius || 14,
+    hitRadius: payload.hitRadius || 14,
+    collisionPadding: 6,
+    pierce: (payload.pierceCount || 0) > 0,
+    remainingPierce: payload.pierceCount || 0,
+    hitEnemyIds: new Set(),
+    lifetime: 0,
+    maxLifetime: 1.8,
+    effectType: "artifact",
+    color: payload.color || "#a7f3ff",
+    trailColor: "rgba(167, 243, 255, 0.28)",
+    sourceRole: {
+      id: artifact.id,
+      roleId: artifact.id,
+      sourceType: "artifact",
+      artifactId: artifact.id,
+      bondId: bond?.id || "",
+      splashRadius: payload.splashRadius || 0,
+      splashDamageMultiplier: payload.splashDamageMultiplier || 0,
+      slowMultiplier: payload.slowMultiplier,
+      slowDuration: payload.slowDuration || 0,
+    },
+    sourceConfig: artifact,
+    splashRadius: 0,
+    splashDamageMultiplier: 0,
+    eliteBossDamageMultiplier: 1,
+    attackLineDamageMultiplier: 1,
+  });
+}
+
 function updateProjectiles(dt) {
   return updateSystemProjectiles({
     state,
@@ -1494,6 +1589,7 @@ function updateArtifact(dt) {
       addFloater(floater) {
         state.floaters.push(floater);
       },
+      areaDamage,
       damageEnemy(enemy, damage, source) {
         enemy.takeDamage(damage, source);
       },
@@ -1501,6 +1597,7 @@ function updateArtifact(dt) {
       getArtifactOrigin() {
         return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
       },
+      spawnArtifactProjectile,
     },
   });
 }
@@ -1788,10 +1885,35 @@ function applyPerk(perk) {
       state.bonuses.passiveMultiplier *= 1 + effect.value;
       break;
     case "artifact_damage_bonus":
+    case "artifact_damage_mult":
       getArtifactModifier(effect.artifactId).damageMultiplier *= 1 + effect.value;
       break;
     case "artifact_cooldown_mult":
       getArtifactModifier(effect.artifactId).cooldownMultiplier *= effect.value;
+      break;
+    case "artifact_projectile_count_add":
+      getArtifactModifier(effect.artifactId).projectileCountAdd += effect.value;
+      break;
+    case "artifact_pierce_add":
+      getArtifactModifier(effect.artifactId).pierceAdd += effect.value;
+      break;
+    case "artifact_area_mult":
+      getArtifactModifier(effect.artifactId).areaMultiplier *= effect.value;
+      break;
+    case "artifact_volley_count_add":
+      getArtifactModifier(effect.artifactId).volleyCountAdd += effect.value;
+      break;
+    case "artifact_slow_duration_add":
+      getArtifactModifier(effect.artifactId).slowDurationAdd += effect.value;
+      break;
+    case "artifact_chain_count_add":
+      getArtifactModifier(effect.artifactId).chainCountAdd += effect.value;
+      break;
+    case "artifact_chain_radius_mult":
+      getArtifactModifier(effect.artifactId).chainRadiusMultiplier *= effect.value;
+      break;
+    case "artifact_freeze_chance_add":
+      getArtifactModifier(effect.artifactId).freezeChanceAdd += effect.value;
       break;
     case "horizontal_bonus":
       state.bonuses.horizontalBonus += effect.value;
@@ -1950,6 +2072,7 @@ function renderLoadout() {
     playerProfile: playerMeta,
     DATA,
     helpers: {
+      getActiveArtifactBonds,
       getCharacterLevel,
       getNextDeploySlotUnlock,
       loadoutReady,
@@ -1979,7 +2102,16 @@ function renderLoadout() {
   });
   loadoutArtifactList.querySelectorAll("[data-loadout-artifact-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.loadoutArtifactId = button.dataset.loadoutArtifactId;
+      const id = button.dataset.loadoutArtifactId;
+      const selected = state.loadoutArtifactIds.includes(id);
+      if (selected) {
+        state.loadoutArtifactIds = state.loadoutArtifactIds.filter((artifactId) => artifactId !== id);
+      } else if (state.loadoutArtifactIds.length < playerMeta.maxArtifactSlots) {
+        state.loadoutArtifactIds.push(id);
+      } else {
+        setStatus(`当前最多可携带 ${playerMeta.maxArtifactSlots} 件法宝。`);
+      }
+      state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
       renderLoadout();
       updateUi();
     });
@@ -2096,6 +2228,7 @@ function getDebugSnapshot() {
     "profile.highestWave": playerMeta.highestWave,
     "profile.totalKills": playerMeta.totalKills,
     "profile.maxDeploySlots": playerMeta.maxDeploySlots,
+    "profile.maxArtifactSlots": playerMeta.maxArtifactSlots,
     "profile.ownedCharacterCount": playerMeta.ownedCharacters.length,
     "profile.ownedCharacters": playerMeta.ownedCharacters.join(","),
     "profile.characterLevels": JSON.stringify(playerMeta.characterLevels),
@@ -2119,9 +2252,9 @@ function getDebugSnapshot() {
     "projectiles.length": state.projectiles.length,
     firstProjectileType: state.projectiles.find((projectile) => !projectile.visualOnly)?.type || "none",
     roleAttackCount: state.deployedRoles.reduce((sum, role) => sum + role.attacks, 0),
-    "artifacts.length": state.selectedArtifactId ? 1 : 0,
-    selectedArtifact: state.selectedArtifactId || "",
-    artifactCooldown: Number(state.artifactCooldown || 0).toFixed(2),
+    "artifacts.length": (state.selectedArtifactIds || []).length,
+    selectedArtifact: (state.selectedArtifactIds || []).join(", "),
+    artifactCooldown: JSON.stringify(state.artifactCooldowns || {}),
     firstEnemyProgress: state.enemies[0] ? Number(state.enemies[0].progress).toFixed(3) : "none",
     firstEnemyMode: state.enemies[0] ? state.enemies[0].state : "none",
     attackLineY: Number(attackLineY()).toFixed(1),
@@ -2356,7 +2489,7 @@ function getDebugStateRows() {
     ["playerProfile.highestWave", snapshot["profile.highestWave"]],
     ["playerProfile.totalKills", snapshot["profile.totalKills"]],
     ["当前上阵角色", state.deployedRoles.map((role) => DATA.roles[role.roleId]?.name || role.roleId).join(", ")],
-    ["当前携带法宝", DATA.artifacts[state.selectedArtifactId]?.name || state.selectedArtifactId || ""],
+    ["当前携带法宝", (state.selectedArtifactIds || []).map((id) => DATA.artifacts[id]?.name || id).join(", ")],
   ].map(([key, value]) => ({ key, value }));
 }
 
@@ -2397,14 +2530,14 @@ function getDebugArtifactRows() {
     name: artifact.name,
     rarity: artifact.rarity || "",
     owned: playerMeta.ownedArtifacts.includes(artifact.id),
-    selected: state.selectedArtifactId === artifact.id,
+    selected: (state.selectedArtifactIds || []).includes(artifact.id),
     damage: artifact.damage,
     cooldown: artifact.cooldown,
     projectileType: artifact.projectileType || "",
     effectType: artifact.effectType || "",
     targetRule: artifact.targetRule || artifact.targeting || "",
     description: artifact.description || artifact.attackText || "",
-    runtimeCooldown: state.selectedArtifactId === artifact.id ? state.artifactCooldown : "",
+    runtimeCooldown: state.artifactCooldowns?.[artifact.id] ?? "",
   }));
 }
 
