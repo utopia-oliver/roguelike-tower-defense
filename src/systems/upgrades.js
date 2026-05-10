@@ -130,6 +130,7 @@
     const currentLevel = state.martialArtLevels.ma_qingya_sword || 0;
     const art = { id: "ma_qingya_sword", name: "青崖剑诀" };
     const isMajorForm = upgrade.type === "major" || upgrade.type === "major_enhance";
+    const effectInfo = qingyaUpgradeEffectInfo(upgrade);
     return {
       id: `martial_branch_${upgrade.id}`,
       name: upgrade.name,
@@ -137,6 +138,9 @@
       rarity: upgrade.type === "major" || upgrade.type === "major_enhance" ? "史诗" : upgrade.type === "minor" ? "稀有" : "普通",
       weight: upgrade.weight,
       scope: "martial_art_branch",
+      upgradeKind: upgrade.type === "major_enhance" ? "refine_upgrade" : "branch_upgrade",
+      categoryKey: effectInfo.category,
+      effectField: effectInfo.field,
       martialArtId: "ma_qingya_sword",
       upgradeId: upgrade.id,
       effectType: "martial_art_branch_upgrade",
@@ -153,6 +157,27 @@
     };
   }
 
+  function qingyaUpgradeEffectInfo(upgrade = {}) {
+    const effects = upgrade.effects || {};
+    if (effects.giantSword) return { category: "major_evolution", field: "giantSword" };
+    if (effects.giantSwordDamageMultAdd) return { category: "major_evolution_damage", field: "giantSwordDamageMult" };
+    if (effects.giantSwordSplashRadiusMult) return { category: "major_evolution_splash", field: "giantSwordSplashRadius" };
+    if (effects.giantSwordEliteDamageMultAdd) return { category: "major_evolution_elite", field: "giantSwordEliteDamageMult" };
+    if (effects.giantSwordSpeedMult) return { category: "major_evolution_speed", field: "giantSwordSpeedMult" };
+    if (effects.projectileAdd) return { category: "projectile_count", field: "projectileCount" };
+    if (effects.volleyAdd) return { category: "volley_count", field: "volleyCount" };
+    if (effects.pierceAdd) return { category: "pierce", field: "pierceCount" };
+    if (effects.damageMult) return { category: "martial_art_damage", field: "damageMultiplier" };
+    if (effects.attackIntervalMult) return { category: "attack_speed", field: "attackIntervalMultiplier" };
+    return { category: upgrade.type || "martial_art_branch", field: upgrade.id || "branch" };
+  }
+
+  function isQingyaStructuralUpgrade(upgrade) {
+    const effects = upgrade?.effects || {};
+    if (upgrade?.type === "minor" || upgrade?.type === "major" || upgrade?.type === "major_enhance") return true;
+    return Boolean(effects.projectileAdd || effects.volleyAdd || effects.pierceAdd);
+  }
+
   function qingyaBranchUpgradeAvailable({ state, upgrade, helpers }) {
     const artId = "ma_qingya_sword";
     const currentLevel = state.martialArtLevels[artId] || 0;
@@ -163,6 +188,7 @@
     if (currentLevel === 2) return upgrade.type === "minor";
     if (currentLevel === 6) return upgrade.type === "major";
     if (upgrade.type !== "normal") return false;
+    if (!isQingyaStructuralUpgrade(upgrade)) return false;
 
     const nextParams = helpers.qingyaAttackParamsFromBranches(upgrade);
     if (nextParams.projectileCount > 5 || nextParams.volleyCount > 4) return false;
@@ -207,6 +233,9 @@
               scope: "martial_art_branch",
               martialArtId: art.id,
               upgradeId: "qingya_giant_damage",
+              upgradeKind: "refine_upgrade",
+              categoryKey: "major_evolution_damage",
+              effectField: "giantSwordDamageMult",
               targetType: "major_evolution",
               targetId: "qingya_major_giant_sword",
               targetName: "青崖巨阙",
@@ -223,6 +252,9 @@
               scope: "martial_art_branch",
               martialArtId: art.id,
               upgradeId: "qingya_giant_splash",
+              upgradeKind: "refine_upgrade",
+              categoryKey: "major_evolution_splash",
+              effectField: "giantSwordSplashRadius",
               targetType: "major_evolution",
               targetId: "qingya_major_giant_sword",
               targetName: "青崖巨阙",
@@ -233,7 +265,7 @@
             },
           ];
         }
-        return [
+        const refinePerks = [
           {
             id: `targeted_${art.id}_damage`,
             name: `${art.name}·剑意凝练`,
@@ -247,6 +279,9 @@
             targetId: art.id,
             targetName: art.name,
             effectType: "martial_art_damage_bonus",
+            upgradeKind: "refine_upgrade",
+            categoryKey: "martial_art_damage",
+            effectField: "damageMultiplier",
             description: `${art.name}伤害提升25%。`,
             valueText: "浼ゅ +25%",
             effect: { type: "martial_art_damage_bonus", martialArtId: art.id, value: 0.25 },
@@ -264,6 +299,9 @@
             targetId: art.id,
             targetName: art.name,
             effectType: "martial_art_attack_interval_mult",
+            upgradeKind: "refine_upgrade",
+            categoryKey: "attack_speed",
+            effectField: "attackIntervalMultiplier",
             description: `${art.name}攻击间隔降低12%。`,
             valueText: "鏀诲嚮闂撮殧 -12%",
             effect: { type: "martial_art_attack_interval_mult", martialArtId: art.id, value: 0.88 },
@@ -281,11 +319,17 @@
             targetId: art.id,
             targetName: art.name,
             effectType: "martial_art_pierce_bonus",
+            upgradeKind: "refine_upgrade",
+            categoryKey: "pierce",
+            effectField: "pierceCount",
             description: `${art.name}穿透提升1。`,
             valueText: "穿透 +1",
             effect: { type: "martial_art_pierce_bonus", martialArtId: art.id, value: 1 },
           },
         ];
+        return art.id === "ma_qingya_sword"
+          ? refinePerks.filter((perk) => perk.effectField !== "pierceCount")
+          : refinePerks;
       })
       .filter(Boolean);
   }
@@ -600,11 +644,17 @@
     const perk = normalizePerk({ perk: rawPerk, context });
     const effect = perk.effect || {};
     const effectType = effect.type || perk.effectType || "none";
-    const fields = [`targetType:${perk.targetType || perk.scope || ""}`, `targetId:${getPerkTargetId(perk)}`];
+    const targetType = perk.targetType || perk.scope || "";
+    const targetId = getPerkTargetId(perk);
+    const semanticEffect = perk.effectField || effectFieldForPerk({ perk, context });
+    const semanticCategory = perk.categoryKey || categoryKeyForPerk({ perk, context });
+    const isMartialSemanticKey = targetType === "martial_art" || targetType === "major_evolution" || perk.scope === "martial_art" || perk.scope === "martial_art_branch";
+    const fields = [`targetType:${targetType}`, `targetId:${targetId}`, `category:${semanticCategory}`, `field:${semanticEffect}`];
     ["value", "chance", "mult", "artifactId", "martialArtId"].forEach((key) => {
+      if (isMartialSemanticKey && ["value", "chance", "mult"].includes(key)) return;
       if (effect[key] !== undefined) fields.push(`${key}:${effect[key]}`);
     });
-    if (perk.upgradeId) {
+    if (perk.upgradeId && !semanticEffect) {
       const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
       const upgradeFields = Object.entries(upgrade?.effects || {})
         .sort(([a], [b]) => a.localeCompare(b))
@@ -615,8 +665,35 @@
     if (perk.martialArtId || perk.targetMartialArtId) fields.push(`art:${perk.martialArtId || perk.targetMartialArtId}`);
     if (perk.targetProjectileType) fields.push(`projectile:${perk.targetProjectileType}`);
     if (perk.targetTrajectoryType) fields.push(`trajectory:${perk.targetTrajectoryType}`);
-    if (perk.targetCharacterId) fields.push(`character:${perk.targetCharacterId}`);
-    return `${effectType}|${fields.join("|")}`;
+    if (perk.targetCharacterId && !isMartialSemanticKey) fields.push(`character:${perk.targetCharacterId}`);
+    const normalizedType = semanticEffect ? semanticEffect : effectType;
+    return `${normalizedType}|${fields.join("|")}`;
+  }
+
+  function effectFieldForPerk({ perk, context }) {
+    const effect = perk.effect || {};
+    const effectType = effect.type || perk.effectType || "";
+    if (perk.upgradeId) {
+      const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
+      return qingyaUpgradeEffectInfo(upgrade).field;
+    }
+    if (effectType === "martial_art_damage_bonus" || effectType === "martial_art_damage_mult") return "damageMultiplier";
+    if (effectType === "martial_art_attack_interval_mult") return "attackIntervalMultiplier";
+    if (effectType === "martial_art_pierce_bonus") return "pierceCount";
+    return effectType || "";
+  }
+
+  function categoryKeyForPerk({ perk, context }) {
+    const effect = perk.effect || {};
+    const effectType = effect.type || perk.effectType || "";
+    if (perk.upgradeId) {
+      const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
+      return qingyaUpgradeEffectInfo(upgrade).category;
+    }
+    if (effectType === "martial_art_damage_bonus" || effectType === "martial_art_damage_mult") return "martial_art_damage";
+    if (effectType === "martial_art_attack_interval_mult") return "attack_speed";
+    if (effectType === "martial_art_pierce_bonus") return "pierce";
+    return perk.categoryKey || perk.category || perk.scope || "";
   }
 
   function dedupePerks({ perks, context }) {
@@ -624,6 +701,7 @@
     perks.forEach((perk) => {
       const normalized = normalizePerk({ perk, context });
       const key = perkEffectKey({ perk: normalized, context });
+      normalized.duplicateKey = key;
       const existing = byKey.get(key);
       if (!existing || perkSpecificity(normalized) > perkSpecificity(existing)) {
         byKey.set(key, normalized);
