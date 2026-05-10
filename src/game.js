@@ -130,6 +130,7 @@ const {
 const {
   getActiveArtifactBonds,
   getArtifactModifier: getSystemArtifactModifier,
+  getArtifactRuntimeState: getSystemArtifactRuntimeState,
   updateArtifacts: updateSystemArtifacts,
 } = window.XM.Artifacts;
 const {
@@ -832,6 +833,9 @@ function startRun() {
     phase: "combat",
     running: true,
   });
+  (state.selectedArtifactIds || []).forEach((artifactId) => {
+    getSystemArtifactRuntimeState({ state, artifactId });
+  });
   state.appState = APP_STATE.BATTLE;
   startButton.disabled = true;
   setStatus("妖潮来袭，角色和法宝自动攻击；阵法会在敌人靠近阵眼时触发。");
@@ -949,6 +953,31 @@ function getMartialArtModifier(artId) {
 
 function getArtifactModifier(artifactId) {
   return getSystemArtifactModifier({ state, artifactId });
+}
+
+function applyArtifactRunUpgrade(perk, effect) {
+  const artifactId = effect.artifactId || perk.targetArtifactId || perk.targetId;
+  if (!artifactId || !(state.selectedArtifactIds || []).includes(artifactId)) return;
+  const runtime = getSystemArtifactRuntimeState({ state, artifactId });
+  if (!runtime) return;
+
+  const upgradeId = effect.upgradeId || perk.upgradeId || perk.id;
+  if (upgradeId && !runtime.selectedUpgradeIds.includes(upgradeId)) {
+    runtime.selectedUpgradeIds.push(upgradeId);
+  }
+
+  const upgradeType = effect.upgradeType || perk.upgradeType;
+  if (upgradeType === "minor_evolution") {
+    runtime.minorEvolutionSelected = true;
+  }
+  if (upgradeType === "major_evolution") {
+    runtime.majorEvolutionSelected = true;
+    runtime.majorEvolutionId = upgradeId || runtime.majorEvolutionId || `${artifactId}_major_evolution`;
+    runtime.level = 7;
+    return;
+  }
+
+  runtime.level = Math.min(7, Math.max(1, Number(runtime.level) || 1) + 1);
 }
 
 function getPerkTargetId(perk) {
@@ -1627,6 +1656,10 @@ function updateArtifact(dt) {
       addFloater(floater) {
         state.floaters.push(floater);
       },
+      addZone(zone) {
+        state.zones = state.zones || [];
+        state.zones.push(zone);
+      },
       areaDamage,
       damageEnemy(enemy, damage, source) {
         enemy.takeDamage(damage, source);
@@ -1865,6 +1898,9 @@ function applyPerk(perk) {
   }
   state.acquiredPerks.add(perk.id);
   const effect = perk.effect || { type: "unimplemented", value: 0 };
+  if (perk.scope === "artifact" || effect.artifactId) {
+    applyArtifactRunUpgrade(perk, effect);
+  }
   switch (effect.type) {
     case "role_damage_mult":
       state.bonuses.roleDamage *= 1 + effect.value;
@@ -1978,6 +2014,8 @@ function applyPerk(perk) {
       break;
     case "artifact_vulnerable_mult":
       getArtifactModifier(effect.artifactId).vulnerableMultiplier += effect.value;
+      break;
+    case "artifact_evolution":
       break;
     case "horizontal_bonus":
       state.bonuses.horizontalBonus += effect.value;

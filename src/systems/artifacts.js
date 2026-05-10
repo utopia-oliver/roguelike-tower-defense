@@ -190,9 +190,22 @@
     if (!state.artifactRuntime[artifactId]) {
       state.artifactRuntime[artifactId] = {
         artifactId,
+        level: 1,
+        selectedUpgradeIds: [],
+        minorEvolutionSelected: false,
+        majorEvolutionSelected: false,
+        majorEvolutionId: "",
+        modifiers: {},
         cooldownTimer: Number(state.artifactCooldowns[artifactId]) || 0,
       };
     }
+    const runtime = state.artifactRuntime[artifactId];
+    runtime.level = Math.max(1, Math.min(7, Number(runtime.level) || 1));
+    runtime.selectedUpgradeIds = Array.isArray(runtime.selectedUpgradeIds) ? runtime.selectedUpgradeIds : [];
+    runtime.modifiers = runtime.modifiers || {};
+    runtime.minorEvolutionSelected = Boolean(runtime.minorEvolutionSelected);
+    runtime.majorEvolutionSelected = Boolean(runtime.majorEvolutionSelected);
+    runtime.majorEvolutionId = runtime.majorEvolutionId || "";
     return state.artifactRuntime[artifactId];
   }
 
@@ -328,7 +341,115 @@
   }
 
   function artifactParams({ state, artifact }) {
-    return applyArtifactModifierToParams(artifact, getArtifactModifier({ state, artifactId: artifact.id }));
+    const runtime = getArtifactRuntimeState({ state, artifactId: artifact.id });
+    return applyArtifactEvolutionParams(
+      applyArtifactModifierToParams(artifact, getArtifactModifier({ state, artifactId: artifact.id })),
+      artifact,
+      runtime,
+    );
+  }
+
+  function hasArtifactUpgrade(runtime, suffix) {
+    return (runtime?.selectedUpgradeIds || []).some((id) => id.endsWith(suffix));
+  }
+
+  function applyArtifactEvolutionParams(params, artifact, runtime) {
+    const next = { ...params };
+    if (!runtime) return next;
+    if (runtime.minorEvolutionSelected) {
+      if (artifact.id === "qingming_sword_box") {
+        next.secondaryProjectileCount = (next.secondaryProjectileCount || 0) + 1;
+        next.secondaryDamageMultiplier = 0.5;
+      } else if (artifact.id === "lihuo_gourd") {
+        next.burningZone = true;
+        next.burningZoneDps = Math.max(2, (next.damage || 0) * 0.22);
+      } else if (artifact.id === "zhenmo_bell") {
+        next.attackDamageMultiplier = Math.min(next.attackDamageMultiplier || 0.85, 0.72);
+        next.debuffDuration = (next.debuffDuration || 0) + 0.8;
+      } else if (artifact.id === "xuanbing_mirror") {
+        next.slowMultiplier = Math.min(next.slowMultiplier || 0.55, 0.42);
+        next.slowDuration = (next.slowDuration || 0) + 0.6;
+      } else if (artifact.id === "leiwen_seal") {
+        next.targetRule = "lowest_hp";
+      } else if (artifact.id === "wandu_orb") {
+        next.poisonDamage *= 1.25;
+        next.poisonDuration = (next.poisonDuration || 0) + 0.8;
+      } else if (artifact.id === "shanhe_seal") {
+        next.aftershock = true;
+      } else if (artifact.id === "xingyun_board") {
+        next.preferDensest = true;
+      } else if (artifact.id === "guiyuan_banner") {
+        next.heal *= 1.2;
+      } else if (artifact.id === "zhanyao_blades") {
+        next.targetRule = "lowest_hp";
+        next.projectileCount = (next.projectileCount || 1) + 1;
+      }
+    }
+    if (runtime.majorEvolutionSelected) {
+      if (artifact.id === "qingming_sword_box") {
+        next.targetRule = "multiple_nearest";
+        next.projectileCount = (next.projectileCount || 1) + 8;
+        next.pierceCount = (next.pierceCount || 0) + 2;
+        next.damage *= 1.15;
+      } else if (artifact.id === "lihuo_gourd") {
+        next.volleyCount = (next.volleyCount || 1) + 4;
+        next.areaRadius *= 1.35;
+        next.damage *= 1.3;
+        next.burningZone = true;
+        next.burningZoneDps = Math.max(3, next.damage * 0.25);
+      } else if (artifact.id === "zhenmo_bell") {
+        next.areaRadius *= 1.6;
+        next.vulnerableMultiplier = (next.vulnerableMultiplier || 1.18) + 0.18;
+        next.attackDamageMultiplier = Math.min(next.attackDamageMultiplier || 0.85, 0.65);
+        next.debuffDuration = (next.debuffDuration || 0) + 2;
+      } else if (artifact.id === "xuanbing_mirror") {
+        next.areaRadius *= 1.65;
+        next.damage *= 1.35;
+        next.slowMultiplier = Math.min(next.slowMultiplier || 0.55, 0.32);
+        next.slowDuration = (next.slowDuration || 0) + 1.5;
+        next.freezeChance = (next.freezeChance || 0) + 0.3;
+      } else if (artifact.id === "leiwen_seal") {
+        next.chainCount = (next.chainCount || 1) + 5;
+        next.chainRadius *= 1.35;
+        next.damage *= 1.25;
+      } else if (artifact.id === "wandu_orb") {
+        next.areaRadius *= 1.65;
+        next.poisonDamage *= 1.6;
+        next.poisonDuration = (next.poisonDuration || 0) + 2.5;
+        next.damage *= 1.2;
+      } else if (artifact.id === "shanhe_seal") {
+        next.areaRadius *= 1.65;
+        next.damage *= 1.6;
+        next.slowDuration = (next.slowDuration || next.stunDuration || 0.4) + 1;
+        next.aftershock = true;
+      } else if (artifact.id === "xingyun_board") {
+        next.meteorCount = (next.meteorCount || 1) + 8;
+        next.areaRadius *= 1.3;
+        next.damage *= 1.35;
+        next.preferDensest = true;
+      } else if (artifact.id === "guiyuan_banner") {
+        next.heal *= 2.2;
+        next.lowHpMajorHeal = true;
+      } else if (artifact.id === "zhanyao_blades") {
+        next.targetRule = "multiple_nearest";
+        next.projectileCount = (next.projectileCount || 1) + 9;
+        next.damage *= 1.25;
+      }
+    }
+    if (hasArtifactUpgrade(runtime, "_evolved_damage")) next.damage *= 1.25;
+    if (hasArtifactUpgrade(runtime, "_evolved_projectile")) next.projectileCount = (next.projectileCount || 1) + 2;
+    if (hasArtifactUpgrade(runtime, "_evolved_pierce")) next.pierceCount = (next.pierceCount || 0) + 1;
+    if (hasArtifactUpgrade(runtime, "_evolved_area")) next.areaRadius *= 1.2;
+    if (hasArtifactUpgrade(runtime, "_evolved_duration")) {
+      next.slowDuration = (next.slowDuration || 0) + 0.8;
+      next.poisonDuration = (next.poisonDuration || 0) + 1.2;
+      next.debuffDuration = (next.debuffDuration || 0) + 0.8;
+    }
+    if (hasArtifactUpgrade(runtime, "_evolved_chain")) {
+      next.chainCount = (next.chainCount || 1) + 2;
+      next.meteorCount = (next.meteorCount || 1) + 2;
+    }
+    return next;
   }
 
   function showArtifactFloater(callbacks, artifact, target) {
@@ -344,7 +465,7 @@
   function triggerProjectileArtifact({ state, artifact, params, callbacks }) {
     const origin = call(callbacks, "getArtifactOrigin") || { x: 0, y: 0 };
     const count = params.projectileCount || 1;
-    const targets = artifact.targetRule === "multiple_nearest"
+    const targets = params.targetRule === "multiple_nearest"
       ? multipleNearestEnemies(state, origin, count)
       : [selectTarget({ state, artifact: params, origin })].filter(Boolean);
     if (!targets.length) return false;
@@ -352,11 +473,21 @@
       spawnArtifactProjectile({
         state,
         artifact,
-        params: { ...params, projectileCount: artifact.targetRule === "multiple_nearest" ? 1 : count },
+        params: { ...params, projectileCount: params.targetRule === "multiple_nearest" ? 1 : count },
         target,
         origin,
         callbacks,
       });
+      for (let i = 0; i < (params.secondaryProjectileCount || 0); i += 1) {
+        spawnArtifactProjectile({
+          state,
+          artifact,
+          params: { ...params, damage: params.damage * (params.secondaryDamageMultiplier || 0.5), projectileCount: 1 },
+          target,
+          origin,
+          callbacks,
+        });
+      }
       if (index === 0) showArtifactFloater(callbacks, artifact, target);
     });
     return true;
@@ -368,7 +499,9 @@
       ? null
       : selectTarget({ state, artifact: params, origin });
     if (artifact.type === "meteor") {
-      const targets = randomEnemies(state, params.meteorCount || params.volleyCount || 3);
+      const targets = params.preferDensest
+        ? Array.from({ length: params.meteorCount || params.volleyCount || 3 }, () => densestEnemy(state, params.areaRadius || 45)).filter(Boolean)
+        : randomEnemies(state, params.meteorCount || params.volleyCount || 3);
       if (!targets.length) return false;
       targets.forEach((enemy) => call(callbacks, "areaDamage", enemy.x, enemy.y, params.areaRadius, params.damage, "artifact"));
       showArtifactFloater(callbacks, artifact, targets[0]);
@@ -378,6 +511,9 @@
     if (artifact.type === "area") {
       for (let i = 0; i < (params.volleyCount || 1); i += 1) {
         call(callbacks, "areaDamage", target.x, target.y, params.areaRadius, params.damage, "artifact");
+      }
+      if (params.burningZone) {
+        call(callbacks, "addZone", { x: target.x, y: target.y, radius: params.areaRadius, ttl: 1.8, color: "rgba(239, 123, 69, 0.22)", dps: params.burningZoneDps || params.damage * 0.2, tick: 0 });
       }
     } else if (artifact.type === "frost_area") {
       damageEnemiesInArea({
@@ -390,6 +526,9 @@
         callbacks,
         status: { type: "slow", duration: params.slowDuration, data: { multiplier: params.slowMultiplier } },
       });
+      if (params.aftershock) {
+        call(callbacks, "areaDamage", target.x, target.y, params.areaRadius * 0.65, params.damage * 0.45, "artifact");
+      }
       if (params.freezeChance > 0 && Math.random() < params.freezeChance) {
         addStatus(target, "freeze", params.freezeDuration || 0.6, { value: 1 });
       }
@@ -446,7 +585,7 @@
   function triggerSupportArtifact({ state, artifact, params, callbacks }) {
     if (artifact.type !== "support") return false;
     const hpRatio = state.arrayCoreMaxHp > 0 ? state.arrayCoreHp / state.arrayCoreMaxHp : 1;
-    const lowHpBonus = hpRatio < 0.4 ? 1.35 : 1;
+    const lowHpBonus = hpRatio < 0.4 ? (params.lowHpMajorHeal ? 2.0 : 1.35) : 1;
     const healCount = params.volleyCount || 1;
     for (let i = 0; i < healCount; i += 1) {
       call(callbacks, "healArrayCore", params.heal * (i === 0 ? lowHpBonus : 0.45));

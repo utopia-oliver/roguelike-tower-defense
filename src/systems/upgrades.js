@@ -338,6 +338,110 @@
     return [];
   }
 
+  const ARTIFACT_EVOLUTION_DEFS = {
+    qingming_sword_box: {
+      minor: ["剑匣初开", "每次触发额外释放一口副剑，副剑伤害为主剑50%。"],
+      major: ["万剑归宗", "触发时释放一轮剑雨，向多个敌人发射大量飞剑。"],
+      evolved: [
+        ["evolved_damage", "万剑归宗·剑雨增锋", "剑雨伤害提升。", "artifact_damage_mult", 0.25],
+        ["evolved_projectile", "万剑归宗·剑影无尽", "剑雨飞剑数量提升。", "artifact_projectile_count_add", 2],
+        ["evolved_pierce", "万剑归宗·破妖万刃", "剑雨穿透提升。", "artifact_pierce_add", 1],
+      ],
+    },
+    lihuo_gourd: {
+      minor: ["余火不灭", "爆裂后留下短暂火焰区域，持续造成小额伤害。"],
+      major: ["焚天火海", "在敌人密集区域连续降下多次大范围离火爆裂。"],
+      evolved: [
+        ["evolved_area", "焚天火海·火势滔天", "焚天火海范围提升。", "artifact_area_mult", 1.2],
+        ["evolved_damage", "焚天火海·赤焰灼魂", "焚天火海伤害提升。", "artifact_damage_mult", 0.25],
+        ["evolved_duration", "焚天火海·余火连绵", "持续火焰区域时间提升。", "artifact_slow_duration_add", 0.8],
+      ],
+    },
+    zhenmo_bell: {
+      minor: ["镇魂定魄", "被镇魔铃影响的敌人短时间内攻击阵眼伤害进一步降低。"],
+      major: ["万魔失声", "周期性大范围震慑敌人，使敌人大幅易伤并降低攻击阵眼伤害。"],
+      evolved: [
+        ["evolved_damage", "万魔失声·破魔加深", "破魔易伤提升。", "artifact_vulnerable_mult", 0.08],
+        ["evolved_duration", "万魔失声·镇魄延长", "破魔持续时间提升。", "artifact_debuff_duration_add", 0.8],
+        ["evolved_area", "万魔失声·铃音万里", "镇魔铃范围提升。", "artifact_area_mult", 1.2],
+      ],
+    },
+    xuanbing_mirror: {
+      minor: ["镜中寒界", "被冰缓的敌人再次受到玄冰玉镜影响时，减速效果增强。"],
+      major: ["万里冰封", "大范围冰封敌人，造成伤害并强力减速或短暂冻结。"],
+      evolved: [
+        ["evolved_area", "万里冰封·寒界扩张", "万里冰封范围提升。", "artifact_area_mult", 1.2],
+        ["evolved_duration", "万里冰封·冰封延长", "冻结和强减速时间提升。", "artifact_slow_duration_add", 0.8],
+        ["evolved_damage", "万里冰封·寒伤入骨", "万里冰封伤害提升。", "artifact_damage_mult", 0.25],
+      ],
+    },
+    leiwen_seal: {
+      minor: ["雷引残妖", "雷击优先跳向低血敌人，提升补刀能力。"],
+      major: ["九霄雷狱", "连续释放多道雷击，在敌群中反复跳跃。"],
+      evolved: [
+        ["evolved_chain", "九霄雷狱·雷数增加", "雷击次数提升。", "artifact_chain_count_add", 2],
+        ["evolved_damage", "九霄雷狱·雷威加深", "雷击伤害提升。", "artifact_damage_mult", 0.25],
+        ["evolved_area", "九霄雷狱·雷域扩张", "雷击连锁范围提升。", "artifact_chain_radius_mult", 1.2],
+      ],
+    },
+    wandu_orb: {
+      minor: ["百毒侵身", "中毒敌人受到的持续伤害逐渐提高。"],
+      major: ["万毒蚀界", "大范围释放毒域，持续使敌人中毒并叠加毒伤。"],
+      evolved: [
+        ["evolved_area", "万毒蚀界·毒域扩张", "毒域范围提升。", "artifact_area_mult", 1.2],
+        ["evolved_damage", "万毒蚀界·毒息加深", "毒伤提升。", "artifact_poison_damage_mult", 0.25],
+        ["evolved_duration", "万毒蚀界·毒留不散", "中毒持续时间提升。", "artifact_poison_duration_add", 1.2],
+      ],
+    },
+    shanhe_seal: {
+      minor: ["镇山余震", "山河印命中后产生一次小范围余震。"],
+      major: ["山河镇世", "在阵眼前方落下巨大山河印，造成高额伤害并强力压制敌人。"],
+      evolved: [
+        ["evolved_duration", "山河镇世·镇压加深", "山河印控制时间提升。", "artifact_slow_duration_add", 0.7],
+        ["evolved_damage", "山河镇世·山势加重", "山河印伤害提升。", "artifact_damage_mult", 0.25],
+        ["evolved_area", "山河镇世·余震扩散", "山河印余震范围提升。", "artifact_area_mult", 1.2],
+      ],
+    },
+    xingyun_board: {
+      minor: ["星落成阵", "多颗星陨更倾向于落在敌人密集区域。"],
+      major: ["周天星落", "连续召唤大量星陨覆盖战场。"],
+      evolved: [
+        ["evolved_chain", "周天星落·星数增加", "星陨数量提升。", "artifact_volley_count_add", 2],
+        ["evolved_damage", "周天星落·星火增强", "星陨伤害提升。", "artifact_damage_mult", 0.25],
+        ["evolved_area", "周天星落·星域扩张", "星陨爆裂范围提升。", "artifact_area_mult", 1.2],
+      ],
+    },
+    guiyuan_banner: {
+      minor: ["灵息护阵", "治疗阵眼时，短时间降低阵眼受到的伤害。"],
+      major: ["归元大阵", "阵眼低血时自动触发一次大量恢复，并产生护阵效果。"],
+      evolved: [
+        ["evolved_damage", "归元大阵·回元增强", "归元灵幡治疗量提升。", "artifact_heal_mult", 0.25],
+        ["evolved_duration", "归元大阵·护阵延长", "护阵时间提升。", "artifact_debuff_duration_add", 0.8],
+        ["evolved_chain", "归元大阵·绝境回生", "低血时额外触发概率提升。", "artifact_volley_count_add", 1],
+      ],
+    },
+    zhanyao_blades: {
+      minor: ["追魂刃影", "飞刃击杀敌人后，额外追击附近低血敌人一次。"],
+      major: ["千刃斩妖", "释放大量飞刃追击多个敌人，优先清理残血目标。"],
+      evolved: [
+        ["evolved_projectile", "千刃斩妖·刃数增加", "飞刃数量提升。", "artifact_projectile_count_add", 2],
+        ["evolved_damage", "千刃斩妖·锋芒加深", "飞刃伤害提升。", "artifact_damage_mult", 0.25],
+        ["evolved_chain", "千刃斩妖·追魂更疾", "追击次数提升。", "artifact_volley_count_add", 1],
+      ],
+    },
+  };
+
+  function getArtifactRunState(state, artifactId) {
+    const runtime = state.artifactRuntime?.[artifactId] || {};
+    return {
+      artifactId,
+      level: Math.max(1, Math.min(7, Number(runtime.level) || 1)),
+      selectedUpgradeIds: Array.isArray(runtime.selectedUpgradeIds) ? runtime.selectedUpgradeIds : [],
+      minorEvolutionSelected: Boolean(runtime.minorEvolutionSelected),
+      majorEvolutionSelected: Boolean(runtime.majorEvolutionSelected),
+    };
+  }
+
   function artifactPerksForRun({ state, data }) {
     const artifactIds = selectedArtifactIds({ state });
     if (!artifactIds.length) return [];
@@ -406,25 +510,85 @@
     return artifactIds.flatMap((artifactId) => {
       const artifact = data.artifacts[artifactId];
       if (!artifact) return [];
+      const runtime = getArtifactRunState(state, artifactId);
+      const evolution = ARTIFACT_EVOLUTION_DEFS[artifactId];
+      if (runtime.level >= 7 && runtime.majorEvolutionSelected) {
+        return (evolution?.evolved || []).map(([key, title, description, effectType, value]) => createArtifactPerk({
+          artifact,
+          artifactId,
+          key,
+          title,
+          description,
+          effectType,
+          value,
+          runtime,
+          upgradeType: "evolved_upgrade",
+          category: "法宝·大成",
+        }));
+      }
+      if (runtime.level === 6 && !runtime.majorEvolutionSelected && evolution?.major) {
+        return [createArtifactEvolutionPerk({ artifact, artifactId, runtime, evolution, upgradeType: "major_evolution" })];
+      }
+      if (runtime.level === 2 && !runtime.minorEvolutionSelected && evolution?.minor) {
+        return [createArtifactEvolutionPerk({ artifact, artifactId, runtime, evolution, upgradeType: "minor_evolution" })];
+      }
+      if (runtime.level >= 7) return [];
       return (definitions[artifactId] || [
         ["damage", "灵机温养", `${artifact.name}伤害提升25%。`, "伤害 +25%", "artifact_damage_mult", 0.25],
         ["cooldown", "灵机回转", `${artifact.name}冷却降低15%。`, "冷却 -15%", "artifact_cooldown_mult", 0.85],
-      ]).map(([key, title, description, valueText, effectType, value]) => ({
-        id: `artifact_${artifactId}_${key}`,
-        name: `${artifact.name}·${title}`,
-        category: "法宝·精修",
-        rarity: "普通",
-        scope: "artifact",
-        targetArtifactId: artifactId,
-        targetName: artifact.name,
-        targetType: "artifact",
-        targetId: artifactId,
-        effectType,
+      ]).filter(([key]) => !runtime.selectedUpgradeIds.includes(`artifact_${artifactId}_${key}`)).map(([key, title, description, valueText, effectType, value]) => createArtifactPerk({
+        artifact,
+        artifactId,
+        key,
+        title,
         description,
         valueText,
-        actualEffectPreview: valueText,
-        effect: { type: effectType, artifactId, value },
+        effectType,
+        value,
+        runtime,
+        upgradeType: "normal",
+        category: "法宝·精修",
       }));
+    });
+  }
+
+  function createArtifactPerk({ artifact, artifactId, key, title, description, valueText, effectType, value, runtime, upgradeType, category }) {
+    const upgradeId = `artifact_${artifactId}_${key}`;
+    return {
+      id: upgradeId,
+      upgradeId,
+      name: title.includes("·") ? title : `${artifact.name}·${title}`,
+      category,
+      rarity: upgradeType === "major_evolution" ? "史诗" : upgradeType === "minor_evolution" ? "稀有" : "普通",
+      scope: "artifact",
+      targetArtifactId: artifactId,
+      targetName: artifact.name,
+      targetType: "artifact",
+      targetId: artifactId,
+      effectType,
+      upgradeType,
+      artifactLevel: runtime.level,
+      description,
+      valueText,
+      actualEffectPreview: valueText || description,
+      effect: { type: effectType, artifactId, value, upgradeId, upgradeType },
+    };
+  }
+
+  function createArtifactEvolutionPerk({ artifact, artifactId, runtime, evolution, upgradeType }) {
+    const [title, description] = upgradeType === "minor_evolution" ? evolution.minor : evolution.major;
+    const key = upgradeType === "minor_evolution" ? "minor_evolution" : "major_evolution";
+    return createArtifactPerk({
+      artifact,
+      artifactId,
+      key,
+      title,
+      description,
+      effectType: "artifact_evolution",
+      value: 1,
+      runtime,
+      upgradeType,
+      category: upgradeType === "minor_evolution" ? "法宝·小成" : "法宝·大成",
     });
   }
 
