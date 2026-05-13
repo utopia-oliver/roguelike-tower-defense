@@ -106,9 +106,14 @@
   }
 
   function createMartialArtPerk({ state, art }) {
-    const currentLevel = state.martialArtLevels[art.id] || 0;
+    const currentLevel = Math.max(1, Number(state.martialArtLevels[art.id]) || 1);
     const next = art.levels.find((level) => level.level === currentLevel + 1);
     if (!next) return null;
+    const upgradeType = next.evolutionType === "minor_evolution"
+      ? "minor_evolution"
+      : next.evolutionType === "major_evolution"
+        ? "major_evolution"
+        : "refine_upgrade";
     return {
       id: `martial_${art.id}_${next.level}`,
       name: `${art.name}·${next.title}`,
@@ -120,6 +125,8 @@
       targetId: art.id,
       targetName: art.name,
       effectType: "martial_art_upgrade",
+      upgradeType,
+      upgradeKind: upgradeType,
       description: `${next.title}：${next.description}`,
       valueText: `当前Lv${currentLevel} → Lv${next.level}`,
       effect: { type: "martial_art_upgrade", martialArtId: art.id },
@@ -127,10 +134,17 @@
   }
 
   function createQingyaBranchPerk({ state, upgrade }) {
-    const currentLevel = state.martialArtLevels.ma_qingya_sword || 0;
+    const currentLevel = Math.max(1, Number(state.martialArtLevels.ma_qingya_sword) || 1);
     const art = { id: "ma_qingya_sword", name: "青崖剑诀" };
     const isMajorForm = upgrade.type === "major" || upgrade.type === "major_enhance";
     const effectInfo = qingyaUpgradeEffectInfo(upgrade);
+    const upgradeType = upgrade.type === "minor"
+      ? "minor_evolution"
+      : upgrade.type === "major"
+        ? "major_evolution"
+        : upgrade.type === "major_enhance"
+          ? "evolved_upgrade"
+          : "branch_upgrade";
     return {
       id: `martial_branch_${upgrade.id}`,
       name: upgrade.name,
@@ -138,7 +152,8 @@
       rarity: upgrade.type === "major" || upgrade.type === "major_enhance" ? "史诗" : upgrade.type === "minor" ? "稀有" : "普通",
       weight: upgrade.weight,
       scope: "martial_art_branch",
-      upgradeKind: upgrade.type === "major_enhance" ? "refine_upgrade" : "branch_upgrade",
+      upgradeKind: upgradeType,
+      upgradeType,
       categoryKey: effectInfo.category,
       effectField: effectInfo.field,
       martialArtId: "ma_qingya_sword",
@@ -180,7 +195,7 @@
 
   function qingyaBranchUpgradeAvailable({ state, upgrade, helpers }) {
     const artId = "ma_qingya_sword";
-    const currentLevel = state.martialArtLevels[artId] || 0;
+    const currentLevel = Math.max(1, Number(state.martialArtLevels[artId]) || 1);
     if (getDisabledUpgradeReason(upgrade)) return false;
     if (helpers.hasMartialBranchUpgrade(artId, upgrade.id)) return false;
     if ((upgrade.requires || []).some((id) => !helpers.hasMartialBranchUpgrade(artId, id))) return false;
@@ -208,7 +223,7 @@
       const art = helpers.martialArtForCharacter(character.id);
       if (!art) return [];
       if (art.id === "ma_qingya_sword") return createQingyaBranchPerks(context);
-      if ((state.martialArtLevels[art.id] || 0) >= art.maxLevel) return [];
+      if (Math.max(1, Number(state.martialArtLevels[art.id]) || 1) >= art.maxLevel) return [];
       const perk = createMartialArtPerk({ state, art });
       return perk ? [perk] : [];
     });
@@ -220,7 +235,8 @@
       .flatMap((character) => {
         const art = helpers.martialArtForCharacter(character.id);
         if (!art) return [];
-        const isMaxed = (state.martialArtLevels[art.id] || 0) >= art.maxLevel;
+        const currentLevel = Math.max(1, Number(state.martialArtLevels[art.id]) || 1);
+        const isMaxed = currentLevel >= art.maxLevel;
         const isQingyaGiant = art.id === "ma_qingya_sword" && helpers.hasMartialBranchUpgrade(art.id, "qingya_major_giant_sword");
         if (isMaxed && !isQingyaGiant) return [];
         if (isQingyaGiant) {
@@ -233,7 +249,8 @@
               scope: "martial_art_branch",
               martialArtId: art.id,
               upgradeId: "qingya_giant_damage",
-              upgradeKind: "refine_upgrade",
+              upgradeKind: "evolved_upgrade",
+              upgradeType: "evolved_upgrade",
               categoryKey: "major_evolution_damage",
               effectField: "giantSwordDamageMult",
               targetType: "major_evolution",
@@ -252,7 +269,8 @@
               scope: "martial_art_branch",
               martialArtId: art.id,
               upgradeId: "qingya_giant_splash",
-              upgradeKind: "refine_upgrade",
+              upgradeKind: "evolved_upgrade",
+              upgradeType: "evolved_upgrade",
               categoryKey: "major_evolution_splash",
               effectField: "giantSwordSplashRadius",
               targetType: "major_evolution",
@@ -280,6 +298,7 @@
             targetName: art.name,
             effectType: "martial_art_damage_bonus",
             upgradeKind: "refine_upgrade",
+            upgradeType: "refine_upgrade",
             categoryKey: "martial_art_damage",
             effectField: "damageMultiplier",
             description: `${art.name}伤害提升25%。`,
@@ -300,6 +319,7 @@
             targetName: art.name,
             effectType: "martial_art_attack_interval_mult",
             upgradeKind: "refine_upgrade",
+            upgradeType: "refine_upgrade",
             categoryKey: "attack_speed",
             effectField: "attackIntervalMultiplier",
             description: `${art.name}攻击间隔降低12%。`,
@@ -320,6 +340,7 @@
             targetName: art.name,
             effectType: "martial_art_pierce_bonus",
             upgradeKind: "refine_upgrade",
+            upgradeType: "refine_upgrade",
             categoryKey: "pierce",
             effectField: "pierceCount",
             description: `${art.name}穿透提升1。`,
@@ -546,14 +567,23 @@
         effectType,
         value,
         runtime,
-        upgradeType: "normal",
+        upgradeType: artifactNormalUpgradeType(effectType),
         category: "法宝·精修",
       }));
     });
   }
 
+  function artifactNormalUpgradeType(effectType) {
+    const field = artifactEffectField(effectType);
+    if (["projectileCount", "pierceCount", "areaRadius", "volleyCount", "chainCount", "chainRadius"].includes(field)) {
+      return "branch_upgrade";
+    }
+    return "refine_upgrade";
+  }
+
   function createArtifactPerk({ artifact, artifactId, key, title, description, valueText, effectType, value, runtime, upgradeType, category }) {
     const upgradeId = `artifact_${artifactId}_${key}`;
+    const effectField = artifactEffectField(effectType);
     return {
       id: upgradeId,
       upgradeId,
@@ -567,12 +597,46 @@
       targetId: artifactId,
       effectType,
       upgradeType,
+      upgradeKind: upgradeType,
       artifactLevel: runtime.level,
+      categoryKey: artifactCategoryKey(effectType, category),
+      effectField,
       description,
       valueText,
       actualEffectPreview: valueText || description,
       effect: { type: effectType, artifactId, value, upgradeId, upgradeType },
     };
+  }
+
+  function artifactEffectField(effectType) {
+    if (effectType === "artifact_damage_mult" || effectType === "artifact_damage_bonus") return "damageMultiplier";
+    if (effectType === "artifact_cooldown_mult") return "cooldownMultiplier";
+    if (effectType === "artifact_projectile_count_add") return "projectileCount";
+    if (effectType === "artifact_pierce_add") return "pierceCount";
+    if (effectType === "artifact_area_mult") return "areaRadius";
+    if (effectType === "artifact_volley_count_add") return "volleyCount";
+    if (effectType === "artifact_slow_duration_add") return "slowDuration";
+    if (effectType === "artifact_chain_count_add") return "chainCount";
+    if (effectType === "artifact_chain_radius_mult") return "chainRadius";
+    if (effectType === "artifact_freeze_chance_add") return "freezeChance";
+    if (effectType === "artifact_poison_duration_add") return "poisonDuration";
+    if (effectType === "artifact_poison_damage_mult") return "poisonDamage";
+    if (effectType === "artifact_heal_mult") return "heal";
+    if (effectType === "artifact_debuff_duration_add") return "debuffDuration";
+    if (effectType === "artifact_vulnerable_mult") return "vulnerableMultiplier";
+    if (effectType === "artifact_evolution") return "evolution";
+    return effectType || "";
+  }
+
+  function artifactCategoryKey(effectType, fallback) {
+    const field = artifactEffectField(effectType);
+    if (field === "damageMultiplier" || field === "poisonDamage") return "artifact_damage";
+    if (field === "cooldownMultiplier") return "artifact_cooldown";
+    if (["projectileCount", "pierceCount", "areaRadius", "volleyCount", "chainCount", "chainRadius"].includes(field)) return "artifact_structure";
+    if (["slowDuration", "freezeChance", "debuffDuration", "vulnerableMultiplier", "poisonDuration"].includes(field)) return "artifact_control";
+    if (field === "heal") return "artifact_support";
+    if (field === "evolution") return "artifact_evolution";
+    return fallback || "artifact";
   }
 
   function createArtifactEvolutionPerk({ artifact, artifactId, runtime, evolution, upgradeType }) {
@@ -713,6 +777,8 @@
   function perkUpgradeWeight({ perk: rawPerk, context }) {
     const perk = normalizePerk({ perk: rawPerk, context });
     if (Number.isFinite(Number(perk.weight))) return Number(perk.weight);
+    if (perk.upgradeType === "major_evolution" || perk.upgradeKind === "major_evolution") return 80;
+    if (perk.upgradeType === "minor_evolution" || perk.upgradeKind === "minor_evolution") return 70;
     if (perk.scope === "artifact") return IN_RUN_UPGRADE_WEIGHTS.artifact;
     if (perk.targetType === "major_evolution" || perk.scope === "martial_art_branch") {
       const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
@@ -756,7 +822,14 @@
     }
     if (perk.scope === "martial_art") {
       const art = (data.martialArts || []).find((item) => item.id === perk.martialArtId);
-      return Boolean(art && currentRunCharacters({ state, data }).some((character) => character.id === art.ownerCharacterId) && (state.martialArtLevels[art.id] || 0) < art.maxLevel);
+      const currentLevel = Math.max(1, Number(state.martialArtLevels[art?.id]) || 1);
+      const upgradeType = perk.upgradeType || perk.upgradeKind || perk.effect?.upgradeType;
+      if (!art || !currentRunCharacters({ state, data }).some((character) => character.id === art.ownerCharacterId)) return false;
+      if (currentLevel >= art.maxLevel) return upgradeType === "evolved_upgrade";
+      if (currentLevel === 2) return upgradeType === "minor_evolution";
+      if (currentLevel === 6) return upgradeType === "major_evolution";
+      if (["minor_evolution", "major_evolution", "evolved_upgrade"].includes(upgradeType)) return false;
+      return true;
     }
     if (perk.scope === "array_core") return true;
     if (perk.scope === "formation") {
@@ -766,7 +839,13 @@
     if (perk.scope === "artifact") {
       const artifacts = selectedArtifactIds({ state });
       if (!artifacts.length) return false;
-      return Boolean(perk.targetArtifactId && artifacts.includes(perk.targetArtifactId));
+      if (!perk.targetArtifactId || !artifacts.includes(perk.targetArtifactId)) return false;
+      const runtime = getArtifactRunState(state, perk.targetArtifactId);
+      const upgradeType = perk.upgradeType || perk.upgradeKind || perk.effect?.upgradeType;
+      if (runtime.level === 2) return upgradeType === "minor_evolution";
+      if (runtime.level === 6) return upgradeType === "major_evolution";
+      if (runtime.level >= 7) return upgradeType === "evolved_upgrade";
+      return upgradeType !== "minor_evolution" && upgradeType !== "major_evolution" && upgradeType !== "evolved_upgrade";
     }
     const deployed = currentRunCharacters({ state, data });
     if (!deployed.length) return false;
@@ -794,6 +873,8 @@
   }
 
   function perkSpecificity(perk) {
+    const priority = upgradeTypePriority(perk);
+    if (priority) return 10 + priority;
     if (perk.targetType === "major_evolution") return 6;
     if (perk.scope === "martial_art_branch") return 5;
     if (perk.scope === "martial_art") return 4;
@@ -801,6 +882,17 @@
     if (perk.scope === "artifact") return 3;
     if (perk.scope === "character") return 2;
     if (perk.scope === "trajectory" || perk.targetTrajectoryType || perk.targetProjectileType) return 1;
+    return 0;
+  }
+
+  function upgradeTypePriority(perk) {
+    const type = perk.upgradeType || perk.upgradeKind || perk.effect?.upgradeType;
+    if (type === "major_evolution") return 5;
+    if (type === "minor_evolution") return 4;
+    if (type === "branch_upgrade") return 3;
+    if (type === "evolved_upgrade") return 3;
+    if (type === "refine_upgrade") return 2;
+    if (type === "fallback") return 1;
     return 0;
   }
 
@@ -814,11 +906,10 @@
     const semanticCategory = perk.categoryKey || categoryKeyForPerk({ perk, context });
     const isMartialSemanticKey = targetType === "martial_art" || targetType === "major_evolution" || perk.scope === "martial_art" || perk.scope === "martial_art_branch";
     const fields = [`targetType:${targetType}`, `targetId:${targetId}`, `category:${semanticCategory}`, `field:${semanticEffect}`];
-    ["value", "chance", "mult", "artifactId", "martialArtId"].forEach((key) => {
-      if (isMartialSemanticKey && ["value", "chance", "mult"].includes(key)) return;
+    ["artifactId", "martialArtId"].forEach((key) => {
       if (effect[key] !== undefined) fields.push(`${key}:${effect[key]}`);
     });
-    if (perk.upgradeId && !semanticEffect) {
+    if (perk.upgradeId && perk.scope === "martial_art_branch" && !semanticEffect) {
       const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
       const upgradeFields = Object.entries(upgrade?.effects || {})
         .sort(([a], [b]) => a.localeCompare(b))
@@ -837,10 +928,11 @@
   function effectFieldForPerk({ perk, context }) {
     const effect = perk.effect || {};
     const effectType = effect.type || perk.effectType || "";
-    if (perk.upgradeId) {
+    if (perk.upgradeId && perk.scope === "martial_art_branch") {
       const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
       return qingyaUpgradeEffectInfo(upgrade).field;
     }
+    if (perk.scope === "artifact") return perk.effectField || artifactEffectField(effectType);
     if (effectType === "martial_art_damage_bonus" || effectType === "martial_art_damage_mult") return "damageMultiplier";
     if (effectType === "martial_art_attack_interval_mult") return "attackIntervalMultiplier";
     if (effectType === "martial_art_pierce_bonus") return "pierceCount";
@@ -850,10 +942,11 @@
   function categoryKeyForPerk({ perk, context }) {
     const effect = perk.effect || {};
     const effectType = effect.type || perk.effectType || "";
-    if (perk.upgradeId) {
+    if (perk.upgradeId && perk.scope === "martial_art_branch") {
       const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
       return qingyaUpgradeEffectInfo(upgrade).category;
     }
+    if (perk.scope === "artifact") return perk.categoryKey || artifactCategoryKey(effectType, perk.category);
     if (effectType === "martial_art_damage_bonus" || effectType === "martial_art_damage_mult") return "martial_art_damage";
     if (effectType === "martial_art_attack_interval_mult") return "attack_speed";
     if (effectType === "martial_art_pierce_bonus") return "pierce";
@@ -894,6 +987,13 @@
     const normalizedHeal = forcedHeal ? normalizePerk({ perk: forcedHeal, context }) : null;
     if (normalizedHeal && isPerkValidForCurrentRun({ perk: normalizedHeal, context }) && context.state.arrayCoreMaxHp > 0 && context.state.arrayCoreHp / context.state.arrayCoreMaxHp < 0.2) {
       choices.push(normalizedHeal);
+    }
+    const evolution = pool
+      .filter((perk) => ["major_evolution", "minor_evolution"].includes(perk.upgradeType || perk.upgradeKind || perk.effect?.upgradeType))
+      .sort((a, b) => upgradeTypePriority(b) - upgradeTypePriority(a))[0];
+    if (evolution && choices.length < count && !choices.some((choice) => perkEffectKey({ perk: choice, context }) === perkEffectKey({ perk: evolution, context }))) {
+      choices.push(evolution);
+      pool.splice(pool.indexOf(evolution), 1);
     }
     while (choices.length < count && pool.length) {
       const total = pool.reduce((sum, perk) => sum + perkUpgradeWeight({ perk, context }), 0);

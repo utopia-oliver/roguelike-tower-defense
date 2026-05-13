@@ -195,6 +195,7 @@
         minorEvolutionSelected: false,
         majorEvolutionSelected: false,
         majorEvolutionId: "",
+        evolvedUpgradeIds: [],
         modifiers: {},
         cooldownTimer: Number(state.artifactCooldowns[artifactId]) || 0,
       };
@@ -206,6 +207,7 @@
     runtime.minorEvolutionSelected = Boolean(runtime.minorEvolutionSelected);
     runtime.majorEvolutionSelected = Boolean(runtime.majorEvolutionSelected);
     runtime.majorEvolutionId = runtime.majorEvolutionId || "";
+    runtime.evolvedUpgradeIds = Array.isArray(runtime.evolvedUpgradeIds) ? runtime.evolvedUpgradeIds : [];
     return state.artifactRuntime[artifactId];
   }
 

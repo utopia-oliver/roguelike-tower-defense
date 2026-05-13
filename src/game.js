@@ -836,6 +836,10 @@ function startRun() {
   (state.selectedArtifactIds || []).forEach((artifactId) => {
     getSystemArtifactRuntimeState({ state, artifactId });
   });
+  currentRunCharacters().forEach((character) => {
+    const art = martialArtForCharacter(character.id);
+    if (art) getMartialRunState(art.id);
+  });
   state.appState = APP_STATE.BATTLE;
   startButton.disabled = true;
   setStatus("妖潮来袭，角色和法宝自动攻击；阵法会在敌人靠近阵眼时触发。");
@@ -967,6 +971,7 @@ function applyArtifactRunUpgrade(perk, effect) {
   }
 
   const upgradeType = effect.upgradeType || perk.upgradeType;
+  runtime.evolvedUpgradeIds = Array.isArray(runtime.evolvedUpgradeIds) ? runtime.evolvedUpgradeIds : [];
   if (upgradeType === "minor_evolution") {
     runtime.minorEvolutionSelected = true;
   }
@@ -976,8 +981,48 @@ function applyArtifactRunUpgrade(perk, effect) {
     runtime.level = 7;
     return;
   }
+  if (upgradeType === "evolved_upgrade") {
+    if (upgradeId && !runtime.evolvedUpgradeIds.includes(upgradeId)) runtime.evolvedUpgradeIds.push(upgradeId);
+    return;
+  }
 
   runtime.level = Math.min(7, Math.max(1, Number(runtime.level) || 1) + 1);
+}
+
+function getMartialRunState(artId) {
+  const branchState = getMartialBranchState(artId);
+  branchState.selectedUpgradeIds = Array.isArray(branchState.selectedUpgradeIds) ? branchState.selectedUpgradeIds : [];
+  branchState.evolvedUpgradeIds = Array.isArray(branchState.evolvedUpgradeIds) ? branchState.evolvedUpgradeIds : [];
+  branchState.minorEvolutionSelected = Boolean(branchState.minorEvolutionSelected);
+  branchState.majorEvolutionSelected = Boolean(branchState.majorEvolutionSelected);
+  branchState.majorEvolutionId = branchState.majorEvolutionId || null;
+  state.martialArtLevels[artId] = Math.max(1, Number(state.martialArtLevels[artId]) || 1);
+  branchState.level = state.martialArtLevels[artId];
+  return branchState;
+}
+
+function recordMartialRunUpgrade(perk, effect, upgrade = null) {
+  const artId = effect.martialArtId || perk.martialArtId || perk.targetMartialArtId || perk.targetId;
+  if (!artId) return null;
+  const runtime = getMartialRunState(artId);
+  const upgradeId = effect.upgradeId || perk.upgradeId || perk.id;
+  if (upgradeId && !runtime.selectedUpgradeIds.includes(upgradeId)) runtime.selectedUpgradeIds.push(upgradeId);
+  const upgradeType = perk.upgradeType || perk.upgradeKind || effect.upgradeType
+    || (upgrade?.type === "minor" ? "minor_evolution" : upgrade?.type === "major" ? "major_evolution" : upgrade?.type === "major_enhance" ? "evolved_upgrade" : "refine_upgrade");
+  if (upgradeType === "minor_evolution") runtime.minorEvolutionSelected = true;
+  if (upgradeType === "major_evolution") {
+    runtime.majorEvolutionSelected = true;
+    runtime.majorEvolutionId = upgradeId || runtime.majorEvolutionId;
+  }
+  if (upgradeType === "evolved_upgrade") {
+    if (upgradeId && !runtime.evolvedUpgradeIds.includes(upgradeId)) runtime.evolvedUpgradeIds.push(upgradeId);
+  } else if (upgradeType === "major_evolution") {
+    state.martialArtLevels[artId] = 7;
+  } else {
+    state.martialArtLevels[artId] = Math.min(7, Math.max(1, Number(state.martialArtLevels[artId]) || 1) + 1);
+  }
+  runtime.level = state.martialArtLevels[artId];
+  return runtime;
 }
 
 function getPerkTargetId(perk) {
@@ -2037,8 +2082,8 @@ function applyPerk(perk) {
         applyTargetedFallbackUpgrade();
         break;
       }
-      const current = state.martialArtLevels[art.id] || 0;
-      state.martialArtLevels[art.id] = Math.min(art.maxLevel, current + 1);
+      recordMartialRunUpgrade(perk, effect);
+      state.martialArtLevels[art.id] = Math.min(art.maxLevel, state.martialArtLevels[art.id]);
       break;
     }
     case "martial_art_branch_upgrade": {
@@ -2048,18 +2093,22 @@ function applyPerk(perk) {
         applyTargetedFallbackUpgrade();
         break;
       }
-      getMartialBranchState(art.id)[upgrade.id] = true;
-      const current = state.martialArtLevels[art.id] || 0;
-      state.martialArtLevels[art.id] = Math.min(art.maxLevel, current + 1);
+      const branchState = getMartialBranchState(art.id);
+      branchState[upgrade.id] = true;
+      recordMartialRunUpgrade(perk, effect, upgrade);
+      state.martialArtLevels[art.id] = Math.min(art.maxLevel, state.martialArtLevels[art.id]);
       break;
     }
     case "martial_art_damage_bonus":
+      recordMartialRunUpgrade(perk, effect);
       getMartialArtModifier(effect.martialArtId).damageMultiplier *= 1 + effect.value;
       break;
     case "martial_art_attack_interval_mult":
+      recordMartialRunUpgrade(perk, effect);
       getMartialArtModifier(effect.martialArtId).attackIntervalMultiplier *= effect.value;
       break;
     case "martial_art_pierce_bonus":
+      recordMartialRunUpgrade(perk, effect);
       getMartialArtModifier(effect.martialArtId).pierceAdd += effect.value;
       break;
     default:
