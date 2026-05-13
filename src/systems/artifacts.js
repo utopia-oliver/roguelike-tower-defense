@@ -464,6 +464,18 @@
     });
   }
 
+  function visualPoint(entity) {
+    return entity ? { x: entity.x, y: entity.y, id: entity.id } : null;
+  }
+
+  function addArtifactVisualEvent(callbacks, artifact, event) {
+    call(callbacks, "addVisualEvent", {
+      sourceId: artifact.id,
+      colorKey: artifact.visualType || artifact.type,
+      ...event,
+    });
+  }
+
   function triggerProjectileArtifact({ state, artifact, params, callbacks }) {
     const origin = call(callbacks, "getArtifactOrigin") || { x: 0, y: 0 };
     const count = params.projectileCount || 1;
@@ -479,6 +491,16 @@
         target,
         origin,
         callbacks,
+      });
+      addArtifactVisualEvent(callbacks, artifact, {
+        type: artifact.visualType === "multi_blade_projectile" ? "sweep" : "wave",
+        x: target.x,
+        y: target.y,
+        fromX: origin.x,
+        fromY: origin.y,
+        radius: artifact.visualType === "multi_blade_projectile" ? 34 : 46,
+        orientation: artifact.visualType === "multi_blade_projectile" ? "diagonal" : "projectile",
+        duration: 0.18,
       });
       for (let i = 0; i < (params.secondaryProjectileCount || 0); i += 1) {
         spawnArtifactProjectile({
@@ -505,7 +527,10 @@
         ? Array.from({ length: params.meteorCount || params.volleyCount || 3 }, () => densestEnemy(state, params.areaRadius || 45)).filter(Boolean)
         : randomEnemies(state, params.meteorCount || params.volleyCount || 3);
       if (!targets.length) return false;
-      targets.forEach((enemy) => call(callbacks, "areaDamage", enemy.x, enemy.y, params.areaRadius, params.damage, "artifact"));
+      targets.forEach((enemy) => {
+        call(callbacks, "areaDamage", enemy.x, enemy.y, params.areaRadius, params.damage, "artifact");
+        addArtifactVisualEvent(callbacks, artifact, { type: "meteor", x: enemy.x, y: enemy.y, radius: params.areaRadius, duration: 0.45 });
+      });
       showArtifactFloater(callbacks, artifact, targets[0]);
       return true;
     }
@@ -513,6 +538,7 @@
     if (artifact.type === "area") {
       for (let i = 0; i < (params.volleyCount || 1); i += 1) {
         call(callbacks, "areaDamage", target.x, target.y, params.areaRadius, params.damage, "artifact");
+        addArtifactVisualEvent(callbacks, artifact, { type: "area_burst", x: target.x, y: target.y, radius: params.areaRadius, duration: 0.42, colorKey: "fire" });
       }
       if (params.burningZone) {
         call(callbacks, "addZone", { x: target.x, y: target.y, radius: params.areaRadius, ttl: 1.8, color: "rgba(239, 123, 69, 0.22)", dps: params.burningZoneDps || params.damage * 0.2, tick: 0 });
@@ -528,6 +554,7 @@
         callbacks,
         status: { type: "slow", duration: params.slowDuration, data: { multiplier: params.slowMultiplier } },
       });
+      addArtifactVisualEvent(callbacks, artifact, { type: "area_burst", x: target.x, y: target.y, radius: params.areaRadius, duration: 0.45, colorKey: "frost" });
       if (params.aftershock) {
         call(callbacks, "areaDamage", target.x, target.y, params.areaRadius * 0.65, params.damage * 0.45, "artifact");
       }
@@ -548,6 +575,7 @@
           { type: "weaken_attack", duration: params.debuffDuration, data: { value: Math.max(0, 1 - params.attackDamageMultiplier) } },
         ],
       });
+      addArtifactVisualEvent(callbacks, artifact, { type: "wave", x: target.x, y: target.y, radius: params.areaRadius, duration: 0.5, colorKey: "debuff" });
     } else if (artifact.type === "poison_area") {
       damageEnemiesInArea({
         state,
@@ -559,6 +587,7 @@
         callbacks,
         status: { type: "poison", duration: params.poisonDuration, data: { value: params.poisonDamage } },
       });
+      addArtifactVisualEvent(callbacks, artifact, { type: "poison_cloud", x: target.x, y: target.y, radius: params.areaRadius, duration: 0.8, colorKey: "poison" });
     } else if (artifact.type === "crush_area") {
       damageEnemiesInArea({
         state,
@@ -570,6 +599,7 @@
         callbacks,
         status: { type: "slow", duration: params.stunDuration || params.slowDuration || 0.4, data: { multiplier: 0.15 } },
       });
+      addArtifactVisualEvent(callbacks, artifact, { type: "impact_seal", x: target.x, y: target.y, radius: params.areaRadius, duration: 0.52, colorKey: "earth" });
     }
     showArtifactFloater(callbacks, artifact, target);
     return true;
@@ -579,7 +609,15 @@
     const origin = call(callbacks, "getArtifactOrigin") || { x: 0, y: 0 };
     const target = selectTarget({ state, artifact: params, origin });
     if (!target) return false;
-    triggerChain({ state, target, params, callbacks, source: "artifact" });
+    const targets = triggerChain({ state, target, params, callbacks, source: "artifact" });
+    addArtifactVisualEvent(callbacks, artifact, {
+      type: "chain_lightning",
+      fromX: origin.x,
+      fromY: origin.y,
+      targets: targets.map(visualPoint),
+      duration: 0.28,
+      colorKey: "thunder",
+    });
     showArtifactFloater(callbacks, artifact, target);
     return true;
   }
@@ -592,6 +630,14 @@
     for (let i = 0; i < healCount; i += 1) {
       call(callbacks, "healArrayCore", params.heal * (i === 0 ? lowHpBonus : 0.45));
     }
+    addArtifactVisualEvent(callbacks, artifact, {
+      type: "heal_aura",
+      x: call(callbacks, "getArtifactOrigin")?.x || 0,
+      y: call(callbacks, "getArtifactOrigin")?.y || 0,
+      radius: 90,
+      duration: 0.7,
+      colorKey: "heal",
+    });
     call(callbacks, "addFloater", {
       x: call(callbacks, "getArtifactOrigin")?.x || 0,
       y: call(callbacks, "getArtifactOrigin")?.y || 0,
@@ -616,8 +662,10 @@
     let current = target;
     let damage = params.damage;
     const hitIds = new Set();
+    const targets = [];
     for (let i = 0; i < (params.chainCount || 1) && current; i += 1) {
       hitIds.add(current.id);
+      targets.push(current);
       const slowed = typeof current.hasStatus === "function" && current.hasStatus("slow");
       call(callbacks, "damageEnemy", current, damage * (slowed ? 1 + bonusVsSlowed : 1), source);
       current = liveEnemies(state)
@@ -625,6 +673,7 @@
         .sort((a, b) => Math.hypot(a.x - current.x, a.y - current.y) - Math.hypot(b.x - current.x, b.y - current.y))[0];
       damage *= params.chainDamageMultiplier || 0.75;
     }
+    return targets;
   }
 
   function updateArtifact({ state, DATA, dt, artifactId, callbacks }) {
@@ -666,6 +715,16 @@
         callbacks,
         bond,
       });
+      addArtifactVisualEvent(callbacks, { id: bond.id, visualType: bond.type === "chain_sword" ? "chain_lightning" : "projectile_sword" }, {
+        type: bond.type === "chain_sword" ? "chain_lightning" : "wave",
+        fromX: origin.x,
+        fromY: origin.y,
+        targets: [visualPoint(target)],
+        x: target.x,
+        y: target.y,
+        radius: bond.explosionRadius || 48,
+        duration: 0.3,
+      });
     } else if (bond.type === "area_slow") {
       damageEnemiesInArea({
         state,
@@ -677,6 +736,7 @@
         callbacks,
         status: { type: "slow", duration: bond.slowDuration, data: { multiplier: bond.slowMultiplier } },
       });
+      addArtifactVisualEvent(callbacks, { id: bond.id, visualType: "area_frost" }, { type: "area_burst", x: target.x, y: target.y, radius: bond.areaRadius, duration: 0.48, colorKey: "frost" });
     } else if (bond.type === "area_debuff" || bond.type === "area_debuff_slow") {
       damageEnemiesInArea({
         state,
@@ -692,8 +752,10 @@
           ...(bond.type === "area_debuff_slow" ? [{ type: "slow", duration: bond.slowDuration, data: { multiplier: bond.slowMultiplier } }] : []),
         ],
       });
+      addArtifactVisualEvent(callbacks, { id: bond.id, visualType: "aura_debuff" }, { type: "wave", x: target.x, y: target.y, radius: bond.areaRadius, duration: 0.48, colorKey: "debuff" });
     } else if (bond.type === "frost_chain") {
-      triggerChain({ state, target, params: bond, callbacks, source: "artifact_bond", bonusVsSlowed: bond.bonusVsSlowed });
+      const targets = triggerChain({ state, target, params: bond, callbacks, source: "artifact_bond", bonusVsSlowed: bond.bonusVsSlowed });
+      addArtifactVisualEvent(callbacks, { id: bond.id, visualType: "chain_lightning" }, { type: "chain_lightning", fromX: origin.x, fromY: origin.y, targets: targets.map(visualPoint), duration: 0.3, colorKey: "thunder" });
     } else if (bond.type === "poison_area") {
       damageEnemiesInArea({
         state,
@@ -705,6 +767,7 @@
         callbacks,
         status: { type: "poison", duration: bond.poisonDuration, data: { value: bond.poisonDamage } },
       });
+      addArtifactVisualEvent(callbacks, { id: bond.id, visualType: "poison_cloud" }, { type: "poison_cloud", x: target.x, y: target.y, radius: bond.areaRadius, duration: 0.8, colorKey: "poison" });
     } else if (bond.type === "meteor_poison") {
       const targets = randomEnemies(state, bond.meteorCount || 3);
       if (!targets.length) return false;
@@ -719,6 +782,7 @@
           callbacks,
           status: { type: "poison", duration: bond.poisonDuration, data: { value: bond.poisonDamage } },
         });
+        addArtifactVisualEvent(callbacks, { id: bond.id, visualType: "meteor_random" }, { type: "meteor", x: enemy.x, y: enemy.y, radius: bond.areaRadius, duration: 0.45, colorKey: "poison" });
       });
     } else if (bond.type === "area_heal") {
       damageEnemiesInArea({
@@ -733,6 +797,7 @@
       });
       const hpRatio = state.arrayCoreMaxHp > 0 ? state.arrayCoreHp / state.arrayCoreMaxHp : 1;
       if (hpRatio < 0.5) call(callbacks, "healArrayCore", bond.heal);
+      addArtifactVisualEvent(callbacks, { id: bond.id, visualType: "heal_aura" }, { type: "heal_aura", x: origin.x, y: origin.y, radius: bond.areaRadius, duration: 0.65, colorKey: "heal" });
     }
 
     call(callbacks, "addFloater", {

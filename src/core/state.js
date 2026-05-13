@@ -36,6 +36,7 @@
     const collections = {
       enemies: [],
       projectiles: [],
+      visualEvents: [],
       floaters: [],
       zones: [],
       spawnJobs: [],

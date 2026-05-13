@@ -11,6 +11,7 @@
     state.deployedRoles.forEach((role) => drawRole({ ...context, role }));
     state.enemies.forEach((enemy) => drawEnemy({ ...context, enemy }));
     state.projectiles.forEach((projectile) => drawProjectile({ ...context, projectile }));
+    (state.visualEvents || []).forEach((event) => drawVisualEvent({ ...context, event }));
     state.floaters.forEach((floater) => drawFloater({ ...context, floater }));
     drawBossBar(context);
   }
@@ -92,6 +93,22 @@
       ctx.lineWidth = 3;
       ctx.stroke();
     }
+    if (enemy.hasStatus("vulnerable") || enemy.hasStatus("weaken_attack")) {
+      ctx.strokeStyle = "#f8d66d";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (enemy.hasStatus("freeze")) {
+      ctx.strokeStyle = "#d7f8ff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius + 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.fillStyle = "#271a17";
     ctx.fillRect(enemy.x - 22, enemy.y - enemy.radius - 11, 44, 5);
     ctx.fillStyle = enemy.config.isBoss ? "#d94668" : "#e45d4f";
@@ -114,7 +131,7 @@
     ctx.rotate(angle);
     ctx.lineCap = "round";
     ctx.strokeStyle = projectile.trailColor || "rgba(255,255,255,0.2)";
-    ctx.lineWidth = projectile.width + 5;
+    ctx.lineWidth = projectile.type === "artifact_blade_projectile" ? projectile.width + 2 : projectile.width + 5;
     ctx.beginPath();
     ctx.moveTo(-projectile.length * 0.75, 0);
     ctx.lineTo(projectile.length * 0.35, 0);
@@ -125,6 +142,157 @@
     ctx.moveTo(-projectile.length / 2, 0);
     ctx.lineTo(projectile.length / 2, 0);
     ctx.stroke();
+    if (projectile.type === "artifact_sword_projectile" || projectile.type === "giant_sword_projectile") {
+      ctx.strokeStyle = "rgba(255, 244, 180, 0.7)";
+      ctx.lineWidth = Math.max(2, projectile.width * 0.35);
+      ctx.beginPath();
+      ctx.moveTo(-projectile.length * 0.35, 0);
+      ctx.lineTo(projectile.length * 0.45, 0);
+      ctx.stroke();
+    }
+    if (projectile.type === "dao_light") {
+      ctx.strokeStyle = "rgba(255, 241, 168, 0.75)";
+      ctx.lineWidth = projectile.width + 8;
+      ctx.beginPath();
+      ctx.moveTo(-projectile.length * 0.2, 0);
+      ctx.lineTo(projectile.length * 0.25, 0);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function eventColor(event, alpha = 1) {
+    const key = event.colorKey || event.type;
+    const palette = {
+      fire: `rgba(249, 115, 22, ${alpha})`,
+      frost: `rgba(147, 221, 248, ${alpha})`,
+      poison: `rgba(168, 85, 247, ${alpha})`,
+      thunder: `rgba(216, 180, 254, ${alpha})`,
+      sound: `rgba(244, 214, 141, ${alpha})`,
+      spear: `rgba(250, 204, 92, ${alpha})`,
+      sword: `rgba(215, 225, 236, ${alpha})`,
+      debuff: `rgba(248, 214, 109, ${alpha})`,
+      earth: `rgba(180, 148, 93, ${alpha})`,
+      heal: `rgba(134, 239, 172, ${alpha})`,
+      projectile_sword: `rgba(125, 211, 252, ${alpha})`,
+      multi_blade_projectile: `rgba(254, 243, 199, ${alpha})`,
+      area_fire_burst: `rgba(249, 115, 22, ${alpha})`,
+      area_frost: `rgba(147, 221, 248, ${alpha})`,
+      aura_debuff: `rgba(248, 214, 109, ${alpha})`,
+      chain_lightning: `rgba(216, 180, 254, ${alpha})`,
+      poison_cloud: `rgba(168, 85, 247, ${alpha})`,
+      impact_seal: `rgba(180, 148, 93, ${alpha})`,
+      meteor_random: `rgba(251, 191, 36, ${alpha})`,
+      heal_aura: `rgba(134, 239, 172, ${alpha})`,
+    };
+    return palette[key] || `rgba(255, 255, 255, ${alpha})`;
+  }
+
+  function eventProgress(event) {
+    return Math.min(1, Math.max(0, (event.elapsed || 0) / Math.max(0.01, event.duration || 0.35)));
+  }
+
+  function drawLightningPath(ctx, points, color) {
+    if (points.length < 2) return;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      const wobble = index > 0 && index < points.length - 1 ? Math.sin((point.x + point.y + index * 17) * 0.08) * 5 : 0;
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x + wobble, point.y - wobble);
+    });
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawVisualEvent({ ctx, canvas, event }) {
+    const t = eventProgress(event);
+    const alpha = Math.max(0, 1 - t);
+    const radius = (event.radius || 48) * (0.35 + t * 0.95);
+    ctx.save();
+    if (event.type === "chain_lightning") {
+      const points = [];
+      if (Number.isFinite(event.fromX) && Number.isFinite(event.fromY)) points.push({ x: event.fromX, y: event.fromY });
+      (event.targets || []).filter(Boolean).forEach((target) => points.push({ x: target.x, y: target.y }));
+      drawLightningPath(ctx, points, eventColor(event, alpha));
+    } else if (event.type === "area_burst") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = eventColor(event, alpha * 0.16);
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius * 0.82, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (event.type === "wave") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 3; i += 1) {
+        ctx.beginPath();
+        ctx.arc(event.x, event.y, radius * (0.55 + i * 0.25), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (event.type === "sweep") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = event.orientation === "vertical" ? 14 : 11;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      if (event.orientation === "vertical") {
+        ctx.moveTo(event.x, Math.max(0, event.y - radius));
+        ctx.lineTo(event.x, Math.min(canvas.height, event.y + radius * 0.35));
+      } else if (event.orientation === "diagonal") {
+        ctx.moveTo(event.fromX || event.x - radius, event.fromY || event.y + radius * 0.4);
+        ctx.lineTo(event.x, event.y);
+      } else {
+        ctx.moveTo(Math.max(0, event.x - radius), event.y);
+        ctx.lineTo(Math.min(canvas.width, event.x + radius), event.y);
+      }
+      ctx.stroke();
+    } else if (event.type === "poison_cloud") {
+      ctx.fillStyle = eventColor(event, alpha * 0.22);
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = eventColor(event, alpha * 0.65);
+      ctx.setLineDash([6, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (event.type === "heal_aura") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = eventColor(event, alpha * 0.13);
+      ctx.fill();
+    } else if (event.type === "impact_seal") {
+      ctx.fillStyle = eventColor(event, alpha * 0.18);
+      ctx.fillRect(event.x - radius * 0.45, event.y - radius * 0.45, radius * 0.9, radius * 0.9);
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 4;
+      ctx.strokeRect(event.x - radius * 0.45, event.y - radius * 0.45, radius * 0.9, radius * 0.9);
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (event.type === "meteor") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(event.x - 24, event.y - 42);
+      ctx.lineTo(event.x, event.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -164,6 +332,7 @@
     drawGrid,
     drawProjectile,
     drawRole,
+    drawVisualEvent,
     drawZone,
   });
 })();

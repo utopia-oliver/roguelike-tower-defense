@@ -348,6 +348,16 @@
       damage *= state.bonuses.critMult;
     }
 
+    const visualType = config.visualType || "";
+    const instantVisualTypes = new Set(["chain_lightning", "vertical_sweep", "horizontal_sweep", "wave_debuff"]);
+    if (instantVisualTypes.has(visualType)) {
+      call(callbacks, "resolveInstantRoleAttack", role, target, damage, {
+        visualType,
+        projectileCount: art.giantSword ? 1 : 1 + state.bonuses.sideProjectiles + art.projectileAdd,
+      });
+      return true;
+    }
+
     const baseProjectileCount = config.trajectoryType === "multi" ? 3 : 1;
     const projectileCount = Math.min(
       art.giantSword ? 1 : 5,

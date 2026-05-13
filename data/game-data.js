@@ -2719,6 +2719,36 @@ window.GAME_DATA.martialArts = [
     evolved("jiuxiao_major_light_count", "万法齐鸣", "martial_art_projectile_count_add", 1, "九霄道域道光数量提升。"),
     evolved("jiuxiao_major_duration", "灵机不绝", "martial_art_debuff_duration_add", 0.8, "九霄道域增益持续时间提升。"),
   ]);
+  const roleVisualTypes = {
+    lu_qingya: "projectile",
+    shen_lianxing: "projectile_area_burst",
+    ye_hanyan: "projectile_slow_area",
+    wen_suyi: "projectile_poison_dot",
+    gu_changfeng: "vertical_sweep",
+    xiao_jingxuan: "chain_lightning",
+    qin_bugui: "horizontal_sweep",
+    luo_shenyin: "wave_debuff",
+    chu_zhaoye: "shadow_dash",
+    ning_jiuxiao: "dao_light_aura",
+  };
+  Object.entries(roleVisualTypes).forEach(([roleId, visualType]) => {
+    if (window.GAME_DATA.roles?.[roleId]) window.GAME_DATA.roles[roleId].visualType = visualType;
+  });
+  const artifactVisualTypes = {
+    qingming_sword_box: "projectile_sword",
+    lihuo_gourd: "area_fire_burst",
+    zhenmo_bell: "aura_debuff",
+    xuanbing_mirror: "area_frost",
+    leiwen_seal: "chain_lightning",
+    wandu_orb: "poison_cloud",
+    shanhe_seal: "impact_seal",
+    xingyun_board: "meteor_random",
+    guiyuan_banner: "heal_aura",
+    zhanyao_blades: "multi_blade_projectile",
+  };
+  Object.entries(artifactVisualTypes).forEach(([artifactId, visualType]) => {
+    if (window.GAME_DATA.artifacts?.[artifactId]) window.GAME_DATA.artifacts[artifactId].visualType = visualType;
+  });
 })();
 
 window.GAME_DATA.perks.push(

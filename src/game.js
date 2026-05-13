@@ -1325,6 +1325,82 @@ function roleStats(role) {
   });
 }
 
+function addVisualEvent(event) {
+  state.visualEvents = state.visualEvents || [];
+  state.visualEvents.push({
+    id: event.id || makeId(),
+    elapsed: 0,
+    duration: event.duration || 0.35,
+    ...event,
+  });
+}
+
+function visualPoint(entity) {
+  return entity ? { x: entity.x, y: entity.y, id: entity.id } : null;
+}
+
+function addRoleAttackVisual(role, target, visualType, extra = {}) {
+  const config = DATA.roles[role.roleId];
+  if (!target || !config) return;
+  if (visualType === "chain_lightning") {
+    const art = martialBonuses(role.roleId);
+    const targets = [target, ...nearestEnemies(target, Math.max(0, (extra.projectileCount || 1) + art.chainAdd), grid.cellW * 2.6 * art.chainRadiusMult)];
+    addVisualEvent({
+      type: "chain_lightning",
+      fromX: role.x,
+      fromY: role.y,
+      targets: targets.map(visualPoint),
+      duration: 0.22,
+      colorKey: "thunder",
+      sourceId: role.roleId,
+    });
+    return;
+  }
+  if (visualType === "vertical_sweep") {
+    addVisualEvent({
+      type: "sweep",
+      x: target.x,
+      y: target.y,
+      fromX: role.x,
+      fromY: role.y,
+      radius: grid.cellH * 2.6,
+      orientation: "vertical",
+      duration: 0.28,
+      colorKey: "sword",
+      sourceId: role.roleId,
+    });
+    return;
+  }
+  if (visualType === "horizontal_sweep") {
+    addVisualEvent({
+      type: "sweep",
+      x: target.x,
+      y: target.y,
+      fromX: role.x,
+      fromY: role.y,
+      radius: grid.cellW * 2.8,
+      orientation: "horizontal",
+      duration: 0.26,
+      colorKey: "spear",
+      sourceId: role.roleId,
+    });
+    return;
+  }
+  if (visualType === "wave_debuff") {
+    addVisualEvent({
+      type: "wave",
+      x: target.x,
+      y: target.y,
+      fromX: role.x,
+      fromY: role.y,
+      radius: grid.cellW * 1.5,
+      duration: 0.42,
+      colorKey: "sound",
+      sourceId: role.roleId,
+    });
+  }
+}
+
 function updateRole(role, dt) {
   return updateSystemRole({
     state,
@@ -1352,6 +1428,10 @@ function fireRole(role, targetId) {
     battleState: APP_STATE.BATTLE,
     callbacks: {
       fireProjectileAttack,
+      resolveInstantRoleAttack(roleArg, target, damage, payload = {}) {
+        applyRoleHit(roleArg, target, damage);
+        addRoleAttackVisual(roleArg, target, payload.visualType, payload);
+      },
     },
     helpers: {
       martialBonuses,
@@ -1417,6 +1497,7 @@ function applyRoleHit(role, target, damage) {
     if (role.chainCount > 0 && role.chainRadius > 0) {
       let current = target;
       const hitIds = new Set([target.id]);
+      const chainTargets = [visualPoint(target)];
       let chainDamage = damage * role.chainDamageMultiplier;
       for (let i = 0; i < role.chainCount; i += 1) {
         const next = state.enemies
@@ -1425,9 +1506,19 @@ function applyRoleHit(role, target, damage) {
         if (!next) break;
         hitIds.add(next.id);
         next.takeDamage(chainDamage, role.bondId ? "artifact_bond" : "artifact", role);
+        chainTargets.push(visualPoint(next));
         current = next;
         chainDamage *= role.chainDamageMultiplier;
       }
+      addVisualEvent({
+        type: "chain_lightning",
+        fromX: target.x,
+        fromY: target.y - 80,
+        targets: chainTargets,
+        duration: 0.24,
+        colorKey: "thunder",
+        sourceId: role.id,
+      });
     }
     return;
   }
@@ -1436,7 +1527,18 @@ function applyRoleHit(role, target, damage) {
   const projectile = config.trajectoryType || config.projectile;
   const killed = target.takeDamage(damage, "role", role);
 
+  if (config.visualType === "projectile" || config.projectileType === "flying_sword") {
+    addVisualEvent({ type: "area_burst", x: target.x, y: target.y, radius: 22, duration: 0.18, colorKey: art.giantSword ? "debuff" : "sword", sourceId: role.roleId });
+  }
+  if (config.visualType === "shadow_dash") {
+    addVisualEvent({ type: "sweep", x: target.x, y: target.y, fromX: role.x, fromY: role.y, radius: 42, orientation: "diagonal", duration: 0.2, colorKey: "thunder", sourceId: role.roleId });
+  }
+  if (config.visualType === "dao_light_aura") {
+    addVisualEvent({ type: "wave", x: role.x, y: role.y, radius: grid.cellW * 0.9, duration: 0.38, colorKey: "debuff", sourceId: role.roleId });
+  }
+
   if (projectile === "splash") {
+    addVisualEvent({ type: "area_burst", x: target.x, y: target.y, radius: grid.cellW * 0.65 * art.splashRadius, duration: 0.34, colorKey: "fire", sourceId: role.roleId });
     areaDamage(target.x, target.y, grid.cellW * 0.65 * art.splashRadius, damage * 0.55, "role");
     if (art.burningZone) {
       state.zones.push({ x: target.x, y: target.y, radius: grid.cellW * 0.7 * art.splashRadius, ttl: 1.4, color: "rgba(239, 123, 69, 0.2)", dps: damage * 0.18, tick: 0 });
@@ -1449,6 +1551,9 @@ function applyRoleHit(role, target, damage) {
     }
   }
   if (projectile === "horizontal") {
+    if (config.visualType !== "horizontal_sweep" && config.visualType !== "wave_debuff") {
+      addVisualEvent({ type: "sweep", x: target.x, y: target.y, fromX: role.x, fromY: role.y, radius: grid.cellW * 2.4, orientation: "horizontal", duration: 0.22, colorKey: "spear", sourceId: role.roleId });
+    }
     const count = art.fullRowSpear ? 99 : (config.passiveSkill === "horizontal_cleave" ? 4 : 2) + art.horizontalWidth + state.bonuses.horizontalBonus;
     horizontalTargets(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.7, "role", role));
     if (art.splashOnHit > 0) {
@@ -1456,6 +1561,9 @@ function applyRoleHit(role, target, damage) {
     }
   }
   if (projectile === "vertical") {
+    if (config.visualType !== "vertical_sweep") {
+      addVisualEvent({ type: "sweep", x: target.x, y: target.y, fromX: role.x, fromY: role.y, radius: grid.cellH * 2.4, orientation: "vertical", duration: 0.24, colorKey: "sword", sourceId: role.roleId });
+    }
     const count = 2 + state.bonuses.pierceAdd + art.pierceAdd + (config.passiveSkill === "pierce_bonus" ? 1 : 0);
     enemiesBehind(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.65, "role", role));
     if (art.verticalColumns > 1) {
@@ -1469,6 +1577,7 @@ function applyRoleHit(role, target, damage) {
     }
   }
   if (projectile === "slow" || config.school === "冰") {
+    addVisualEvent({ type: "area_burst", x: target.x, y: target.y, radius: grid.cellW * 0.55 * art.splashRadius, duration: 0.35, colorKey: "frost", sourceId: role.roleId });
     target.addStatus("slow", (2 + art.slowDurationAdd) * state.bonuses.controlMultiplier, 0.3 + art.slowBonus);
     if (art.slowSplash > 0) {
       horizontalTargets(target, 2).forEach((enemy) => enemy.addStatus("slow", (1.5 + art.slowDurationAdd) * state.bonuses.controlMultiplier, art.slowSplash));
@@ -1478,6 +1587,7 @@ function applyRoleHit(role, target, damage) {
     }
   }
   if (projectile === "poison" || config.school === "毒") {
+    addVisualEvent({ type: "poison_cloud", x: target.x, y: target.y, radius: grid.cellW * 0.42, duration: 0.6, colorKey: "poison", sourceId: role.roleId });
     target.addStatus("poison", 3 + state.bonuses.poisonDurationAdd + art.poisonDuration, Math.max(2, damage * 0.22 * art.dotMult), {
       stack: config.passiveSkill === "poison_stack",
       maxStacks: art.poisonStackBonus ? 5 : 3,
@@ -1493,7 +1603,9 @@ function applyRoleHit(role, target, damage) {
   }
   if (projectile === "chain") {
     const count = (config.passiveSkill === "thunder_chain" ? 3 : 2) + art.chainAdd + state.bonuses.chainBonus;
-    nearestEnemies(target, count, grid.cellW * 2.6 * art.chainRadiusMult).forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
+    const chainTargets = nearestEnemies(target, count, grid.cellW * 2.6 * art.chainRadiusMult);
+    chainTargets.forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
+    addVisualEvent({ type: "chain_lightning", fromX: role.x, fromY: role.y, targets: [target, ...chainTargets].map(visualPoint), duration: 0.24, colorKey: "thunder", sourceId: role.roleId });
     if (art.paralyze > 0) target.addStatus("slow", 0.8, art.paralyze);
     if (art.bossPriorityLightning) {
       const elite = state.enemies.find((enemy) => isEnemyTargetable(enemy) && (enemy.config.isBoss || enemy.config.type === "精英"));
@@ -1782,6 +1894,7 @@ function updateArtifact(dt) {
         state.zones = state.zones || [];
         state.zones.push(zone);
       },
+      addVisualEvent,
       areaDamage,
       damageEnemy(enemy, damage, source) {
         enemy.takeDamage(damage, source);
@@ -1841,6 +1954,11 @@ function updateEffects(dt) {
     floater.y -= dt * 24;
   });
   state.floaters = state.floaters.filter((floater) => floater.ttl > 0);
+  state.visualEvents = state.visualEvents || [];
+  state.visualEvents.forEach((event) => {
+    event.elapsed = (event.elapsed || 0) + dt;
+  });
+  state.visualEvents = state.visualEvents.filter((event) => event.elapsed < event.duration);
   state.zones.forEach((zone) => (zone.ttl -= dt));
   state.zones.forEach((zone) => {
     if (!zone.dps) return;

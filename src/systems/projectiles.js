@@ -30,6 +30,11 @@
     if (type === "sword_wave") Object.assign(defaults, { speed: 400, width: 9, length: 34, radius: 12, hitRadius: 16, collisionPadding: 8, color: "#e8eef8", trailColor: "rgba(215, 225, 236, 0.22)" });
     if (type === "spear_arc") Object.assign(defaults, { speed: 390, width: 12, length: 42, radius: 11, color: "#f4d47c", trailColor: "rgba(214, 179, 106, 0.26)" });
     if (type === "thunder_arc") Object.assign(defaults, { speed: 440, width: 8, length: 26, radius: 9, color: "#ddd6fe", trailColor: "rgba(196, 181, 253, 0.3)" });
+    if (type === "sound_wave") Object.assign(defaults, { speed: 330, width: 14, length: 46, radius: 15, color: "#f6d365", trailColor: "rgba(246, 211, 101, 0.22)" });
+    if (type === "shadow_blade") Object.assign(defaults, { speed: 520, width: 7, length: 36, radius: 10, color: "#c4b5fd", trailColor: "rgba(76, 29, 149, 0.32)" });
+    if (type === "dao_light") Object.assign(defaults, { speed: 390, width: 9, length: 38, radius: 12, color: "#fff1a8", trailColor: "rgba(250, 204, 21, 0.25)" });
+    if (type === "artifact_sword_projectile") Object.assign(defaults, { speed: 430, width: 8, length: 40, radius: 13, hitRadius: 16, color: "#bff7ff", trailColor: "rgba(56, 189, 248, 0.25)" });
+    if (type === "artifact_blade_projectile") Object.assign(defaults, { speed: 470, width: 5, length: 28, radius: 9, hitRadius: 12, color: "#fef3c7", trailColor: "rgba(245, 158, 11, 0.2)" });
     if (art?.giantSword) Object.assign(defaults, { speed: 430, width: 52, length: 160, radius: 54, hitRadius: 54, collisionPadding: 18, maxLifetime: 2.8, color: "#e9ffff", trailColor: "rgba(250, 204, 21, 0.34)" });
     defaults.speed *= art?.speedMult || 1;
     if (art?.giantSword) defaults.speed *= art.giantSwordSpeedMult || 1;
