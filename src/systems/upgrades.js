@@ -107,29 +107,49 @@
 
   function createMartialArtPerk({ state, art }) {
     const currentLevel = Math.max(1, Number(state.martialArtLevels[art.id]) || 1);
-    const next = art.levels.find((level) => level.level === currentLevel + 1);
+    const runtime = state.martialArtBranches?.[art.id] || {};
+    const selectedUpgradeIds = new Set([
+      ...(Array.isArray(runtime.selectedUpgradeIds) ? runtime.selectedUpgradeIds : []),
+      ...(Array.isArray(runtime.evolvedUpgradeIds) ? runtime.evolvedUpgradeIds : []),
+    ]);
+    const next = currentLevel >= art.maxLevel
+      ? (art.evolvedUpgrades || []).find((upgrade) => !selectedUpgradeIds.has(upgrade.id))
+      : art.levels.find((level) => level.level === currentLevel + 1);
     if (!next) return null;
-    const upgradeType = next.evolutionType === "minor_evolution"
+    const isEvolvedUpgrade = currentLevel >= art.maxLevel;
+    const upgradeType = isEvolvedUpgrade ? "evolved_upgrade" : next.upgradeType || (next.evolutionType === "minor_evolution"
       ? "minor_evolution"
       : next.evolutionType === "major_evolution"
         ? "major_evolution"
-        : "refine_upgrade";
+        : "refine_upgrade");
+    const levelEffectType = next.effectType || "";
     return {
-      id: `martial_${art.id}_${next.level}`,
+      id: `martial_${art.id}_${next.id || next.level}`,
       name: `${art.name}·${next.title}`,
-      category: next.evolutionType === "minor_evolution" ? "先天武学·小进化" : next.evolutionType === "major_evolution" ? "先天武学·大进化" : "先天武学",
-      rarity: next.evolutionType === "major_evolution" ? "史诗" : next.evolutionType === "minor_evolution" ? "稀有" : "普通",
+      category: upgradeType === "minor_evolution" ? "先天武学·小进化" : upgradeType === "major_evolution" || upgradeType === "evolved_upgrade" ? "先天武学·大成" : "先天武学",
+      rarity: upgradeType === "major_evolution" || upgradeType === "evolved_upgrade" ? "史诗" : upgradeType === "minor_evolution" ? "稀有" : "普通",
       scope: "martial_art",
       martialArtId: art.id,
+      upgradeId: next.id || `level_${next.level}`,
       targetType: "martial_art",
       targetId: art.id,
       targetName: art.name,
-      effectType: "martial_art_upgrade",
+      effectType: levelEffectType || "martial_art_upgrade",
+      levelEffectType,
+      categoryKey: martialCategoryKey(levelEffectType, upgradeType),
+      effectField: martialEffectField(levelEffectType),
       upgradeType,
       upgradeKind: upgradeType,
       description: `${next.title}：${next.description}`,
-      valueText: `当前Lv${currentLevel} → Lv${next.level}`,
-      effect: { type: "martial_art_upgrade", martialArtId: art.id },
+      value: next.value,
+      valueText: isEvolvedUpgrade ? "大成专属强化" : `当前Lv${currentLevel} → Lv${next.level}`,
+      effect: {
+        type: "martial_art_upgrade",
+        martialArtId: art.id,
+        upgradeId: next.id || `level_${next.level}`,
+        upgradeType,
+        value: next.value,
+      },
     };
   }
 
@@ -187,6 +207,44 @@
     return { category: upgrade.type || "martial_art_branch", field: upgrade.id || "branch" };
   }
 
+  function martialEffectField(effectType) {
+    if (effectType === "martial_art_damage_mult" || effectType === "damage_mult") return "damageMultiplier";
+    if (effectType === "martial_art_projectile_count_add" || effectType === "projectile_add") return "projectileCount";
+    if (effectType === "martial_art_volley_count_add") return "volleyCount";
+    if (effectType === "martial_art_pierce_add" || effectType === "pierce_add") return "pierceCount";
+    if (effectType === "martial_art_attack_interval_mult" || effectType === "attack_speed") return "attackIntervalMultiplier";
+    if (effectType === "martial_art_area_mult" || effectType === "splash_radius") return "areaRadius";
+    if (effectType === "martial_art_slow_duration_add") return "slowDuration";
+    if (effectType === "martial_art_poison_duration_add" || effectType === "poison_duration") return "poisonDuration";
+    if (effectType === "martial_art_poison_damage_mult" || effectType === "dot_mult") return "poisonDamage";
+    if (effectType === "martial_art_chain_count_add" || effectType === "chain_add") return "chainCount";
+    if (effectType === "martial_art_chain_radius_mult") return "chainRadius";
+    if (effectType === "martial_art_vulnerable_mult") return "vulnerableMultiplier";
+    if (effectType === "martial_art_debuff_duration_add") return "debuffDuration";
+    if (effectType === "martial_art_execute_threshold_add") return "executeThreshold";
+    if (effectType === "martial_art_width_mult" || effectType === "horizontal_width") return "width";
+    if (effectType === "martial_art_team_damage_aura") return "teamDamageAura";
+    if (effectType === "martial_art_chase_on_kill") return "chaseOnKill";
+    if (effectType && (effectType.includes("major") || effectType.includes("minor"))) return "evolution";
+    return effectType || "";
+  }
+
+  function martialCategoryKey(effectType, upgradeType) {
+    if (upgradeType === "minor_evolution" || upgradeType === "major_evolution" || upgradeType === "evolved_upgrade") return upgradeType;
+    const field = martialEffectField(effectType);
+    if (field === "projectileCount") return "projectile_count";
+    if (field === "volleyCount") return "volley_count";
+    if (field === "pierceCount") return "pierce";
+    if (field === "areaRadius") return "area";
+    if (field === "chainCount") return "chain_count";
+    if (field === "chainRadius") return "chain_radius";
+    if (field === "width") return "width";
+    if (field === "chaseOnKill") return "chase";
+    if (field === "damageMultiplier" || field === "poisonDamage") return "martial_art_damage";
+    if (field === "attackIntervalMultiplier") return "attack_speed";
+    return field || "martial_art";
+  }
+
   function isQingyaStructuralUpgrade(upgrade) {
     const effects = upgrade?.effects || {};
     if (upgrade?.type === "minor" || upgrade?.type === "major" || upgrade?.type === "major_enhance") return true;
@@ -223,7 +281,6 @@
       const art = helpers.martialArtForCharacter(character.id);
       if (!art) return [];
       if (art.id === "ma_qingya_sword") return createQingyaBranchPerks(context);
-      if (Math.max(1, Number(state.martialArtLevels[art.id]) || 1) >= art.maxLevel) return [];
       const perk = createMartialArtPerk({ state, art });
       return perk ? [perk] : [];
     });
@@ -932,6 +989,7 @@
       const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
       return qingyaUpgradeEffectInfo(upgrade).field;
     }
+    if (perk.scope === "martial_art" && perk.levelEffectType) return perk.effectField || martialEffectField(perk.levelEffectType);
     if (perk.scope === "artifact") return perk.effectField || artifactEffectField(effectType);
     if (effectType === "martial_art_damage_bonus" || effectType === "martial_art_damage_mult") return "damageMultiplier";
     if (effectType === "martial_art_attack_interval_mult") return "attackIntervalMultiplier";
@@ -946,6 +1004,7 @@
       const upgrade = context.upgrades.find((item) => item.id === perk.upgradeId);
       return qingyaUpgradeEffectInfo(upgrade).category;
     }
+    if (perk.scope === "martial_art" && perk.levelEffectType) return perk.categoryKey || martialCategoryKey(perk.levelEffectType, perk.upgradeType || perk.upgradeKind);
     if (perk.scope === "artifact") return perk.categoryKey || artifactCategoryKey(effectType, perk.category);
     if (effectType === "martial_art_damage_bonus" || effectType === "martial_art_damage_mult") return "martial_art_damage";
     if (effectType === "martial_art_attack_interval_mult") return "attack_speed";

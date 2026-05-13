@@ -18,6 +18,20 @@
     modifier.damageMultiplier = modifier.damageMultiplier || 1;
     modifier.attackIntervalMultiplier = modifier.attackIntervalMultiplier || 1;
     modifier.pierceAdd = modifier.pierceAdd || 0;
+    modifier.projectileCountAdd = modifier.projectileCountAdd || 0;
+    modifier.volleyCountAdd = modifier.volleyCountAdd || 0;
+    modifier.areaMultiplier = modifier.areaMultiplier || 1;
+    modifier.slowDurationAdd = modifier.slowDurationAdd || 0;
+    modifier.poisonDurationAdd = modifier.poisonDurationAdd || 0;
+    modifier.poisonDamageMultiplier = modifier.poisonDamageMultiplier || 1;
+    modifier.chainCountAdd = modifier.chainCountAdd || 0;
+    modifier.chainRadiusMultiplier = modifier.chainRadiusMultiplier || 1;
+    modifier.vulnerableMultiplier = modifier.vulnerableMultiplier || 0;
+    modifier.debuffDurationAdd = modifier.debuffDurationAdd || 0;
+    modifier.executeThresholdAdd = modifier.executeThresholdAdd || 0;
+    modifier.widthMultiplier = modifier.widthMultiplier || 1;
+    modifier.teamDamageAura = modifier.teamDamageAura || 0;
+    modifier.chaseOnKillAdd = modifier.chaseOnKillAdd || 0;
     return modifier;
   }
 
@@ -137,31 +151,76 @@
       giantSwordEliteDamageMult: 1,
       giantSwordSpeedMult: 1,
       attackLineDamageMult: 1,
+      slowDurationAdd: 0,
+      poisonDamageMult: 1,
+      chainRadiusMult: 1,
+      vulnerableMult: 0,
+      debuffDurationAdd: 0,
+      executeThresholdAdd: 0,
+      teamDamageAura: 0,
+      burningZone: false,
+      poisonStackBonus: false,
+      splashOnHit: 0,
+      soundSplashDebuff: false,
+      chaseOnKill: 0,
     };
-    martialLevelEffects({ state, data, roleId }).forEach((effect) => {
-      if (effect.effectType === "damage_mult") bonuses.damageMult *= 1 + effect.value;
+    function applyLevelEffect(effect) {
+      if (!effect || effect.effectType === "none") return;
+      if (effect.effectType === "damage_mult" || effect.effectType === "martial_art_damage_mult") bonuses.damageMult *= 1 + effect.value;
       if (effect.effectType === "attack_speed") bonuses.attackSpeed *= 1 + effect.value;
-      if (effect.effectType === "projectile_add") bonuses.projectileAdd += effect.value;
+      if (effect.effectType === "martial_art_attack_interval_mult") bonuses.attackIntervalMult *= effect.value;
+      if (effect.effectType === "projectile_add" || effect.effectType === "martial_art_projectile_count_add") bonuses.projectileAdd += effect.value;
+      if (effect.effectType === "martial_art_volley_count_add") bonuses.volleyCount += effect.value;
       if (effect.effectType === "projectile_set") bonuses.projectileSet = Math.max(bonuses.projectileSet, effect.value);
-      if (effect.effectType === "pierce_add") bonuses.pierceAdd += effect.value;
+      if (effect.effectType === "pierce_add" || effect.effectType === "martial_art_pierce_add") bonuses.pierceAdd += effect.value;
       if (effect.effectType === "range_add") bonuses.rangeAdd += effect.value;
       if (effect.effectType === "splash_radius") bonuses.splashRadius *= 1 + effect.value;
+      if (effect.effectType === "martial_art_area_mult") bonuses.splashRadius *= 1 + effect.value;
       if (effect.effectType === "splash_shards") bonuses.splashShards += effect.value;
       if (effect.effectType === "burn_on_hit") bonuses.burnOnHit += effect.value;
       if (effect.effectType === "slow_bonus") bonuses.slowBonus += effect.value;
-      if (effect.effectType === "slow_splash") bonuses.slowSplash = Math.max(bonuses.slowSplash, effect.value);
-      if (effect.effectType === "poison_duration") bonuses.poisonDuration += effect.value;
-      if (effect.effectType === "dot_mult") bonuses.dotMult *= 1 + effect.value;
-      if (effect.effectType === "chain_add") bonuses.chainAdd += effect.value;
-      if (effect.effectType === "sword_trail") bonuses.swordTrail = true;
-      if (effect.effectType === "poison_fog_on_death") bonuses.poisonFogOnDeath = true;
-      if (effect.effectType === "vertical_columns") bonuses.verticalColumns = Math.max(bonuses.verticalColumns, effect.value);
+      if (effect.effectType === "slow_splash" || effect.effectType === "martial_art_slow_splash") bonuses.slowSplash = Math.max(bonuses.slowSplash, effect.value);
+      if (effect.effectType === "martial_art_slow_duration_add") bonuses.slowDurationAdd += effect.value;
+      if (effect.effectType === "poison_duration" || effect.effectType === "martial_art_poison_duration_add") bonuses.poisonDuration += effect.value;
+      if (effect.effectType === "dot_mult" || effect.effectType === "martial_art_poison_damage_mult") bonuses.dotMult *= 1 + effect.value;
+      if (effect.effectType === "chain_add" || effect.effectType === "martial_art_chain_count_add") bonuses.chainAdd += effect.value;
+      if (effect.effectType === "martial_art_chain_radius_mult") bonuses.chainRadiusMult *= 1 + effect.value;
+      if (effect.effectType === "sword_trail" || effect.effectType === "martial_art_sword_trail") bonuses.swordTrail = true;
+      if (effect.effectType === "poison_fog_on_death" || effect.effectType === "martial_art_major_poison_fog") bonuses.poisonFogOnDeath = true;
+      if (effect.effectType === "vertical_columns" || effect.effectType === "martial_art_major_vertical_wave") bonuses.verticalColumns = Math.max(bonuses.verticalColumns, 3);
       if (effect.effectType === "horizontal_width") bonuses.horizontalWidth += effect.value;
-      if (effect.effectType === "full_row_spear") bonuses.fullRowSpear = true;
+      if (effect.effectType === "martial_art_width_mult") bonuses.horizontalWidth += Math.max(1, Math.round(effect.value * 5));
+      if (effect.effectType === "full_row_spear" || effect.effectType === "martial_art_major_full_row") bonuses.fullRowSpear = true;
       if (effect.effectType === "paralyze") bonuses.paralyze = Math.max(bonuses.paralyze, effect.value);
-      if (effect.effectType === "freeze_attack_line") bonuses.freezeAttackLine = Math.max(bonuses.freezeAttackLine, effect.value);
-      if (effect.effectType === "meteor_rain") bonuses.meteorRain += effect.value;
-      if (effect.effectType === "boss_priority_lightning") bonuses.bossPriorityLightning = true;
+      if (effect.effectType === "freeze_attack_line" || effect.effectType === "martial_art_major_freeze") bonuses.freezeAttackLine = Math.max(bonuses.freezeAttackLine, effect.value || 0.55);
+      if (effect.effectType === "meteor_rain" || effect.effectType === "martial_art_major_firestorm") bonuses.meteorRain += effect.value || 3;
+      if (effect.effectType === "boss_priority_lightning" || effect.effectType === "martial_art_major_thunder_prison") bonuses.bossPriorityLightning = true;
+      if (effect.effectType === "martial_art_burning_zone") bonuses.burningZone = true;
+      if (effect.effectType === "martial_art_poison_stack_bonus") bonuses.poisonStackBonus = true;
+      if (effect.effectType === "martial_art_splash_on_hit") bonuses.splashOnHit = Math.max(bonuses.splashOnHit, effect.value || 0.25);
+      if (effect.effectType === "martial_art_vulnerable_mult") bonuses.vulnerableMult += effect.value;
+      if (effect.effectType === "martial_art_debuff_duration_add") bonuses.debuffDurationAdd += effect.value;
+      if (effect.effectType === "martial_art_sound_splash_debuff") bonuses.soundSplashDebuff = true;
+      if (effect.effectType === "martial_art_execute_threshold_add") bonuses.executeThresholdAdd += effect.value;
+      if (effect.effectType === "martial_art_chase_on_kill") bonuses.chaseOnKill += effect.value || 1;
+      if (effect.effectType === "martial_art_team_damage_aura") bonuses.teamDamageAura += effect.value;
+      if (effect.effectType === "martial_art_major_shadow_blades") {
+        bonuses.chaseOnKill += 2;
+        bonuses.executeThresholdAdd += 0.1;
+      }
+      if (effect.effectType === "martial_art_major_sound_domain") {
+        bonuses.soundSplashDebuff = true;
+        bonuses.vulnerableMult += 0.2;
+        bonuses.debuffDurationAdd += 1;
+      }
+      if (effect.effectType === "martial_art_major_dao_domain") {
+        bonuses.teamDamageAura += 0.12;
+        bonuses.projectileAdd += 3;
+      }
+    }
+    martialLevelEffects({ state, data, roleId }).forEach((effect) => {
+      applyLevelEffect(effect);
+      (effect.effects || []).forEach(applyLevelEffect);
       if (roleId === "lu_qingya" && effect.level === 1) bonuses.hitRadiusAdd += 4;
       if (effect.effectType === "sword_qi_refine") {
         bonuses.speedMult *= 1.15;
@@ -198,6 +257,20 @@
       bonuses.damageMult *= modifier.damageMultiplier;
       bonuses.attackIntervalMult *= modifier.attackIntervalMultiplier;
       bonuses.pierceAdd += modifier.pierceAdd;
+      bonuses.projectileAdd += modifier.projectileCountAdd;
+      bonuses.volleyCount += modifier.volleyCountAdd;
+      bonuses.splashRadius *= modifier.areaMultiplier;
+      bonuses.slowDurationAdd += modifier.slowDurationAdd;
+      bonuses.poisonDuration += modifier.poisonDurationAdd;
+      bonuses.dotMult *= modifier.poisonDamageMultiplier;
+      bonuses.chainAdd += modifier.chainCountAdd;
+      bonuses.chainRadiusMult *= modifier.chainRadiusMultiplier;
+      bonuses.vulnerableMult += modifier.vulnerableMultiplier;
+      bonuses.debuffDurationAdd += modifier.debuffDurationAdd;
+      bonuses.executeThresholdAdd += modifier.executeThresholdAdd;
+      bonuses.horizontalWidth += Math.max(0, Math.round((modifier.widthMultiplier - 1) * 5));
+      bonuses.teamDamageAura += modifier.teamDamageAura;
+      bonuses.chaseOnKill += modifier.chaseOnKillAdd;
       const debugParams = debugOverrides.martialArts?.[art.id]?.debugParams || {};
       if (Number.isFinite(debugParams.projectileCount)) bonuses.projectileSet = Math.max(1, Math.min(5, debugParams.projectileCount));
       if (Number.isFinite(debugParams.volleyCount)) bonuses.volleyCount = Math.max(1, Math.min(4, debugParams.volleyCount));

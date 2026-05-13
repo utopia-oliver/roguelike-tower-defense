@@ -2457,6 +2457,270 @@ window.GAME_DATA.martialArts = [
   }
 ];
 
+(() => {
+  const arts = window.GAME_DATA.martialArts;
+  const replaceByOwner = (art) => {
+    const index = arts.findIndex((item) => item.ownerCharacterId === art.ownerCharacterId);
+    if (index >= 0) arts[index] = art;
+    else arts.push(art);
+  };
+  const level = (n, title, upgradeType, effectType, value, description, effects = []) => ({
+    level: n,
+    title,
+    upgradeType,
+    evolutionType: upgradeType === "minor_evolution" || upgradeType === "major_evolution" ? upgradeType : "growth",
+    effectType,
+    value,
+    description,
+    effects,
+  });
+  replaceByOwner({
+    id: "lianxing_fire_talisman",
+    name: "炼星火符",
+    ownerCharacterId: "shen_lianxing",
+    maxLevel: 7,
+    projectileType: "fire_talisman",
+    trajectoryType: "splash",
+    levels: [
+      level(1, "符火初成", "baseline", "none", 0, "炼星火符初始形态。"),
+      level(2, "符火增炽", "refine_upgrade", "martial_art_damage_mult", 0.25, "炼星火符伤害提升25%。"),
+      level(3, "余焰不灭", "minor_evolution", "martial_art_burning_zone", 1, "火符爆裂后留下短暂余焰区域，对范围内敌人造成小额持续伤害。"),
+      level(4, "连符并发", "branch_upgrade", "martial_art_projectile_count_add", 1, "每波额外发射1枚火符。"),
+      level(5, "爆符扩散", "branch_upgrade", "martial_art_area_mult", 0.2, "火符爆裂范围提升20%。"),
+      level(6, "符势连环", "branch_upgrade", "martial_art_volley_count_add", 1, "一次攻击连续多发射1波火符。"),
+      level(7, "星火燎原", "major_evolution", "martial_art_major_firestorm", 1, "释放多枚大型火符，对敌人密集区域造成连续爆裂伤害。", [
+        { effectType: "martial_art_damage_mult", value: 0.25 },
+        { effectType: "martial_art_area_mult", value: 0.25 },
+        { effectType: "martial_art_volley_count_add", value: 2 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "hanyan_frost_art",
+    name: "寒烟冰诀",
+    ownerCharacterId: "ye_hanyan",
+    maxLevel: 7,
+    projectileType: "frost_bolt",
+    trajectoryType: "slow",
+    levels: [
+      level(1, "寒烟初凝", "baseline", "none", 0, "寒烟冰诀初始形态。"),
+      level(2, "寒霜入骨", "refine_upgrade", "martial_art_damage_mult", 0.25, "寒烟冰诀伤害提升25%。"),
+      level(3, "霜痕蔓延", "minor_evolution", "martial_art_slow_splash", 0.45, "被霜弹命中的敌人附近会受到一次轻微冰缓扩散。"),
+      level(4, "霜弹并发", "branch_upgrade", "martial_art_projectile_count_add", 1, "每波额外发射1枚霜弹。"),
+      level(5, "冰意绵长", "refine_upgrade", "martial_art_slow_duration_add", 0.8, "冰缓持续时间提升0.8秒。"),
+      level(6, "寒域扩散", "branch_upgrade", "martial_art_area_mult", 0.2, "霜弹影响范围提升20%。"),
+      level(7, "霜天封妖", "major_evolution", "martial_art_major_freeze", 1, "释放大范围霜寒冲击，对敌群造成伤害并强力减速或短暂冻结。", [
+        { effectType: "martial_art_area_mult", value: 0.35 },
+        { effectType: "martial_art_slow_duration_add", value: 1.2 },
+        { effectType: "martial_art_damage_mult", value: 0.25 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "suyi_poison_art",
+    name: "素衣毒经",
+    ownerCharacterId: "wen_suyi",
+    maxLevel: 7,
+    projectileType: "poison_needle",
+    trajectoryType: "poison",
+    levels: [
+      level(1, "毒经初识", "baseline", "none", 0, "素衣毒经初始形态。"),
+      level(2, "毒息入骨", "refine_upgrade", "martial_art_damage_mult", 0.25, "素衣毒经伤害提升25%。"),
+      level(3, "百毒侵身", "minor_evolution", "martial_art_poison_stack_bonus", 1, "中毒敌人再次被毒针命中时，会刷新中毒时间并小幅提高毒伤。"),
+      level(4, "毒针连发", "branch_upgrade", "martial_art_projectile_count_add", 1, "每波额外发射1枚毒针。"),
+      level(5, "毒入经脉", "refine_upgrade", "martial_art_poison_duration_add", 1, "中毒持续时间提升1秒。"),
+      level(6, "蚀骨毒息", "refine_upgrade", "martial_art_poison_damage_mult", 0.25, "中毒伤害提升25%。"),
+      level(7, "万毒归藏", "major_evolution", "martial_art_major_poison_fog", 1, "释放毒针雨，并在敌人密集区域形成毒雾，持续造成伤害。", [
+        { effectType: "martial_art_projectile_count_add", value: 2 },
+        { effectType: "martial_art_poison_damage_mult", value: 0.35 },
+        { effectType: "martial_art_poison_duration_add", value: 2 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "changfeng_sword_wave",
+    name: "长风剑诀",
+    ownerCharacterId: "gu_changfeng",
+    maxLevel: 7,
+    projectileType: "sword_wave",
+    trajectoryType: "vertical",
+    levels: [
+      level(1, "长风初起", "baseline", "none", 0, "长风剑诀初始形态。"),
+      level(2, "剑势增锋", "refine_upgrade", "martial_art_damage_mult", 0.25, "长风剑诀伤害提升25%。"),
+      level(3, "剑风回荡", "minor_evolution", "martial_art_sword_trail", 1, "剑波穿透敌人后伤害衰减降低，纵向清线能力提升。"),
+      level(4, "剑波穿阵", "branch_upgrade", "martial_art_pierce_add", 1, "剑波穿透 +1。"),
+      level(5, "纵剑成潮", "branch_upgrade", "martial_art_projectile_count_add", 1, "每波额外释放1道纵向剑波。"),
+      level(6, "风起连斩", "branch_upgrade", "martial_art_volley_count_add", 1, "一次攻击连续多释放1波剑波。"),
+      level(7, "长风万里", "major_evolution", "martial_art_major_vertical_wave", 1, "释放一道巨大的纵向剑潮，贯穿多名敌人并造成高额伤害。", [
+        { effectType: "martial_art_damage_mult", value: 0.35 },
+        { effectType: "martial_art_pierce_add", value: 2 },
+        { effectType: "martial_art_width_mult", value: 0.25 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "jingxuan_thunder_art",
+    name: "景玄雷法",
+    ownerCharacterId: "xiao_jingxuan",
+    maxLevel: 7,
+    projectileType: "thunder_arc",
+    trajectoryType: "chain",
+    levels: [
+      level(1, "雷法初鸣", "baseline", "none", 0, "景玄雷法初始形态。"),
+      level(2, "雷威加深", "refine_upgrade", "martial_art_damage_mult", 0.25, "景玄雷法伤害提升25%。"),
+      level(3, "雷引残妖", "minor_evolution", "martial_art_execute_threshold_add", 0.05, "雷击更容易跳向低血敌人，提高补刀能力。"),
+      level(4, "雷走群妖", "branch_upgrade", "martial_art_chain_count_add", 1, "雷击连锁次数 +1。"),
+      level(5, "引雷入阵", "branch_upgrade", "martial_art_chain_radius_mult", 0.2, "雷击连锁范围提升20%。"),
+      level(6, "灵雷自转", "refine_upgrade", "martial_art_attack_interval_mult", 0.9, "景玄雷法攻击间隔降低10%。"),
+      level(7, "九霄雷狱", "major_evolution", "martial_art_major_thunder_prison", 1, "连续释放多道雷击，在敌群中反复跳跃。", [
+        { effectType: "martial_art_chain_count_add", value: 3 },
+        { effectType: "martial_art_damage_mult", value: 0.3 },
+        { effectType: "martial_art_chain_radius_mult", value: 0.3 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "bugui_spear_art",
+    name: "不归枪诀",
+    ownerCharacterId: "qin_bugui",
+    maxLevel: 7,
+    projectileType: "spear_arc",
+    trajectoryType: "horizontal",
+    levels: [
+      level(1, "枪势初成", "baseline", "none", 0, "不归枪诀初始形态。"),
+      level(2, "枪势加深", "refine_upgrade", "martial_art_damage_mult", 0.25, "不归枪诀伤害提升25%。"),
+      level(3, "破阵枪势", "minor_evolution", "martial_art_splash_on_hit", 0.25, "枪影命中敌人时，对横向附近敌人造成少量溅射伤害。"),
+      level(4, "横扫群妖", "branch_upgrade", "martial_art_width_mult", 0.2, "枪势横扫范围提升20%。"),
+      level(5, "枪影并起", "branch_upgrade", "martial_art_projectile_count_add", 1, "每波额外释放1道枪影。"),
+      level(6, "枪势连环", "branch_upgrade", "martial_art_volley_count_add", 1, "一次攻击连续多释放1波枪影。"),
+      level(7, "横扫千军", "major_evolution", "martial_art_major_full_row", 1, "释放大范围横向枪芒，扫击一整片敌人。", [
+        { effectType: "martial_art_width_mult", value: 0.4 },
+        { effectType: "martial_art_damage_mult", value: 0.3 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "shenyin_sound_art",
+    name: "洛神天音",
+    ownerCharacterId: "luo_shenyin",
+    maxLevel: 7,
+    projectileType: "sound_wave",
+    trajectoryType: "horizontal",
+    levels: [
+      level(1, "天音初起", "baseline", "none", 0, "洛神天音初始形态。"),
+      level(2, "清音破妖", "refine_upgrade", "martial_art_damage_mult", 0.25, "洛神天音伤害提升25%。"),
+      level(3, "余音绕阵", "minor_evolution", "martial_art_sound_splash_debuff", 1, "音波命中后，会对附近敌人附加短暂削弱。"),
+      level(4, "余音扩散", "branch_upgrade", "martial_art_area_mult", 0.2, "音波影响范围提升20%。"),
+      level(5, "摄魂清律", "refine_upgrade", "martial_art_vulnerable_mult", 0.15, "被音波影响的敌人受到伤害提升。"),
+      level(6, "镇魄余响", "refine_upgrade", "martial_art_debuff_duration_add", 0.8, "音波削弱持续时间提升0.8秒。"),
+      level(7, "万籁镇妖", "major_evolution", "martial_art_major_sound_domain", 1, "释放大范围镇妖天音，使敌人大幅易伤并降低攻击阵眼伤害。", [
+        { effectType: "martial_art_area_mult", value: 0.35 },
+        { effectType: "martial_art_vulnerable_mult", value: 0.2 },
+        { effectType: "martial_art_debuff_duration_add", value: 1.2 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "zhaoye_shadow_art",
+    name: "昭夜影诀",
+    ownerCharacterId: "chu_zhaoye",
+    maxLevel: 7,
+    projectileType: "shadow_blade",
+    trajectoryType: "execute",
+    levels: [
+      level(1, "影诀初现", "baseline", "none", 0, "昭夜影诀初始形态。"),
+      level(2, "刃影加深", "refine_upgrade", "martial_art_damage_mult", 0.25, "昭夜影诀伤害提升25%。"),
+      level(3, "追魂刃影", "minor_evolution", "martial_art_chase_on_kill", 1, "影刃击杀敌人后，额外追击附近低血敌人一次。"),
+      level(4, "影刃连发", "branch_upgrade", "martial_art_projectile_count_add", 1, "每波额外释放1枚影刃。"),
+      level(5, "追魂寻隙", "branch_upgrade", "martial_art_execute_threshold_add", 0.05, "影刃更容易斩杀低血敌人。"),
+      level(6, "夜行无声", "refine_upgrade", "martial_art_attack_interval_mult", 0.9, "昭夜影诀攻击间隔降低10%。"),
+      level(7, "夜尽千刃", "major_evolution", "martial_art_major_shadow_blades", 1, "释放大量影刃追击多个低血敌人，适合快速收割残血怪。", [
+        { effectType: "martial_art_projectile_count_add", value: 4 },
+        { effectType: "martial_art_damage_mult", value: 0.3 },
+        { effectType: "martial_art_execute_threshold_add", value: 0.1 },
+      ]),
+    ],
+  });
+  replaceByOwner({
+    id: "jiuxiao_dao_art",
+    name: "九霄万法",
+    ownerCharacterId: "ning_jiuxiao",
+    maxLevel: 7,
+    projectileType: "dao_light",
+    trajectoryType: "multi",
+    levels: [
+      level(1, "万法初明", "baseline", "none", 0, "九霄万法初始形态。"),
+      level(2, "道光增辉", "refine_upgrade", "martial_art_damage_mult", 0.25, "九霄万法伤害提升25%。"),
+      level(3, "道域初成", "minor_evolution", "martial_art_team_damage_aura", 0.05, "宁九霄在场时，所有上阵角色获得轻微伤害加成。"),
+      level(4, "万法并照", "branch_upgrade", "martial_art_projectile_count_add", 1, "每波额外释放1道道光。"),
+      level(5, "道域加持", "refine_upgrade", "martial_art_team_damage_aura", 0.08, "宁九霄在场时，上阵角色伤害小幅提升。"),
+      level(6, "灵机运转", "refine_upgrade", "martial_art_attack_interval_mult", 0.9, "九霄万法攻击间隔降低10%。"),
+      level(7, "九霄道域", "major_evolution", "martial_art_major_dao_domain", 1, "展开九霄道域，周期性强化全体上阵角色，并释放多道道光攻击敌人。", [
+        { effectType: "martial_art_team_damage_aura", value: 0.12 },
+        { effectType: "martial_art_projectile_count_add", value: 3 },
+        { effectType: "martial_art_debuff_duration_add", value: 1 },
+      ]),
+    ],
+  });
+  const evolved = (id, title, effectType, value, description) => ({
+    id,
+    title,
+    upgradeType: "evolved_upgrade",
+    effectType,
+    value,
+    description,
+  });
+  const addEvolvedUpgrades = (ownerCharacterId, upgrades) => {
+    const art = arts.find((item) => item.ownerCharacterId === ownerCharacterId);
+    if (art) art.evolvedUpgrades = upgrades;
+  };
+  addEvolvedUpgrades("shen_lianxing", [
+    evolved("lianxing_major_area", "火势蔓延", "martial_art_area_mult", 0.2, "星火燎原爆裂范围提升。"),
+    evolved("lianxing_major_damage", "赤焰加深", "martial_art_damage_mult", 0.25, "星火燎原伤害提升。"),
+    evolved("lianxing_major_burn", "余火连绵", "martial_art_slow_duration_add", 0.6, "星火燎原余焰持续时间提升。"),
+  ]);
+  addEvolvedUpgrades("ye_hanyan", [
+    evolved("hanyan_major_area", "寒域扩张", "martial_art_area_mult", 0.2, "霜天封妖范围提升。"),
+    evolved("hanyan_major_freeze", "冰封延长", "martial_art_slow_duration_add", 0.8, "霜天封妖冻结或强减速时间提升。"),
+    evolved("hanyan_major_damage", "寒伤加深", "martial_art_damage_mult", 0.25, "霜天封妖伤害提升。"),
+  ]);
+  addEvolvedUpgrades("wen_suyi", [
+    evolved("suyi_major_area", "毒雾扩散", "martial_art_area_mult", 0.2, "万毒归藏毒雾范围提升。"),
+    evolved("suyi_major_poison_damage", "毒伤加深", "martial_art_poison_damage_mult", 0.25, "万毒归藏毒伤提升。"),
+    evolved("suyi_major_poison_duration", "毒留不散", "martial_art_poison_duration_add", 1.2, "万毒归藏毒雾持续时间提升。"),
+  ]);
+  addEvolvedUpgrades("gu_changfeng", [
+    evolved("changfeng_major_damage", "剑潮加深", "martial_art_damage_mult", 0.25, "长风万里伤害提升。"),
+    evolved("changfeng_major_pierce", "贯阵无阻", "martial_art_pierce_add", 1, "长风万里穿透提升。"),
+    evolved("changfeng_major_width", "剑势延展", "martial_art_width_mult", 0.2, "长风万里剑潮宽度提升。"),
+  ]);
+  addEvolvedUpgrades("xiao_jingxuan", [
+    evolved("jingxuan_major_chain_count", "雷数增加", "martial_art_chain_count_add", 1, "九霄雷狱雷击次数提升。"),
+    evolved("jingxuan_major_damage", "雷威加深", "martial_art_damage_mult", 0.25, "九霄雷狱伤害提升。"),
+    evolved("jingxuan_major_chain_radius", "雷域扩张", "martial_art_chain_radius_mult", 0.2, "九霄雷狱连锁范围提升。"),
+  ]);
+  addEvolvedUpgrades("qin_bugui", [
+    evolved("bugui_major_width", "枪芒扩张", "martial_art_width_mult", 0.2, "横扫千军横扫范围提升。"),
+    evolved("bugui_major_damage", "枪势加深", "martial_art_damage_mult", 0.25, "横扫千军伤害提升。"),
+    evolved("bugui_major_splash", "破阵余威", "martial_art_area_mult", 0.2, "横扫千军溅射伤害范围提升。"),
+  ]);
+  addEvolvedUpgrades("luo_shenyin", [
+    evolved("shenyin_major_area", "音域扩张", "martial_art_area_mult", 0.2, "万籁镇妖范围提升。"),
+    evolved("shenyin_major_vulnerable", "破妖加深", "martial_art_vulnerable_mult", 0.12, "万籁镇妖易伤提升。"),
+    evolved("shenyin_major_duration", "镇魄延长", "martial_art_debuff_duration_add", 0.8, "万籁镇妖持续时间提升。"),
+  ]);
+  addEvolvedUpgrades("chu_zhaoye", [
+    evolved("zhaoye_major_blade_count", "刃数增加", "martial_art_projectile_count_add", 1, "夜尽千刃影刃数量提升。"),
+    evolved("zhaoye_major_damage", "斩妖锋芒", "martial_art_damage_mult", 0.25, "夜尽千刃伤害提升。"),
+    evolved("zhaoye_major_chase", "追魂更疾", "martial_art_chase_on_kill", 1, "夜尽千刃追击次数提升。"),
+  ]);
+  addEvolvedUpgrades("ning_jiuxiao", [
+    evolved("jiuxiao_major_aura", "道域扩张", "martial_art_team_damage_aura", 0.05, "九霄道域增益强度提升。"),
+    evolved("jiuxiao_major_light_count", "万法齐鸣", "martial_art_projectile_count_add", 1, "九霄道域道光数量提升。"),
+    evolved("jiuxiao_major_duration", "灵机不绝", "martial_art_debuff_duration_add", 0.8, "九霄道域增益持续时间提升。"),
+  ]);
+})();
+
 window.GAME_DATA.perks.push(
   {
     id: "perk_sword_school_damage",

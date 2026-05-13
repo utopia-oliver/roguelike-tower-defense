@@ -1025,6 +1025,68 @@ function recordMartialRunUpgrade(perk, effect, upgrade = null) {
   return runtime;
 }
 
+function applyMartialModifierEffect(effect) {
+  const modifier = getMartialArtModifier(effect.martialArtId);
+  switch (effect.type) {
+    case "martial_art_damage_bonus":
+    case "martial_art_damage_mult":
+      modifier.damageMultiplier *= 1 + effect.value;
+      break;
+    case "martial_art_attack_interval_mult":
+      modifier.attackIntervalMultiplier *= effect.value;
+      break;
+    case "martial_art_pierce_bonus":
+    case "martial_art_pierce_add":
+      modifier.pierceAdd += effect.value;
+      break;
+    case "martial_art_projectile_count_add":
+      modifier.projectileCountAdd += effect.value;
+      break;
+    case "martial_art_volley_count_add":
+      modifier.volleyCountAdd += effect.value;
+      break;
+    case "martial_art_area_mult":
+      modifier.areaMultiplier *= 1 + effect.value;
+      break;
+    case "martial_art_slow_duration_add":
+      modifier.slowDurationAdd += effect.value;
+      break;
+    case "martial_art_poison_duration_add":
+      modifier.poisonDurationAdd += effect.value;
+      break;
+    case "martial_art_poison_damage_mult":
+      modifier.poisonDamageMultiplier *= 1 + effect.value;
+      break;
+    case "martial_art_chain_count_add":
+      modifier.chainCountAdd += effect.value;
+      break;
+    case "martial_art_chain_radius_mult":
+      modifier.chainRadiusMultiplier *= 1 + effect.value;
+      break;
+    case "martial_art_vulnerable_mult":
+      modifier.vulnerableMultiplier += effect.value;
+      break;
+    case "martial_art_debuff_duration_add":
+      modifier.debuffDurationAdd += effect.value;
+      break;
+    case "martial_art_execute_threshold_add":
+      modifier.executeThresholdAdd += effect.value;
+      break;
+    case "martial_art_width_mult":
+      modifier.widthMultiplier *= 1 + effect.value;
+      break;
+    case "martial_art_team_damage_aura":
+      modifier.teamDamageAura += effect.value;
+      break;
+    case "martial_art_chase_on_kill":
+      modifier.chaseOnKillAdd += effect.value;
+      break;
+    default:
+      return false;
+  }
+  return true;
+}
+
 function getPerkTargetId(perk) {
   return getSystemPerkTargetId(perk);
 }
@@ -1376,6 +1438,9 @@ function applyRoleHit(role, target, damage) {
 
   if (projectile === "splash") {
     areaDamage(target.x, target.y, grid.cellW * 0.65 * art.splashRadius, damage * 0.55, "role");
+    if (art.burningZone) {
+      state.zones.push({ x: target.x, y: target.y, radius: grid.cellW * 0.7 * art.splashRadius, ttl: 1.4, color: "rgba(239, 123, 69, 0.2)", dps: damage * 0.18, tick: 0 });
+    }
     if (art.splashShards > 0) {
       nearestEnemies(target, art.splashShards).forEach((enemy) => {
         enemy.takeDamage(damage * 0.25, "role", role);
@@ -1386,6 +1451,9 @@ function applyRoleHit(role, target, damage) {
   if (projectile === "horizontal") {
     const count = art.fullRowSpear ? 99 : (config.passiveSkill === "horizontal_cleave" ? 4 : 2) + art.horizontalWidth + state.bonuses.horizontalBonus;
     horizontalTargets(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.7, "role", role));
+    if (art.splashOnHit > 0) {
+      horizontalTargets(target, Math.max(2, count)).forEach((enemy) => enemy.takeDamage(damage * art.splashOnHit, "role", role));
+    }
   }
   if (projectile === "vertical") {
     const count = 2 + state.bonuses.pierceAdd + art.pierceAdd + (config.passiveSkill === "pierce_bonus" ? 1 : 0);
@@ -1401,9 +1469,9 @@ function applyRoleHit(role, target, damage) {
     }
   }
   if (projectile === "slow" || config.school === "冰") {
-    target.addStatus("slow", 2 * state.bonuses.controlMultiplier, 0.3 + art.slowBonus);
+    target.addStatus("slow", (2 + art.slowDurationAdd) * state.bonuses.controlMultiplier, 0.3 + art.slowBonus);
     if (art.slowSplash > 0) {
-      horizontalTargets(target, 2).forEach((enemy) => enemy.addStatus("slow", 1.5 * state.bonuses.controlMultiplier, art.slowSplash));
+      horizontalTargets(target, 2).forEach((enemy) => enemy.addStatus("slow", (1.5 + art.slowDurationAdd) * state.bonuses.controlMultiplier, art.slowSplash));
     }
     if (art.freezeAttackLine > 0 && target.progress >= 0.82 && Math.random() < art.freezeAttackLine) {
       target.addStatus("freeze", 0.55 * state.bonuses.controlMultiplier, 1);
@@ -1412,9 +1480,9 @@ function applyRoleHit(role, target, damage) {
   if (projectile === "poison" || config.school === "毒") {
     target.addStatus("poison", 3 + state.bonuses.poisonDurationAdd + art.poisonDuration, Math.max(2, damage * 0.22 * art.dotMult), {
       stack: config.passiveSkill === "poison_stack",
-      maxStacks: 3,
+      maxStacks: art.poisonStackBonus ? 5 : 3,
     });
-    if (art.chainAdd > 0) nearestEnemies(target, art.chainAdd).forEach((enemy) => {
+    if (art.chainAdd > 0) nearestEnemies(target, art.chainAdd, grid.cellW * 2.2 * art.chainRadiusMult).forEach((enemy) => {
       enemy.takeDamage(damage * 0.45, "role", role);
       enemy.addStatus("poison", 2 + art.poisonDuration, Math.max(1, damage * 0.1 * art.dotMult));
     });
@@ -1425,7 +1493,7 @@ function applyRoleHit(role, target, damage) {
   }
   if (projectile === "chain") {
     const count = (config.passiveSkill === "thunder_chain" ? 3 : 2) + art.chainAdd + state.bonuses.chainBonus;
-    nearestEnemies(target, count).forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
+    nearestEnemies(target, count, grid.cellW * 2.6 * art.chainRadiusMult).forEach((enemy) => enemy.takeDamage(damage * 0.55, "role", role));
     if (art.paralyze > 0) target.addStatus("slow", 0.8, art.paralyze);
     if (art.bossPriorityLightning) {
       const elite = state.enemies.find((enemy) => isEnemyTargetable(enemy) && (enemy.config.isBoss || enemy.config.type === "精英"));
@@ -1434,7 +1502,13 @@ function applyRoleHit(role, target, damage) {
   }
   if (art.burnOnHit > 0) target.addStatus("burn", 1.5, art.burnOnHit);
   if (art.meteorRain > 0) nearestEnemies(target, art.meteorRain).forEach((enemy) => enemy.takeDamage(damage * 0.35, "role", role));
-  if (projectile === "execute" && target.hp / target.maxHp < 0.3) {
+  if (art.vulnerableMult > 0) target.addStatus("vulnerable", 2.4 + art.debuffDurationAdd, art.vulnerableMult);
+  if (art.debuffDurationAdd > 0 || art.soundSplashDebuff) target.addStatus("weaken_attack", 2.2 + art.debuffDurationAdd, 0.18);
+  if (art.soundSplashDebuff) horizontalTargets(target, 3).forEach((enemy) => {
+    enemy.addStatus("vulnerable", 2.2 + art.debuffDurationAdd, 0.12 + art.vulnerableMult);
+    enemy.addStatus("weaken_attack", 2.2 + art.debuffDurationAdd, 0.16);
+  });
+  if (projectile === "execute" && target.hp / target.maxHp < 0.3 + art.executeThresholdAdd) {
     target.takeDamage(damage * 0.35, "role", role);
   }
   if (config.passiveSkill === "weaken_enemy_attack") {
@@ -1451,6 +1525,9 @@ function applyRoleHit(role, target, damage) {
   }
   if (killed && art.poisonFogOnDeath) {
     state.zones.push({ x: target.x, y: target.y, radius: grid.cellW * 0.75, ttl: 2, color: "rgba(168, 85, 247, 0.18)", dps: damage * 0.25, tick: 0 });
+  }
+  if (killed && art.chaseOnKill > 0) {
+    nearestEnemies(target, art.chaseOnKill).forEach((enemy) => enemy.takeDamage(damage * 0.45, "role", role));
   }
 }
 
@@ -1500,9 +1577,9 @@ function enemiesBehind(target, count) {
     .slice(0, count);
 }
 
-function nearestEnemies(target, count) {
+function nearestEnemies(target, count, maxDistance = Infinity) {
   return state.enemies
-    .filter((enemy) => isEnemyTargetable(enemy) && enemy !== target)
+    .filter((enemy) => isEnemyTargetable(enemy) && enemy !== target && distance(enemy, target) <= maxDistance)
     .sort((a, b) => distance(a, target) - distance(b, target))
     .slice(0, count);
 }
@@ -2083,6 +2160,14 @@ function applyPerk(perk) {
         break;
       }
       recordMartialRunUpgrade(perk, effect);
+      if ((perk.upgradeType || perk.upgradeKind || effect.upgradeType) === "evolved_upgrade" && perk.levelEffectType) {
+        applyMartialModifierEffect({
+          ...effect,
+          type: perk.levelEffectType,
+          value: perk.value ?? effect.value,
+          martialArtId: art.id,
+        });
+      }
       state.martialArtLevels[art.id] = Math.min(art.maxLevel, state.martialArtLevels[art.id]);
       break;
     }
@@ -2101,15 +2186,31 @@ function applyPerk(perk) {
     }
     case "martial_art_damage_bonus":
       recordMartialRunUpgrade(perk, effect);
-      getMartialArtModifier(effect.martialArtId).damageMultiplier *= 1 + effect.value;
+      applyMartialModifierEffect(effect);
       break;
     case "martial_art_attack_interval_mult":
       recordMartialRunUpgrade(perk, effect);
-      getMartialArtModifier(effect.martialArtId).attackIntervalMultiplier *= effect.value;
+      applyMartialModifierEffect(effect);
       break;
     case "martial_art_pierce_bonus":
+    case "martial_art_pierce_add":
+    case "martial_art_damage_mult":
+    case "martial_art_projectile_count_add":
+    case "martial_art_volley_count_add":
+    case "martial_art_area_mult":
+    case "martial_art_slow_duration_add":
+    case "martial_art_poison_duration_add":
+    case "martial_art_poison_damage_mult":
+    case "martial_art_chain_count_add":
+    case "martial_art_chain_radius_mult":
+    case "martial_art_vulnerable_mult":
+    case "martial_art_debuff_duration_add":
+    case "martial_art_execute_threshold_add":
+    case "martial_art_width_mult":
+    case "martial_art_team_damage_aura":
+    case "martial_art_chase_on_kill":
       recordMartialRunUpgrade(perk, effect);
-      getMartialArtModifier(effect.martialArtId).pierceAdd += effect.value;
+      applyMartialModifierEffect(effect);
       break;
     default:
       if (perk.id === "perk_sword_passive_up") {

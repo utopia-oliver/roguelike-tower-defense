@@ -276,6 +276,10 @@
     );
     const arrayCoreRatio = state.arrayCoreMaxHp > 0 ? state.arrayCoreHp / state.arrayCoreMaxHp : 1;
     const sectLeaderBonus = hasGlobalBoost ? (arrayCoreRatio < 0.3 ? 1.1 : 1) : 1;
+    const teamDamageAura = state.deployedRoles.reduce((bonus, item) => {
+      if (item.id === role.id) return bonus;
+      return bonus + (helpers.martialBonuses(item.roleId).teamDamageAura || 0);
+    }, art.teamDamageAura || 0);
     const elderSwordCount =
       role.roleId === "role_yunhe_elder"
         ? 1 + state.deployedRoles.filter((item) => DATA.roles[item.roleId].school === "剑").length * 0.08
@@ -287,6 +291,7 @@
         state.bonuses.roleDamage *
         role.personalDamage *
         sectLeaderBonus *
+        (1 + teamDamageAura) *
         (hasGlobalBoost ? 1.1 : 1) *
         elderSwordCount,
       interval: ((config.attackInterval || 1 / (config.baseAttackSpeed || 1)) * art.attackIntervalMult * art.giantSwordIntervalMult) / (state.bonuses.roleAttackSpeed * role.personalSpeed * art.attackSpeed),
