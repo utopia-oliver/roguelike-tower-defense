@@ -243,8 +243,11 @@
       heal_aura: `rgba(134, 239, 172, ${alpha})`,
       demon: `rgba(190, 24, 93, ${alpha})`,
       curse: `rgba(167, 139, 250, ${alpha})`,
+      talisman: `rgba(232, 121, 249, ${alpha})`,
+      armor: `rgba(253, 230, 138, ${alpha})`,
       demon_projectile: `rgba(190, 24, 93, ${alpha})`,
       curse_beam: `rgba(167, 139, 250, ${alpha})`,
+      shaman_buff: `rgba(232, 121, 249, ${alpha})`,
       battle_roar: `rgba(248, 113, 113, ${alpha})`,
       demon_armor: `rgba(253, 230, 138, ${alpha})`,
     };
@@ -286,31 +289,66 @@
       (event.targets || []).filter(Boolean).forEach((target) => points.push({ x: target.x, y: target.y }));
       drawLightningPath(ctx, points, eventColor(event, alpha));
     } else if (event.type === "demon_projectile") {
+      const toX = event.toX ?? event.x;
+      const toY = event.toY ?? event.y;
+      const fromX = event.fromX ?? event.x;
+      const fromY = event.fromY ?? event.y;
       ctx.strokeStyle = eventColor(event, alpha);
       ctx.lineWidth = 4;
       ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(event.fromX ?? event.x, event.fromY ?? event.y);
-      ctx.lineTo(event.x, event.y);
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+      ctx.strokeStyle = eventColor(event, alpha * 0.35);
+      ctx.lineWidth = 9;
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
       ctx.stroke();
       ctx.fillStyle = eventColor(event, alpha * 0.2);
       ctx.beginPath();
-      ctx.arc(event.x, event.y, radius * 0.35, 0, Math.PI * 2);
+      ctx.arc(toX, toY, radius * 0.35, 0, Math.PI * 2);
       ctx.fill();
     } else if (event.type === "curse_beam") {
+      const toX = event.toX ?? event.x;
+      const toY = event.toY ?? event.y;
+      const fromX = event.fromX ?? event.x;
+      const fromY = event.fromY ?? event.y;
       ctx.strokeStyle = eventColor(event, alpha * 0.8);
       ctx.lineWidth = 6;
       ctx.setLineDash([8, 6]);
       ctx.beginPath();
-      ctx.moveTo(event.fromX ?? event.x, event.fromY ?? event.y);
-      ctx.lineTo(event.x, event.y);
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.strokeStyle = eventColor(event, alpha);
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(event.x, event.y, radius * 0.5, 0, Math.PI * 2);
+      ctx.arc(toX, toY, radius * 0.5, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(toX, toY, radius * 0.25, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (event.type === "shaman_buff") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 3;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius * (0.65 + progress * 0.25), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = eventColor(event, alpha * 0.65);
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 3; i += 1) {
+        const angle = progress * Math.PI * 2 + i * (Math.PI * 2 / 3);
+        const markX = event.x + Math.cos(angle) * radius * 0.42;
+        const markY = event.y + Math.sin(angle) * radius * 0.42;
+        ctx.beginPath();
+        ctx.arc(markX, markY, 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     } else if (event.type === "battle_roar") {
       ctx.strokeStyle = eventColor(event, alpha);
       ctx.lineWidth = 4;

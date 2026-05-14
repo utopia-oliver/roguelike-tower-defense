@@ -30,6 +30,9 @@
   function isEnemyTargetable(enemy) {
     return Boolean(
       enemy &&
+        Number.isFinite(enemy.x) &&
+        Number.isFinite(enemy.y) &&
+        Number.isFinite(enemy.hp) &&
         enemy.hp > 0 &&
         !enemy.dead &&
         !enemy.isDead &&
@@ -105,18 +108,21 @@
       if (type === "slow" && this.config.id === "boss_outer_demon") return;
       const normalizedType = type === "attack_down" ? "weaken_attack" : type;
       if (this.statusImmunities.includes(normalizedType)) return;
+      const safeDuration = Number(duration);
+      const safeValue = Number(value) || 0;
+      if (!Number.isFinite(safeDuration) || safeDuration <= 0) return;
       const existing = this.statuses.find((status) => status.type === normalizedType);
       if (existing) {
-        existing.duration = Math.max(existing.duration, duration);
+        existing.duration = Math.max(existing.duration, safeDuration);
         if (options.stack) {
           existing.stacks = Math.min(options.maxStacks || 3, (existing.stacks || 1) + 1);
-          existing.value = value * existing.stacks;
+          existing.value = safeValue * existing.stacks;
         } else {
-          existing.value = Math.max(existing.value, value);
+          existing.value = Math.max(existing.value, safeValue);
         }
         return;
       }
-      this.statuses.push({ type: normalizedType, duration, value, tick: 0, stacks: options.stack ? 1 : 0 });
+      this.statuses.push({ type: normalizedType, duration: safeDuration, value: safeValue, tick: 0, stacks: options.stack ? 1 : 0 });
     }
 
     takeDamage(rawAmount, source = "role", attacker = null) {
@@ -217,26 +223,64 @@
           type: "demon_projectile",
           fromX: this.x,
           fromY: this.y,
+          toX: base.x,
+          toY: base.y,
           x: base.x,
           y: base.y,
           radius: 34,
-          duration: 0.32,
+          duration: 0.45,
           colorKey: "demon",
           sourceId: this.config.id,
         });
       }
     }
 
+    castCasterFallback() {
+      const base = call(this.context, "getArrayCorePosition") || { x: this.x, y: getAttackLineY(this.context) + 60 };
+      const damage = Math.max(1, Number(this.config.casterFallbackDamage || this.config.rangedAttackDamage || this.attackDamage * 0.75) || 1);
+      call(this.context, "damageArrayCore", damage, this);
+      call(this.context, "addVisualEvent", {
+        type: "curse_beam",
+        fromX: this.x,
+        fromY: this.y,
+        toX: base.x,
+        toY: base.y,
+        x: base.x,
+        y: base.y,
+        radius: 40,
+        duration: 0.45,
+        colorKey: "curse",
+        sourceId: this.config.id,
+      });
+      call(this.context, "setStatus", `${this.config.name}无妖可催，转而以幽符咒击阵眼。`);
+    }
+
+    markInvalidForRemoval() {
+      this.hp = 0;
+      this.dead = true;
+      this.isDead = true;
+      this.markedForRemoval = true;
+      this.state = ENEMY_STATE.DEAD;
+    }
+
     update(dt) {
-      const state = getState(this.context);
-      const grid = getGrid(this.context);
-      this.updateStatuses(dt);
-      this.useAbility(dt);
-      if (this.state === ENEMY_STATE.DEAD) return;
-      if (this.state === ENEMY_STATE.ATTACKING) {
-        if (this.attackMode !== "caster") this.attackArrayCore(dt);
+      if (!Number.isFinite(this.x) || !Number.isFinite(this.y) || !Number.isFinite(this.hp)) {
+        this.markInvalidForRemoval();
         return;
       }
+      const grid = getGrid(this.context);
+      this.updateStatuses(dt);
+      if (this.state === ENEMY_STATE.DEAD) return;
+      if (this.state === ENEMY_STATE.ATTACKING) {
+        const abilityResult = this.useAbility(dt);
+        if (this.attackMode === "caster") {
+          if (abilityResult === false) this.castCasterFallback();
+          return;
+        }
+        this.attackArrayCore(dt);
+        return;
+      }
+      this.useAbility(dt);
       const slow = statusValue(this, "slow");
       const haste = statusValue(this, "haste");
       const frozen = this.hasStatus("freeze");
@@ -259,18 +303,33 @@
 
     getStopY() {
       const lineY = getAttackLineY(this.context);
-      if (this.attackMode === "ranged") return lineY - (this.config.rangedStopOffset || 140);
-      if (this.attackMode === "caster") return lineY - (this.config.casterStopOffset || 170);
+      const grid = getGrid(this.context);
+      const monsterLaneTop = grid?.cellH || 0;
+      const minStopY = monsterLaneTop + 80;
+      const maxStopY = lineY - 120;
+      if (this.attackMode === "ranged") {
+        const stopY = lineY - (this.config.rangedStopOffset || 220);
+        return Math.max(minStopY, Math.min(maxStopY, stopY));
+      }
+      if (this.attackMode === "caster") {
+        const stopY = lineY - (this.config.casterStopOffset || 240);
+        return Math.max(minStopY, Math.min(maxStopY, stopY));
+      }
       return lineY;
     }
 
     updateStatuses(dt) {
       this.statuses.forEach((status) => {
+        if (!Number.isFinite(status.duration)) {
+          status.duration = 0;
+          return;
+        }
         status.duration -= dt;
         if (status.type === "poison" || status.type === "burn") {
           status.tick += dt;
           if (status.tick >= 0.5) {
-            this.takeDamage(status.value * status.tick, status.type);
+            const tickDamage = (Number(status.value) || 0) * status.tick;
+            if (tickDamage > 0) this.takeDamage(tickDamage, status.type);
             status.tick = 0;
           }
         }
@@ -281,7 +340,7 @@
     useAbility(dt) {
       const state = getState(this.context);
       const grid = getGrid(this.context);
-      if (this.dead) return;
+      if (this.dead) return null;
       this.abilityTimer += dt;
       this.updateBossPhase();
       if (this.config.id === "dark_talisman_shaman" && this.state === ENEMY_STATE.ATTACKING && this.abilityTimer >= (this.config.abilityCooldown || 5.5)) {
@@ -295,17 +354,19 @@
           }
         });
         call(this.context, "addVisualEvent", {
-          type: "wave",
+          type: "shaman_buff",
           x: this.x,
           y: this.y,
           radius,
-          duration: 0.45,
-          colorKey: "debuff",
+          duration: 0.65,
+          colorKey: "talisman",
           sourceId: this.config.id,
         });
         if (affected > 0) {
           call(this.context, "setStatus", `${this.config.name}施放幽符，催动附近妖物。`);
+          return true;
         }
+        return false;
       }
       if (this.config.id === "bone_talisman_witch" && this.state === ENEMY_STATE.ATTACKING && this.abilityTimer >= (this.config.abilityCooldown || 6)) {
         this.abilityTimer = 0;
@@ -315,14 +376,17 @@
           type: "curse_beam",
           fromX: this.x,
           fromY: this.y,
+          toX: base.x,
+          toY: base.y,
           x: base.x,
           y: base.y,
           radius: 46,
-          duration: 0.45,
+          duration: 0.65,
           colorKey: "curse",
           sourceId: this.config.id,
         });
         call(this.context, "setStatus", `${this.config.name}施放骨符蚀阵，远程侵蚀阵眼。`);
+        return true;
       }
       if (this.config.id === "redmane_demon_general" && this.abilityTimer >= (this.config.abilityCooldown || 6)) {
         this.abilityTimer = 0;
@@ -335,19 +399,55 @@
           x: this.x,
           y: this.y,
           radius: this.hitRadius + 18,
-          duration: 0.45,
-          colorKey: "fire",
+          duration,
+          colorKey: "armor",
           sourceId: this.config.id,
         });
         call(this.context, "setStatus", `${this.config.name}妖甲覆身，短暂减伤。`);
+        return true;
       }
-      if (!this.config.isBoss) return;
+      if (this.config.id === "black_gate_guardian" && this.abilityTimer >= (this.config.abilityCooldown || 6.5)) {
+        this.abilityTimer = 0;
+        const armorAbility = (this.abilities || []).find((ability) => ability.type === "demon_armor");
+        const roarAbility = (this.abilities || []).find((ability) => ability.type === "battle_roar");
+        const duration = armorAbility?.duration || this.config.armorStateDuration || 2.5;
+        const reduction = armorAbility?.params?.damageReduction || this.config.damageReductionDuringArmor || 0.3;
+        const radius = this.config.supportRadius || grid.cellW * 1.6;
+        this.addStatus("demon_armor", duration, reduction);
+        state.enemies.forEach((enemy) => {
+          if (enemy !== this && isEnemyTargetable(enemy) && call(this.context, "distance", this, enemy) <= radius) {
+            enemy.addStatus("haste", roarAbility?.duration || this.config.hasteDuration || 2.0, this.config.hasteMultiplier || 0.18);
+          }
+        });
+        call(this.context, "addVisualEvent", {
+          type: "demon_armor",
+          x: this.x,
+          y: this.y,
+          radius: this.hitRadius + 24,
+          duration,
+          colorKey: "armor",
+          sourceId: this.config.id,
+        });
+        call(this.context, "addVisualEvent", {
+          type: "battle_roar",
+          x: this.x,
+          y: this.y,
+          radius,
+          duration: 0.75,
+          colorKey: "demon",
+          sourceId: this.config.id,
+        });
+        call(this.context, "setStatus", `${this.config.name}妖甲震吼，护体并催动附近妖物。`);
+        return true;
+      }
+      if (!this.config.isBoss) return null;
       if (this.config.id === "boss_blackwind" && this.abilityTimer >= 8) {
         this.abilityTimer = 0;
         for (let i = 0; i < 3; i += 1) {
           call(this.context, "spawnEnemy", "enemy_little_yao");
         }
         call(this.context, "setStatus", "黑风妖将召来山野小妖。");
+        return true;
       }
       if (this.config.id === "boss_bloodlotus" && this.abilityTimer >= 10) {
         this.abilityTimer = 0;
@@ -357,6 +457,7 @@
           }
         });
         call(this.context, "setStatus", "血莲魔修治疗附近敌人。");
+        return true;
       }
       if (this.config.id === "boss_outer_demon" && this.abilityTimer >= 7) {
         this.abilityTimer = 0;
@@ -364,7 +465,9 @@
         call(this.context, "spawnEnemy", "enemy_little_yao");
         this.addStatus("freeze_immune", 2, 1);
         call(this.context, "setStatus", "域外魔影召唤魔影小怪。");
+        return true;
       }
+      return null;
     }
 
     updateBossPhase() {

@@ -20,18 +20,34 @@
     };
   }
 
+  function isEnemyAlive(enemy) {
+    const shared = window.XM.Enemies?.isEnemyTargetable;
+    if (typeof shared === "function") return shared(enemy);
+    return Boolean(
+      enemy &&
+        Number.isFinite(enemy.hp) &&
+        enemy.hp > 0 &&
+        !enemy.dead &&
+        !enemy.isDead &&
+        !enemy.markedForRemoval,
+    );
+  }
+
   function startWave({ state, DATA, waveNumber = state.wave, callbacks }) {
     const wave = getWaveConfig({ DATA, waveNumber });
     if (!wave) return false;
     state.wave = waveNumber;
     state.spawnJobs = wave.segments.map(createSpawnJob);
     state.waveActive = true;
+    state.waveElapsed = 0;
+    state.waveStallWarned = false;
     state.highestWave = Math.max(state.highestWave, state.wave);
     call(callbacks, "setStatus", `第 ${state.wave} 波：${wave.goal}`);
     return true;
   }
 
   function updateWaveSpawns({ state, dt, callbacks }) {
+    state.waveElapsed = (state.waveElapsed || 0) + dt;
     state.spawnJobs.forEach((job) => {
       job.nextSpawn -= dt;
       while (job.remaining > 0 && job.nextSpawn <= 0) {
@@ -41,11 +57,35 @@
         job.nextSpawn += job.spawnInterval;
       }
     });
+    maybeWarnStalledWave(state);
   }
 
   function isWaveComplete({ state }) {
     const allSpawned = state.spawnJobs.every((job) => job.remaining <= 0);
-    return state.waveActive && allSpawned && state.enemies.length === 0;
+    return state.waveActive && allSpawned && !state.enemies.some(isEnemyAlive);
+  }
+
+  function maybeWarnStalledWave(state) {
+    if (state.wave !== 6 || state.waveStallWarned || (state.waveElapsed || 0) < 60) return;
+    const allSpawned = state.spawnJobs.every((job) => job.remaining <= 0);
+    if (!state.waveActive || !allSpawned) return;
+    state.waveStallWarned = true;
+    console.warn("[Waves] wave 6 still active after 60s", {
+      wave: state.wave,
+      enemies: (state.enemies || []).map((enemy) => ({
+        id: enemy.config?.id || enemy.id,
+        name: enemy.config?.name || enemy.name,
+        hp: enemy.hp,
+        dead: enemy.dead,
+        state: enemy.state,
+        attackMode: enemy.attackMode,
+        x: enemy.x,
+        y: enemy.y,
+        abilityTimer: enemy.abilityTimer,
+        markedForRemoval: enemy.markedForRemoval,
+      })),
+      spawnJobs: state.spawnJobs,
+    });
   }
 
   function advanceWave({ state, DATA, callbacks }) {
