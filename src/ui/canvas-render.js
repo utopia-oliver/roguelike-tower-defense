@@ -241,6 +241,12 @@
       impact_seal: `rgba(180, 148, 93, ${alpha})`,
       meteor_random: `rgba(251, 191, 36, ${alpha})`,
       heal_aura: `rgba(134, 239, 172, ${alpha})`,
+      demon: `rgba(190, 24, 93, ${alpha})`,
+      curse: `rgba(167, 139, 250, ${alpha})`,
+      demon_projectile: `rgba(190, 24, 93, ${alpha})`,
+      curse_beam: `rgba(167, 139, 250, ${alpha})`,
+      battle_roar: `rgba(248, 113, 113, ${alpha})`,
+      demon_armor: `rgba(253, 230, 138, ${alpha})`,
     };
     return palette[key] || `rgba(255, 255, 255, ${alpha})`;
   }
@@ -279,6 +285,50 @@
       if (Number.isFinite(event.fromX) && Number.isFinite(event.fromY)) points.push({ x: event.fromX, y: event.fromY });
       (event.targets || []).filter(Boolean).forEach((target) => points.push({ x: target.x, y: target.y }));
       drawLightningPath(ctx, points, eventColor(event, alpha));
+    } else if (event.type === "demon_projectile") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 4;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(event.fromX ?? event.x, event.fromY ?? event.y);
+      ctx.lineTo(event.x, event.y);
+      ctx.stroke();
+      ctx.fillStyle = eventColor(event, alpha * 0.2);
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (event.type === "curse_beam") {
+      ctx.strokeStyle = eventColor(event, alpha * 0.8);
+      ctx.lineWidth = 6;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(event.fromX ?? event.x, event.fromY ?? event.y);
+      ctx.lineTo(event.x, event.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (event.type === "battle_roar") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 4;
+      for (let i = 0; i < 2; i += 1) {
+        ctx.beginPath();
+        ctx.arc(event.x, event.y, radius * (0.75 + i * 0.28), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else if (event.type === "demon_armor") {
+      ctx.strokeStyle = eventColor(event, alpha);
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius * 0.72, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = eventColor(event, alpha * 0.12);
+      ctx.beginPath();
+      ctx.arc(event.x, event.y, radius * 0.55, 0, Math.PI * 2);
+      ctx.fill();
     } else if (event.type === "area_burst") {
       ctx.strokeStyle = eventColor(event, alpha);
       ctx.lineWidth = 4;

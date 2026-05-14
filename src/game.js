@@ -884,6 +884,9 @@ function createEnemyContext() {
       gainLingqi,
       makeId,
       addVisualEvent,
+      getArrayCorePosition() {
+        return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.65 };
+      },
       nearestEnemies,
       setStatus,
       spawnEnemy(enemyId) {
