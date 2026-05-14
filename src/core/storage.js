@@ -19,6 +19,7 @@
       initialArtifact: helpers.initialArtifact || "",
       initialArtifacts,
       initialFormation: helpers.initialFormation || "",
+      initialFormations: Array.isArray(helpers.initialFormations) ? helpers.initialFormations : [],
       roles: helpers.roles || null,
       artifacts: helpers.artifacts || null,
       formations: helpers.formations || null,
@@ -51,7 +52,11 @@
   function createDefaultPlayerProfile(helpers = {}) {
     const profileHelpers = playerProfileHelpers(helpers);
     const ownedArtifacts = [...profileHelpers.initialArtifacts];
-    const unlockedFormations = profileHelpers.initialFormation ? [profileHelpers.initialFormation] : [];
+    const unlockedFormations = profileHelpers.initialFormations?.length
+      ? [...profileHelpers.initialFormations]
+      : profileHelpers.initialFormation
+        ? [profileHelpers.initialFormation]
+        : [];
     return {
       playerLevel: 1,
       playerExp: 0,

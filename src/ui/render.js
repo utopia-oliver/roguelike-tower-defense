@@ -71,7 +71,11 @@
       button.className = "choice";
       button.classList.toggle("selected", state.loadoutFormationId === id);
       button.dataset.loadoutFormationId = id;
-      button.innerHTML = `<strong>${safeText(formation.name)}</strong><span>被动 · ${formation.triggerRadius}格 · ${formation.cooldown}秒</span>`;
+      button.innerHTML = [
+        `<strong>${safeText(formation.name)}</strong>`,
+        `<span>${safeText(formation.role || formation.rarity || "护山大阵")}</span>`,
+        `<span>${safeText(formation.effectText || formation.description || "")}</span>`,
+      ].join("");
       elements.loadoutFormationList.appendChild(button);
     });
 
@@ -191,7 +195,8 @@
       next < Infinity
         ? `Lv${state.runLevel} · ${Math.floor(state.lingqi)} / ${next}`
         : `Lv${state.runLevel} · 已满`;
-    elements.runStatus.textContent = state.status;
+    const formationName = DATA.formations[state.selectedFormationId]?.name;
+    elements.runStatus.textContent = formationName ? `${state.status} 当前阵法：${formationName}` : state.status;
     elements.startButton.textContent = state.appState === elements.deployState ? "开始战斗" : "战斗中";
     elements.startButton.disabled = state.appState !== elements.deployState || state.deployedRoles.length !== state.availableRoles.length;
     elements.deployHint.textContent =

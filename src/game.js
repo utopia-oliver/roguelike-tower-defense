@@ -345,7 +345,7 @@ const playerMeta = {
   ownedArtifacts: [...(DATA.initial.artifacts || [DATA.initial.artifact]).filter(Boolean)],
   artifactLevels: {},
   maxArtifactSlots: 1,
-  unlockedFormations: [DATA.initial.formation],
+  unlockedFormations: DATA.initial.formations || [DATA.initial.formation],
   formationLevels: {},
   arrayCoreLevel: 1,
   arrayCoreBaseHpBonus: 0,
@@ -384,6 +384,7 @@ function playerProfileStorageHelpers() {
     initialArtifact: DATA.initial.artifact,
     initialArtifacts: DATA.initial.artifacts || [DATA.initial.artifact].filter(Boolean),
     initialFormation: DATA.initial.formation,
+    initialFormations: DATA.initial.formations || Object.keys(DATA.formations || {}),
     roles: DATA.roles,
     artifacts: DATA.artifacts,
     formations: DATA.formations,
@@ -408,6 +409,9 @@ function loadPlayerProfile() {
 
 function applyPlayerProfile(profile) {
   Object.assign(playerMeta, normalizePlayerProfile(profile));
+  (DATA.initial.formations || Object.keys(DATA.formations || {})).forEach((id) => {
+    if (!playerMeta.unlockedFormations.includes(id)) playerMeta.unlockedFormations.push(id);
+  });
   syncPlayerMetaAliases();
 }
 
@@ -628,6 +632,9 @@ function resetGame() {
     martialArtLevels: {},
     martialArtBranches: createInitialMartialBranchState(),
     formationCooldown: 0,
+    formationRuntime: {},
+    formationCoreDamageReduction: 0,
+    formationSpiritQiGainMultiplier: 1,
     artifactCooldown: 0,
     artifactCooldowns: {},
     artifactRuntime: {},
@@ -729,6 +736,9 @@ function showView(view) {
 
 function enterLoadout() {
   applyPlayerLevelUnlocks();
+  if (!state.loadoutFormationId || !playerMeta.unlockedFormations.includes(state.loadoutFormationId)) {
+    state.loadoutFormationId = playerMeta.unlockedFormations[0] || DATA.initial.formation || "";
+  }
   state.loadoutRoleIds = state.loadoutRoleIds
     .filter((id) => playerMeta.ownedCharacters.includes(id))
     .slice(0, playerMeta.maxDeploySlots);
@@ -762,6 +772,9 @@ function enterDeploy() {
     state.phase = "deploy";
   initializeArrayCoreForRun();
   state.selectedFormationId = state.loadoutFormationId;
+  const selectedFormation = DATA.formations[state.selectedFormationId];
+  state.formationCoreDamageReduction = Number(selectedFormation?.passiveCoreDamageReduction) || 0;
+  state.formationSpiritQiGainMultiplier = Number(selectedFormation?.spiritQiGainMultiplier) || 1;
   state.selectedArtifactIds = [...(state.loadoutArtifactIds || [])];
   state.selectedArtifactId = state.selectedArtifactIds[0] || "";
   state.availableRoles = state.loadoutRoleIds
@@ -922,7 +935,7 @@ function advanceWave() {
 }
 
 function gainLingqi(amount) {
-  state.lingqi += amount * state.bonuses.lingqiGain;
+  state.lingqi += amount * state.bonuses.lingqiGain * (state.formationSpiritQiGainMultiplier || 1);
   let projectedLevel = state.runLevel + state.pendingLevelUps;
   while (state.lingqi >= nextLevelRequirement(projectedLevel) && nextLevelRequirement(projectedLevel) < Infinity) {
     state.pendingLevelUps += 1;
@@ -1480,10 +1493,11 @@ function createRoleProjectiles(role, target, damage, projectileCount) {
 
 function applyRoleHit(role, target, damage) {
   if (!isEnemyTargetable(target)) return;
-  if (role?.sourceType === "artifact") {
-    target.takeDamage(damage, role.bondId ? "artifact_bond" : "artifact", role);
+  if (role?.sourceType === "artifact" || role?.sourceType === "formation") {
+    const sourceLabel = role.sourceType === "formation" ? "formation" : role.bondId ? "artifact_bond" : "artifact";
+    target.takeDamage(damage, sourceLabel, role);
     if (role.splashRadius > 0 && role.splashDamageMultiplier > 0) {
-      areaDamage(target.x, target.y, role.splashRadius, damage * role.splashDamageMultiplier, role.bondId ? "artifact_bond" : "artifact");
+      areaDamage(target.x, target.y, role.splashRadius, damage * role.splashDamageMultiplier, sourceLabel);
     }
     if (role.slowDuration > 0 && role.slowMultiplier) {
       target.addStatus("slow", role.slowDuration, Math.max(0, 1 - role.slowMultiplier));
@@ -1505,7 +1519,7 @@ function applyRoleHit(role, target, damage) {
           .sort((a, b) => distance(a, current) - distance(b, current))[0];
         if (!next) break;
         hitIds.add(next.id);
-        next.takeDamage(chainDamage, role.bondId ? "artifact_bond" : "artifact", role);
+        next.takeDamage(chainDamage, sourceLabel, role);
         chainTargets.push(visualPoint(next));
         current = next;
         chainDamage *= role.chainDamageMultiplier;
@@ -1705,14 +1719,46 @@ function updateFormation(dt) {
       addZone(zone) {
         state.zones.push(zone);
       },
+      addFloater(floater) {
+        state.floaters.push(floater);
+      },
+      addVisualEvent,
       damageEnemy(enemy, damage, source) {
         enemy.takeDamage(damage, source);
       },
+      gainLingqi,
       getFormationBase() {
         return { x: canvas.width / 2, y: canvas.height - grid.cellH / 2 };
       },
+      healArrayCore(amount) {
+        state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + amount);
+        syncBaseHpAliases();
+        state.floaters.push({
+          x: canvas.width / 2,
+          y: canvas.height - grid.cellH * 0.7,
+          text: `+${Math.ceil(amount)}`,
+          ttl: 0.75,
+          color: "#86efac",
+        });
+      },
       nearestEnemies,
       setStatus,
+      spawnFormationProjectile(payload) {
+        spawnArtifactProjectile({
+          artifact: { id: payload.formation.id, name: payload.formation.name },
+          target: payload.target,
+          origin: payload.origin,
+          projectileIndex: payload.projectileIndex,
+          projectileCount: payload.projectileCount,
+          projectileType: payload.formation.projectileType || "formation_sword_projectile",
+          sourceType: "formation",
+          damage: payload.formation.damage,
+          pierceCount: payload.formation.pierceCount,
+          speed: 430,
+          hitRadius: 16,
+          color: "#e9ffff",
+        });
+      },
     },
     helpers: {
       distance,
@@ -1802,7 +1848,7 @@ function spawnArtifactProjectile(payload) {
     sourceRole: {
       id: artifact.id,
       roleId: artifact.id,
-      sourceType: "artifact",
+      sourceType: payload.sourceType || "artifact",
       artifactId: artifact.id,
       bondId: bond?.id || "",
       splashRadius: payload.splashRadius || 0,

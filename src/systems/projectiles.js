@@ -35,6 +35,7 @@
     if (type === "dao_light") Object.assign(defaults, { speed: 390, width: 9, length: 38, radius: 12, color: "#fff1a8", trailColor: "rgba(250, 204, 21, 0.25)" });
     if (type === "artifact_sword_projectile") Object.assign(defaults, { speed: 430, width: 8, length: 40, radius: 13, hitRadius: 16, color: "#bff7ff", trailColor: "rgba(56, 189, 248, 0.25)" });
     if (type === "artifact_blade_projectile") Object.assign(defaults, { speed: 470, width: 5, length: 28, radius: 9, hitRadius: 12, color: "#fef3c7", trailColor: "rgba(245, 158, 11, 0.2)" });
+    if (type === "formation_sword_projectile") Object.assign(defaults, { speed: 430, width: 8, length: 44, radius: 14, hitRadius: 17, color: "#e9ffff", trailColor: "rgba(222, 204, 147, 0.28)" });
     if (art?.giantSword) Object.assign(defaults, { speed: 430, width: 52, length: 160, radius: 54, hitRadius: 54, collisionPadding: 18, maxLifetime: 2.8, color: "#e9ffff", trailColor: "rgba(250, 204, 21, 0.34)" });
     defaults.speed *= art?.speedMult || 1;
     if (art?.giantSword) defaults.speed *= art.giantSwordSpeedMult || 1;
