@@ -10,6 +10,18 @@
     return Boolean(enemy && enemy.hp > 0 && !enemy.dead && !enemy.isDead && enemy.state !== "dead" && enemy.state !== "DYING" && !enemy.markedForRemoval);
   }
 
+  function isEnemyInFrontOfRole(enemy, role) {
+    return Boolean(
+      enemy &&
+        role &&
+        Number.isFinite(enemy.x) &&
+        Number.isFinite(enemy.y) &&
+        Number.isFinite(role.x) &&
+        Number.isFinite(role.y) &&
+        enemy.y < role.y - 8,
+    );
+  }
+
   function projectileDefaults(config, art) {
     const type = config.projectileType || config.trajectoryType || "projectile";
     const defaults = {
@@ -76,15 +88,27 @@
   }
 
   function getPredictedTargetPosition(source, target, projectileSpeed, options = {}) {
+    if (!isEnemyTargetable(target)) return null;
+    if (!Number.isFinite(source?.x) || !Number.isFinite(source?.y)) return null;
+    if (!Number.isFinite(target?.x) || !Number.isFinite(target?.y)) return null;
+    if (!isEnemyInFrontOfRole(target, source)) return null;
     const dx = target.x - source.x;
     const dy = target.y - source.y;
     const travelTime = Math.hypot(dx, dy) / Math.max(1, projectileSpeed);
     const pathPixelDistance = Number(options.pathPixelDistance) || 0;
-    const pathPixelSpeed = ((target.moveSpeed || 0) * pathPixelDistance) / 6.1;
-    return {
+    const moveSpeed = Number(target.baseMoveSpeed || target.moveSpeed || 0);
+    const pathPixelSpeed = moveSpeed > 10 ? moveSpeed : (moveSpeed * pathPixelDistance) / 6.1;
+    const predicted = {
       x: target.x + (target.vx || 0) * travelTime,
       y: target.y + (target.vy || pathPixelSpeed) * travelTime,
     };
+    if (!Number.isFinite(predicted.x) || !Number.isFinite(predicted.y)) {
+      return { x: target.x, y: target.y };
+    }
+    if (predicted.y >= source.y - 8) {
+      return { x: target.x, y: target.y };
+    }
+    return predicted;
   }
 
   function fireProjectileAttack({
@@ -102,7 +126,7 @@
       if (state.appState !== helpers.battleState) return;
       const stats = callbacks.roleStats(role);
       const liveTarget =
-        (target && state.enemies.find((enemy) => enemy.id === target.id && isEnemyTargetable(enemy))) ||
+        (target && state.enemies.find((enemy) => enemy.id === target.id && isEnemyTargetable(enemy) && isEnemyInFrontOfRole(enemy, role))) ||
         callbacks.chooseTarget(role, stats.range);
       if (!liveTarget) return;
       createRoleProjectiles({
@@ -138,12 +162,28 @@
     const config = data.roles[role.roleId];
     const art = callbacks.martialBonuses(role.roleId);
     const defaults = projectileDefaults(config, art);
+    if (!isEnemyTargetable(target) || !isEnemyInFrontOfRole(target, role)) return;
     const predicted = getPredictedTargetPosition(role, target, defaults.speed, {
       pathPixelDistance: helpers.pathPixelDistance,
     });
+    if (!predicted) return;
     const dx = predicted.x - role.x;
     const dy = predicted.y - role.y;
-    const len = Math.hypot(dx, dy) || 1;
+    const len = Math.hypot(dx, dy);
+    if (!Number.isFinite(len) || len <= 0 || predicted.y >= role.y - 8) {
+      if (typeof console !== "undefined" && typeof console.warn === "function") {
+        console.warn("[RoleAttack] invalid backward target", {
+          roleId: role.id || role.roleId || role.characterId,
+          startX: role.x,
+          startY: role.y,
+          targetId: target.id,
+          targetX: target.x,
+          targetY: target.y,
+          targetPoint: predicted,
+        });
+      }
+      return;
+    }
     const baseVx = dx / len;
     const baseVy = dy / len;
     const normalX = -baseVy;
@@ -154,10 +194,25 @@
     for (let i = 0; i < actualCount; i += 1) {
       const centered = i - (actualCount - 1) / 2;
       const aimX = predicted.x + normalX * (aimOffsets[i] || 0);
-      const aimY = predicted.y + normalY * (aimOffsets[i] || 0);
+      let aimY = predicted.y + normalY * (aimOffsets[i] || 0);
+      if (aimY >= role.y - 8) aimY = target.y;
       const aimDx = aimX - role.x;
       const aimDy = aimY - role.y;
-      const aimLen = Math.hypot(aimDx, aimDy) || 1;
+      const aimLen = Math.hypot(aimDx, aimDy);
+      if (!Number.isFinite(aimLen) || aimLen <= 0 || aimDy >= -1) {
+        if (typeof console !== "undefined" && typeof console.warn === "function") {
+          console.warn("[RoleAttack] invalid backward target", {
+            roleId: role.id || role.roleId || role.characterId,
+            startX: role.x,
+            startY: role.y,
+            targetId: target.id,
+            targetX: target.x,
+            targetY: target.y,
+            targetPoint: { x: aimX, y: aimY },
+          });
+        }
+        continue;
+      }
       const aimBaseVx = aimDx / aimLen;
       const aimBaseVy = aimDy / aimLen;
       const angle = ((spreadAngles[i] || 0) * Math.PI) / 180;

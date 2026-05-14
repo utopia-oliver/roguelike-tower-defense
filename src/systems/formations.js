@@ -56,8 +56,10 @@
 
   function damageArrayCore({ state, rawDamage, enemy = null, callbacks }) {
     const defense = state.arrayCoreDefense || 0;
+    const pierceRatio = Math.max(0, Math.min(0.9, Number(enemy?.config?.defensePierceRatio || enemy?.defensePierceRatio) || 0));
+    const effectiveDefense = defense * (1 - pierceRatio);
     const reduction = Math.max(0, Math.min(0.8, Number(state.formationCoreDamageReduction) || 0));
-    const finalDamage = Math.max(1, (rawDamage - defense) * (1 - reduction));
+    const finalDamage = Math.max(1, (rawDamage - effectiveDefense) * (1 - reduction));
     state.arrayCoreHp = Math.max(0, state.arrayCoreHp - finalDamage);
     syncBaseHpAliases({ state });
 

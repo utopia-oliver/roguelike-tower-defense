@@ -40,6 +40,12 @@
     );
   }
 
+  function statusValue(enemy, type) {
+    return enemy.statuses
+      .filter((status) => status.type === type)
+      .reduce((max, status) => Math.max(max, Number(status.value) || 0), 0);
+  }
+
   class Enemy {
     constructor(enemyId, context = {}) {
       const data = getData(context);
@@ -51,11 +57,19 @@
       this.lane = Math.floor(Math.random() * grid.columns);
       this.x = this.lane * grid.cellW + grid.cellW / 2;
       this.y = -grid.cellH * 0.35;
-      this.hp = config.hp;
-      this.maxHp = config.maxHp || config.hp;
-      this.moveSpeed = config.moveSpeed || config.speed;
-      this.attackDamage = config.attackDamage || config.baseDamage;
-      this.spiritQiReward = config.spiritQiReward || config.lingqiReward;
+      this.hp = Number(config.hp) || 1;
+      this.maxHp = Number(config.maxHp) || this.hp;
+      this.moveSpeed = Number(config.moveSpeed || config.speed) || 1;
+      this.baseMoveSpeed = this.moveSpeed;
+      this.attackDamage = Number(config.attackDamage || config.baseDamage) || 1;
+      this.spiritQiReward = Number(config.spiritQiReward || config.lingqiReward) || 0;
+      this.armor = Number(config.armor) || 0;
+      this.defensePierceRatio = Number(config.defensePierceRatio) || 0;
+      this.resistances = config.resistances || {};
+      this.statusImmunities = config.statusImmunities || [];
+      this.abilities = Array.isArray(config.abilities) ? config.abilities : [];
+      this.isElite = Boolean(config.isElite);
+      this.isBoss = Boolean(config.isBoss);
       this.dead = false;
       this.isDead = false;
       this.markedForRemoval = false;
@@ -68,17 +82,17 @@
     }
 
     get radius() {
-      if (this.config.isBoss) return 24;
-      if (this.config.type === "坦克") return 18;
-      return 13;
+      if (this.config.drawRadius) return this.config.drawRadius;
+      if (this.config.isBoss || this.config.isElite) return 24;
+      if (this.config.type === "armored") return 20;
+      if (this.config.type === "fast") return 12;
+      return Math.max(13, Math.min(22, (this.config.hitRadius || 18) - 4));
     }
 
     get hitRadius() {
+      if (this.config.hitRadius) return this.config.hitRadius;
       if (this.config.isBoss) return 32;
-      if (this.config.id === "enemy_swift_wolf") return 13;
-      if (this.config.id === "enemy_armor_beast") return 22;
-      if (this.config.id === "enemy_blood_cultivator") return 18;
-      return 14;
+      return this.radius + 4;
     }
 
     hasStatus(type) {
@@ -87,7 +101,9 @@
 
     addStatus(type, duration, value, options = {}) {
       if (type === "slow" && this.config.id === "boss_outer_demon") return;
-      const existing = this.statuses.find((status) => status.type === type);
+      const normalizedType = type === "attack_down" ? "weaken_attack" : type;
+      if (this.statusImmunities.includes(normalizedType)) return;
+      const existing = this.statuses.find((status) => status.type === normalizedType);
       if (existing) {
         existing.duration = Math.max(existing.duration, duration);
         if (options.stack) {
@@ -98,7 +114,7 @@
         }
         return;
       }
-      this.statuses.push({ type, duration, value, tick: 0, stacks: options.stack ? 1 : 0 });
+      this.statuses.push({ type: normalizedType, duration, value, tick: 0, stacks: options.stack ? 1 : 0 });
     }
 
     takeDamage(rawAmount, source = "role", attacker = null) {
@@ -106,11 +122,12 @@
       if (!isEnemyTargetable(this)) return false;
       let amount = rawAmount;
       if (this.config.isBoss) amount *= state.bonuses.bossDamage;
-      const vulnerable = this.statuses
-        .filter((status) => status.type === "vulnerable")
-        .reduce((max, status) => Math.max(max, status.value), 0);
+      const vulnerable = statusValue(this, "vulnerable");
       if (vulnerable > 0) amount *= 1 + vulnerable;
       if (this.hasStatus("slow")) amount *= 1 + state.bonuses.slowVulnerability;
+      if (this.armor > 0 && source !== "poison" && source !== "burn") amount = Math.max(1, amount - this.armor);
+      const armorReduction = statusValue(this, "demon_armor");
+      if (armorReduction > 0 && source !== "poison" && source !== "burn") amount *= Math.max(0.05, 1 - armorReduction);
       this.hp -= amount;
       call(this.context, "addFloater", {
         x: this.x,
@@ -145,6 +162,24 @@
           nearby.forEach((enemy) => enemy.addStatus("poison", 3, 5));
         }
       }
+      if (this.config.id === "miasma_mirage") {
+        call(this.context, "addVisualEvent", {
+          type: "poison_cloud",
+          x: this.x,
+          y: this.y,
+          radius: this.config.miasmaRadius || 80,
+          duration: this.config.miasmaDuration || 3,
+          colorKey: "poison",
+          sourceId: this.config.id,
+        });
+        call(this.context, "addFloater", {
+          x: this.x,
+          y: this.y - this.radius - 8,
+          text: "腐瘴",
+          ttl: 0.8,
+          color: "#b9f06b",
+        });
+      }
       call(this.context, "gainLingqi", this.spiritQiReward);
     }
 
@@ -162,9 +197,7 @@
       this.attackTimer += dt;
       if (this.attackTimer < this.attackInterval) return;
       this.attackTimer = 0;
-      const weaken = this.statuses
-        .filter((status) => status.type === "weaken_attack")
-        .reduce((max, status) => Math.max(max, status.value), 0);
+      const weaken = statusValue(this, "weaken_attack");
       call(this.context, "damageArrayCore", this.attackDamage * (1 - weaken), this);
     }
 
@@ -172,18 +205,19 @@
       const state = getState(this.context);
       const grid = getGrid(this.context);
       this.updateStatuses(dt);
-      this.updateBossAbility(dt);
+      this.useAbility(dt);
       if (this.state === ENEMY_STATE.DEAD) return;
       if (this.state === ENEMY_STATE.ATTACKING) {
         this.attackArrayCore(dt);
         return;
       }
-      const slow = this.statuses
-        .filter((status) => status.type === "slow")
-        .reduce((max, status) => Math.max(max, status.value), 0);
+      const slow = statusValue(this, "slow");
+      const haste = statusValue(this, "haste");
       const frozen = this.hasStatus("freeze");
       if (!frozen) {
-        this.progress += (this.moveSpeed * (1 - slow) * dt) / 6.1;
+        const pathLength = getAttackLineY(this.context) + grid.cellH * 0.35;
+        const speedPerSecond = this.baseMoveSpeed > 10 ? this.baseMoveSpeed : (this.baseMoveSpeed * pathLength) / 6.1;
+        this.progress += (speedPerSecond * Math.max(0.05, 1 - slow + haste) * dt) / pathLength;
         this.y = this.progress * (getAttackLineY(this.context) + grid.cellH * 0.35) - grid.cellH * 0.35;
         this.x =
           this.lane * grid.cellW +
@@ -207,11 +241,45 @@
       this.statuses = this.statuses.filter((status) => status.duration > 0);
     }
 
-    updateBossAbility(dt) {
+    useAbility(dt) {
       const state = getState(this.context);
       const grid = getGrid(this.context);
-      if (!this.config.isBoss || this.dead) return;
+      if (this.dead) return;
       this.abilityTimer += dt;
+      if (this.config.id === "dark_talisman_shaman" && this.abilityTimer >= (this.config.abilityCooldown || 5.5)) {
+        this.abilityTimer = 0;
+        const radius = this.config.supportRadius || grid.cellW * 1.5;
+        state.enemies.forEach((enemy) => {
+          if (enemy !== this && isEnemyTargetable(enemy) && call(this.context, "distance", this, enemy) <= radius) {
+            enemy.addStatus("haste", this.config.hasteDuration || 2.2, this.config.hasteMultiplier || 0.25);
+          }
+        });
+        call(this.context, "addVisualEvent", {
+          type: "wave",
+          x: this.x,
+          y: this.y,
+          radius,
+          duration: 0.45,
+          colorKey: "debuff",
+          sourceId: this.config.id,
+        });
+        call(this.context, "setStatus", `${this.config.name}施放幽符，催动附近妖物。`);
+      }
+      if (this.config.id === "redmane_demon_general" && this.abilityTimer >= (this.config.abilityCooldown || 6)) {
+        this.abilityTimer = 0;
+        this.addStatus("demon_armor", this.config.armorStateDuration || 2.5, this.config.damageReductionDuringArmor || 0.35);
+        call(this.context, "addVisualEvent", {
+          type: "impact_seal",
+          x: this.x,
+          y: this.y,
+          radius: this.hitRadius + 18,
+          duration: 0.45,
+          colorKey: "fire",
+          sourceId: this.config.id,
+        });
+        call(this.context, "setStatus", `${this.config.name}妖甲覆身，短暂减伤。`);
+      }
+      if (!this.config.isBoss) return;
       if (this.config.id === "boss_blackwind" && this.abilityTimer >= 8) {
         this.abilityTimer = 0;
         for (let i = 0; i < 3; i += 1) {

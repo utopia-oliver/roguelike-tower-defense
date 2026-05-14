@@ -883,6 +883,7 @@ function createEnemyContext() {
       damageArrayCore,
       gainLingqi,
       makeId,
+      addVisualEvent,
       nearestEnemies,
       setStatus,
       spawnEnemy(enemyId) {

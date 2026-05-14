@@ -78,11 +78,61 @@
     ctx.fillText(config.school, role.x, role.y + 39);
   }
 
+  function enemyColor({ colors, enemy }) {
+    const typeColors = {
+      normal: "#b2563c",
+      fast: "#d0c56c",
+      armored: "#7f8794",
+      array_attacker: "#ef4444",
+      support: "#b88cff",
+      miasma: "#84cc16",
+      array_breaker: "#fb7185",
+      elite: "#dc6b38",
+    };
+    return colors[enemy.config.id] || typeColors[enemy.config.type] || "#a3a3a3";
+  }
+
   function drawEnemy({ ctx, colors, enemy }) {
-    ctx.fillStyle = colors[enemy.config.id] || "#a3a3a3";
+    ctx.fillStyle = enemyColor({ colors, enemy });
     ctx.beginPath();
     ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
     ctx.fill();
+    if (enemy.config.type === "fast") {
+      ctx.strokeStyle = "rgba(250, 250, 210, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(enemy.x, enemy.y + enemy.radius + 4);
+      ctx.lineTo(enemy.x - 12, enemy.y + enemy.radius + 18);
+      ctx.stroke();
+    }
+    if (enemy.config.type === "armored") {
+      ctx.strokeStyle = "#d1d5db";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    if (enemy.config.type === "array_breaker") {
+      ctx.strokeStyle = "#ff5c7a";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius + 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    if (enemy.config.type === "support") {
+      ctx.strokeStyle = "#e9d5ff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius + 5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (enemy.config.isElite || enemy.config.isBoss) {
+      ctx.strokeStyle = enemy.hasStatus("demon_armor") ? "#fde68a" : "#f97316";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius + 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     if (enemy.hasStatus("slow")) {
       ctx.strokeStyle = "#93ddf8";
       ctx.lineWidth = 3;
@@ -101,6 +151,13 @@
       ctx.arc(enemy.x, enemy.y, enemy.radius + 5, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+    }
+    if (enemy.hasStatus("haste")) {
+      ctx.strokeStyle = "#fef08a";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(enemy.x, enemy.y, enemy.radius + 9, 0, Math.PI * 2);
+      ctx.stroke();
     }
     if (enemy.hasStatus("freeze")) {
       ctx.strokeStyle = "#d7f8ff";

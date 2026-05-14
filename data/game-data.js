@@ -2881,6 +2881,275 @@ window.GAME_DATA.martialArts = [
   });
 })();
 
+(() => {
+  const enemies = {
+    redmane_fiend: {
+      id: "redmane_fiend",
+      name: "赤鬃獠",
+      type: "normal",
+      hp: 32,
+      maxHp: 32,
+      moveSpeed: 42,
+      attackDamage: 6,
+      baseDamage: 6,
+      attackInterval: 1.2,
+      spiritQiReward: 8,
+      lingqiReward: 8,
+      hitRadius: 18,
+      trait: "基础兽妖",
+      note: "基础推进单位。",
+      isBoss: false,
+    },
+    shadow_hound: {
+      id: "shadow_hound",
+      name: "掠影猲",
+      type: "fast",
+      hp: 24,
+      maxHp: 24,
+      moveSpeed: 68,
+      attackDamage: 5,
+      baseDamage: 5,
+      attackInterval: 1.1,
+      spiritQiReward: 9,
+      lingqiReward: 9,
+      hitRadius: 16,
+      trait: "高速突袭",
+      note: "移动快，血量低。",
+      isBoss: false,
+    },
+    ironhide_xiao: {
+      id: "ironhide_xiao",
+      name: "铁甲魈",
+      type: "armored",
+      hp: 80,
+      maxHp: 80,
+      moveSpeed: 30,
+      attackDamage: 8,
+      baseDamage: 8,
+      attackInterval: 1.4,
+      spiritQiReward: 14,
+      lingqiReward: 14,
+      hitRadius: 22,
+      armor: 3,
+      trait: "厚甲肉盾",
+      note: "高血、低速、少量护甲。",
+      isBoss: false,
+    },
+    rending_claw: {
+      id: "rending_claw",
+      name: "裂爪獠",
+      type: "array_attacker",
+      hp: 45,
+      maxHp: 45,
+      moveSpeed: 45,
+      attackDamage: 12,
+      baseDamage: 12,
+      attackInterval: 1.0,
+      spiritQiReward: 12,
+      lingqiReward: 12,
+      hitRadius: 18,
+      trait: "阵眼攻击",
+      note: "抵达阵前后阵眼压力更高。",
+      isBoss: false,
+    },
+    dark_talisman_shaman: {
+      id: "dark_talisman_shaman",
+      name: "幽符巫",
+      type: "support",
+      hp: 38,
+      maxHp: 38,
+      moveSpeed: 34,
+      attackDamage: 4,
+      baseDamage: 4,
+      attackInterval: 1.4,
+      spiritQiReward: 15,
+      lingqiReward: 15,
+      hitRadius: 18,
+      abilityCooldown: 5.5,
+      supportRadius: 110,
+      hasteMultiplier: 0.28,
+      hasteDuration: 2.2,
+      trait: "妖符辅助",
+      note: "周期性为附近妖物施加加速。",
+      isBoss: false,
+    },
+    miasma_mirage: {
+      id: "miasma_mirage",
+      name: "腐瘴蜃",
+      type: "miasma",
+      hp: 42,
+      maxHp: 42,
+      moveSpeed: 38,
+      attackDamage: 7,
+      baseDamage: 7,
+      attackInterval: 1.2,
+      spiritQiReward: 13,
+      lingqiReward: 13,
+      hitRadius: 18,
+      miasmaRadius: 80,
+      miasmaDuration: 3.0,
+      trait: "死亡腐瘴",
+      note: "死亡后留下短暂腐瘴表现。",
+      isBoss: false,
+    },
+    array_devouring_moth: {
+      id: "array_devouring_moth",
+      name: "噬阵螟",
+      type: "array_breaker",
+      hp: 60,
+      maxHp: 60,
+      moveSpeed: 35,
+      attackDamage: 14,
+      baseDamage: 14,
+      attackInterval: 1.3,
+      spiritQiReward: 16,
+      lingqiReward: 16,
+      hitRadius: 20,
+      defensePierceRatio: 0.4,
+      trait: "啃噬阵纹",
+      note: "攻击阵眼时部分无视阵眼防御。",
+      isBoss: false,
+    },
+    redmane_demon_general: {
+      id: "redmane_demon_general",
+      name: "赤鬃妖将",
+      type: "elite",
+      hp: 180,
+      maxHp: 180,
+      moveSpeed: 32,
+      attackDamage: 18,
+      baseDamage: 18,
+      attackInterval: 1.4,
+      spiritQiReward: 35,
+      lingqiReward: 35,
+      hitRadius: 26,
+      isElite: true,
+      isBoss: false,
+      abilityCooldown: 6.0,
+      armorStateDuration: 2.5,
+      damageReductionDuringArmor: 0.35,
+      trait: "精英妖甲",
+      note: "周期性进入妖甲减伤状态，但不会无敌。",
+    },
+  };
+
+  Object.assign(window.GAME_DATA.enemies, enemies, {
+    enemy_little_yao: { ...enemies.redmane_fiend, id: "enemy_little_yao" },
+    enemy_swift_wolf: { ...enemies.shadow_hound, id: "enemy_swift_wolf" },
+    enemy_armor_beast: { ...enemies.ironhide_xiao, id: "enemy_armor_beast" },
+    enemy_blood_cultivator: { ...enemies.dark_talisman_shaman, id: "enemy_blood_cultivator" },
+    boss_blackwind: { ...enemies.redmane_demon_general, id: "boss_blackwind", isElite: true, isBoss: false },
+  });
+
+  const waveTemplates = {
+    1: {
+      goal: "赤鬃初潮",
+      segments: [
+        { enemyId: "redmane_fiend", count: 8, startDelay: 0, spawnInterval: 1.05 },
+      ],
+      lingqiScale: 64,
+      settlementLingstone: 10,
+    },
+    2: {
+      goal: "掠影试阵",
+      segments: [
+        { enemyId: "redmane_fiend", count: 10, startDelay: 0, spawnInterval: 1.0 },
+        { enemyId: "shadow_hound", count: 3, startDelay: 2.2, spawnInterval: 1.15 },
+      ],
+      lingqiScale: 92,
+      settlementLingstone: 15,
+    },
+    3: {
+      goal: "铁甲压线",
+      segments: [
+        { enemyId: "redmane_fiend", count: 9, startDelay: 0, spawnInterval: 0.95 },
+        { enemyId: "ironhide_xiao", count: 2, startDelay: 3.0, spawnInterval: 2.2 },
+      ],
+      lingqiScale: 100,
+      settlementLingstone: 20,
+    },
+    4: {
+      goal: "裂爪临阵",
+      segments: [
+        { enemyId: "shadow_hound", count: 6, startDelay: 0, spawnInterval: 0.95 },
+        { enemyId: "rending_claw", count: 4, startDelay: 2.0, spawnInterval: 1.25 },
+      ],
+      lingqiScale: 102,
+      settlementLingstone: 25,
+    },
+    5: {
+      goal: "赤鬃妖将",
+      segments: [
+        { enemyId: "redmane_fiend", count: 8, startDelay: 0, spawnInterval: 0.95 },
+        { enemyId: "ironhide_xiao", count: 2, startDelay: 2.4, spawnInterval: 2.0 },
+        { enemyId: "redmane_demon_general", count: 1, startDelay: 5.0, spawnInterval: 1.0 },
+      ],
+      lingqiScale: 142,
+      settlementLingstone: 60,
+    },
+    6: {
+      goal: "幽符助妖",
+      segments: [
+        { enemyId: "redmane_fiend", count: 12, startDelay: 0, spawnInterval: 0.9 },
+        { enemyId: "dark_talisman_shaman", count: 2, startDelay: 3.5, spawnInterval: 3.0 },
+      ],
+      lingqiScale: 126,
+      settlementLingstone: 35,
+    },
+    7: {
+      goal: "腐瘴留形",
+      segments: [
+        { enemyId: "redmane_fiend", count: 9, startDelay: 0, spawnInterval: 0.9 },
+        { enemyId: "miasma_mirage", count: 4, startDelay: 2.0, spawnInterval: 1.5 },
+        { enemyId: "shadow_hound", count: 4, startDelay: 4.5, spawnInterval: 0.85 },
+      ],
+      lingqiScale: 140,
+      settlementLingstone: 40,
+    },
+    8: {
+      goal: "噬阵初现",
+      segments: [
+        { enemyId: "ironhide_xiao", count: 4, startDelay: 0, spawnInterval: 1.7 },
+        { enemyId: "array_devouring_moth", count: 3, startDelay: 3.0, spawnInterval: 1.8 },
+      ],
+      lingqiScale: 104,
+      settlementLingstone: 45,
+    },
+    9: {
+      goal: "群妖混潮",
+      segments: [
+        { enemyId: "shadow_hound", count: 7, startDelay: 0, spawnInterval: 0.75 },
+        { enemyId: "rending_claw", count: 5, startDelay: 1.5, spawnInterval: 1.0 },
+        { enemyId: "dark_talisman_shaman", count: 2, startDelay: 3.4, spawnInterval: 3.0 },
+        { enemyId: "miasma_mirage", count: 3, startDelay: 4.6, spawnInterval: 1.5 },
+      ],
+      lingqiScale: 166,
+      settlementLingstone: 50,
+    },
+    10: {
+      goal: "破阵合围",
+      segments: [
+        { enemyId: "redmane_demon_general", count: 1, startDelay: 0, spawnInterval: 1.0 },
+        { enemyId: "array_devouring_moth", count: 3, startDelay: 2.5, spawnInterval: 1.8 },
+        { enemyId: "dark_talisman_shaman", count: 2, startDelay: 4.0, spawnInterval: 2.8 },
+        { enemyId: "ironhide_xiao", count: 4, startDelay: 1.5, spawnInterval: 1.9 },
+      ],
+      lingqiScale: 172,
+      settlementLingstone: 90,
+    },
+  };
+
+  (window.GAME_DATA.waves || []).forEach((wave) => {
+    const template = waveTemplates[wave.wave];
+    if (!template) return;
+    wave.goal = template.goal;
+    wave.segments = template.segments.map((segment) => ({ wave: wave.wave, ...segment }));
+    wave.lingqiScale = template.lingqiScale;
+    wave.settlementLingstone = template.settlementLingstone;
+    wave.isBossWave = false;
+  });
+})();
+
 window.GAME_DATA.perks.push(
   {
     id: "perk_sword_school_damage",

@@ -14,6 +14,18 @@
     return Boolean(enemy && enemy.hp > 0 && !enemy.dead && !enemy.isDead && enemy.state !== "dead" && enemy.state !== "DYING" && !enemy.markedForRemoval);
   }
 
+  function isEnemyInFrontOfRole(enemy, role) {
+    return Boolean(
+      enemy &&
+        role &&
+        Number.isFinite(enemy.x) &&
+        Number.isFinite(enemy.y) &&
+        Number.isFinite(role.x) &&
+        Number.isFinite(role.y) &&
+        enemy.y < role.y - 8,
+    );
+  }
+
   function getPlayerLevelExpRequirement(level) {
     return Math.floor(100 + (level - 1) * 60 + Math.pow(level - 1, 1.35) * 25);
   }
@@ -334,7 +346,7 @@
 
   function fireRole({ state, DATA, role, targetId, appState, battleState, callbacks, helpers, random = Math.random }) {
     if (appState !== battleState) return false;
-    const target = state.enemies.find((enemy) => enemy.id === targetId && isEnemyTargetable(enemy));
+    const target = state.enemies.find((enemy) => enemy.id === targetId && isEnemyTargetable(enemy) && isEnemyInFrontOfRole(enemy, role));
     if (!target) return false;
     const config = DATA.roles[role.roleId];
     const stats = helpers.roleStats(role);
@@ -375,7 +387,7 @@
   function chooseTarget({ state, DATA, source, range, helpers }) {
     const config = DATA.roles[source.roleId] || {};
     const candidates = state.enemies.filter(
-      (enemy) => isEnemyTargetable(enemy) && helpers.distance(source, enemy) <= range,
+      (enemy) => isEnemyTargetable(enemy) && isEnemyInFrontOfRole(enemy, source) && helpers.distance(source, enemy) <= range,
     );
     if (!candidates.length) return null;
     if (config.trajectoryType === "execute") {
@@ -395,6 +407,7 @@
     getCharacterBaseFinalDamage,
     getCharacterLevel,
     getCharacterUpgradeCost,
+    isEnemyInFrontOfRole,
     getFlatDamageGrowthByRarity,
     getMaxArtifactSlots,
     getMaxDeploySlots,
