@@ -46,9 +46,18 @@
     return true;
   }
 
-  function updateWaveSpawns({ state, dt, callbacks }) {
+  function updateWaveSpawns({ state, DATA, dt, callbacks }) {
     state.waveElapsed = (state.waveElapsed || 0) + dt;
     state.spawnJobs.forEach((job) => {
+      if (job.remaining > 0 && !DATA?.enemies?.[job.enemyId]) {
+        console.warn("[Waves] missing enemyId in spawn job, skipping", {
+          wave: state.wave,
+          enemyId: job.enemyId,
+          job,
+        });
+        job.remaining = 0;
+        return;
+      }
       job.nextSpawn -= dt;
       while (job.remaining > 0 && job.nextSpawn <= 0) {
         const enemy = call(callbacks, "createEnemy", job.enemyId, job);
@@ -66,23 +75,30 @@
   }
 
   function maybeWarnStalledWave(state) {
-    if (state.wave !== 6 || state.waveStallWarned || (state.waveElapsed || 0) < 60) return;
+    if (state.waveStallWarned || (state.waveElapsed || 0) < 60) return;
     const allSpawned = state.spawnJobs.every((job) => job.remaining <= 0);
     if (!state.waveActive || !allSpawned) return;
     state.waveStallWarned = true;
-    console.warn("[Waves] wave 6 still active after 60s", {
+    const shared = window.XM.Enemies?.isEnemyTargetable;
+    console.warn("[Waves] wave still active after 60s", {
       wave: state.wave,
+      waveTime: state.waveElapsed,
       enemies: (state.enemies || []).map((enemy) => ({
         id: enemy.config?.id || enemy.id,
         name: enemy.config?.name || enemy.name,
         hp: enemy.hp,
+        maxHp: enemy.maxHp,
         dead: enemy.dead,
+        isDead: enemy.isDead,
         state: enemy.state,
         attackMode: enemy.attackMode,
         x: enemy.x,
         y: enemy.y,
         abilityTimer: enemy.abilityTimer,
+        attackTimer: enemy.attackTimer,
+        idleTimer: enemy.idleTimer,
         markedForRemoval: enemy.markedForRemoval,
+        targetable: typeof shared === "function" ? shared(enemy) : isEnemyAlive(enemy),
       })),
       spawnJobs: state.spawnJobs,
     });

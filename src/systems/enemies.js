@@ -43,6 +43,19 @@
     );
   }
 
+  function isEnemyAlive(enemy) {
+    return Boolean(
+      enemy &&
+        Number.isFinite(enemy.x) &&
+        Number.isFinite(enemy.y) &&
+        Number.isFinite(enemy.hp) &&
+        enemy.hp > 0 &&
+        !enemy.dead &&
+        !enemy.isDead &&
+        !enemy.markedForRemoval,
+    );
+  }
+
   function statusValue(enemy, type) {
     return enemy.statuses
       .filter((status) => status.type === type)
@@ -83,6 +96,18 @@
       this.progress = 0;
       this.statuses = [];
       this.abilityTimer = 0;
+      this.idleTimer = 0;
+      this.noActionTimer = 0;
+      this.lastActionAt = 0;
+      this.lastDamageToCoreAt = 0;
+      this.lastAbilityCastAt = 0;
+      this.lastMoveAt = 0;
+      this.watchdogRecoveries = 0;
+      this.watchdogHardRecoveries = 0;
+      this.elapsedTime = 0;
+      this.lastX = this.x;
+      this.lastY = this.y;
+      this.failedCastCount = 0;
       this.phase = 1;
     }
 
@@ -195,11 +220,12 @@
       if (this.state !== ENEMY_STATE.MOVING) return;
       this.state = ENEMY_STATE.ATTACKING;
       this.moveSpeed = 0;
-      if (this.attackMode === "melee" || this.attackMode === "elite" || this.attackMode === "boss") {
-        this.y = getAttackLineY(this.context);
-      }
       this.progress = Math.max(this.progress, 0.95);
       this.attackTimer = 0;
+      this.idleTimer = 0;
+      this.noActionTimer = 0;
+      this.lastX = this.x;
+      this.lastY = this.y;
       if (this.attackMode === "ranged") {
         call(this.context, "setStatus", `${this.config.name}停在阵前，开始远程袭扰阵眼。`);
       } else if (this.attackMode === "caster") {
@@ -212,11 +238,12 @@
     attackArrayCore(dt) {
       this.attackTimer += dt;
       const interval = this.attackMode === "ranged" ? this.config.rangedAttackInterval || this.attackInterval : this.attackInterval;
-      if (this.attackTimer < interval) return;
+      if (this.attackTimer < interval) return false;
       this.attackTimer = 0;
       const weaken = statusValue(this, "weaken_attack");
       const damage = this.attackMode === "ranged" ? this.config.rangedAttackDamage || this.attackDamage : this.attackDamage;
       call(this.context, "damageArrayCore", damage * (1 - weaken), this);
+      this.lastDamageToCoreAt = this.elapsedTime;
       if (this.attackMode === "ranged") {
         const base = call(this.context, "getArrayCorePosition") || { x: this.x, y: getAttackLineY(this.context) + 60 };
         call(this.context, "addVisualEvent", {
@@ -233,12 +260,15 @@
           sourceId: this.config.id,
         });
       }
+      this.recordAction();
+      return true;
     }
 
     castCasterFallback() {
       const base = call(this.context, "getArrayCorePosition") || { x: this.x, y: getAttackLineY(this.context) + 60 };
       const damage = Math.max(1, Number(this.config.casterFallbackDamage || this.config.rangedAttackDamage || this.attackDamage * 0.75) || 1);
       call(this.context, "damageArrayCore", damage, this);
+      this.lastDamageToCoreAt = this.elapsedTime;
       call(this.context, "addVisualEvent", {
         type: "curse_beam",
         fromX: this.x,
@@ -253,6 +283,42 @@
         sourceId: this.config.id,
       });
       call(this.context, "setStatus", `${this.config.name}无妖可催，转而以幽符咒击阵眼。`);
+      this.failedCastCount += 1;
+      this.recordAction();
+      if (this.failedCastCount >= 2) this.prepareNaturalAdvance();
+    }
+
+    recordAction() {
+      this.idleTimer = 0;
+      this.noActionTimer = 0;
+      this.lastActionAt = this.elapsedTime;
+      this.lastY = this.y;
+      this.lastX = this.x;
+    }
+
+    recordAbilityAction() {
+      this.lastAbilityCastAt = this.elapsedTime;
+      this.recordAction();
+    }
+
+    prepareNaturalAdvance() {
+      const lineY = getAttackLineY(this.context);
+      if (!Number.isFinite(lineY) || this.y >= lineY) return;
+      this.state = ENEMY_STATE.MOVING;
+      this.moveSpeed = Math.max(20, Number(this.moveSpeed) || Number(this.baseMoveSpeed) || 20);
+      this.baseMoveSpeed = Math.max(20, Number(this.baseMoveSpeed) || this.moveSpeed);
+      this.lastMoveAt = this.elapsedTime;
+    }
+
+    forceMoveTowardArrayCore(dt) {
+      const lineY = getAttackLineY(this.context);
+      if (!Number.isFinite(lineY)) return false;
+      if (this.y >= lineY) {
+        this.state = ENEMY_STATE.ATTACKING;
+        return false;
+      }
+      this.prepareNaturalAdvance();
+      return true;
     }
 
     markInvalidForRemoval() {
@@ -264,20 +330,53 @@
     }
 
     update(dt) {
+      dt = Math.min(Math.max(Number(dt) || 0, 0), 0.12);
+      const prevX = this.x;
+      const prevY = this.y;
+      this.elapsedTime += dt;
       if (!Number.isFinite(this.x) || !Number.isFinite(this.y) || !Number.isFinite(this.hp)) {
+        console.warn("[Enemy] invalid numeric state, remove enemy", {
+          id: this.config?.id || this.id,
+          name: this.config?.name,
+          hp: this.hp,
+          x: this.x,
+          y: this.y,
+          state: this.state,
+          attackMode: this.attackMode,
+        });
+        this.markInvalidForRemoval();
+        return;
+      }
+      if (this.hp <= 0) {
         this.markInvalidForRemoval();
         return;
       }
       const grid = getGrid(this.context);
       this.updateStatuses(dt);
       if (this.state === ENEMY_STATE.DEAD) return;
+      if (this.hp <= 0 || this.dead || this.isDead || this.markedForRemoval) return;
+      this.updateBehaviorTimers(dt);
       if (this.state === ENEMY_STATE.ATTACKING) {
         const abilityResult = this.useAbility(dt);
         if (this.attackMode === "caster") {
           if (abilityResult === false) this.castCasterFallback();
+          else if (abilityResult === true) {
+            this.failedCastCount = 0;
+            this.recordAction();
+          } else if (this.idleTimer >= (this.config.maxIdleTime || 10)) {
+            this.castCasterFallback();
+          }
+          this.applyBehaviorWatchdog(dt);
+          this.warnSuspiciousMovement(prevX, prevY);
           return;
         }
-        this.attackArrayCore(dt);
+        const didAttack = this.attackArrayCore(dt);
+        if (!didAttack && this.attackMode === "ranged" && this.idleTimer >= (this.config.maxIdleTime || 10)) {
+          this.attackTimer = Math.max(this.attackTimer, this.config.rangedAttackInterval || this.attackInterval);
+          this.attackArrayCore(0);
+        }
+        this.applyBehaviorWatchdog(dt);
+        this.warnSuspiciousMovement(prevX, prevY);
         return;
       }
       this.useAbility(dt);
@@ -285,10 +384,16 @@
       const haste = statusValue(this, "haste");
       const frozen = this.hasStatus("freeze");
       if (!frozen) {
-        const pathLength = getAttackLineY(this.context) + grid.cellH * 0.35;
+        const lineY = getAttackLineY(this.context);
+        const pathLength = lineY + grid.cellH * 0.35;
         const speedPerSecond = this.baseMoveSpeed > 10 ? this.baseMoveSpeed : (this.baseMoveSpeed * pathLength) / 6.1;
-        this.progress += (speedPerSecond * Math.max(0.05, 1 - slow + haste) * dt) / pathLength;
-        this.y = this.progress * (getAttackLineY(this.context) + grid.cellH * 0.35) - grid.cellH * 0.35;
+        const previousY = this.y;
+        const nextProgress = this.progress + (speedPerSecond * Math.max(0.05, 1 - slow + haste) * dt) / pathLength;
+        const proposedY = nextProgress * (lineY + grid.cellH * 0.35) - grid.cellH * 0.35;
+        const maxStep = 80;
+        const stepY = Math.max(-maxStep, Math.min(maxStep, proposedY - previousY));
+        this.y = previousY + stepY;
+        this.progress = Math.max(0, (this.y + grid.cellH * 0.35) / (lineY + grid.cellH * 0.35));
         this.x =
           this.lane * grid.cellW +
           grid.cellW / 2 +
@@ -299,23 +404,103 @@
         this.y = stopY;
         this.enterAttackMode();
       }
+      this.applyBehaviorWatchdog(dt);
+      this.warnSuspiciousMovement(prevX, prevY);
+    }
+
+    updateBehaviorTimers(dt) {
+      const moved = Math.hypot(this.x - this.lastX, this.y - this.lastY) > 1;
+      if (moved) {
+        this.idleTimer = 0;
+        this.lastMoveAt = this.elapsedTime;
+      } else {
+        this.idleTimer += dt;
+      }
+      this.noActionTimer += dt;
+      this.lastX = this.x;
+      this.lastY = this.y;
+    }
+
+    applyBehaviorWatchdog(dt) {
+      if (!isEnemyAlive(this) || !Number.isFinite(this.x) || !Number.isFinite(this.y)) return;
+      const stuck = this.idleTimer > 6 && this.noActionTimer > 6;
+      const skillStateStuck = ![ENEMY_STATE.MOVING, ENEMY_STATE.ATTACKING, ENEMY_STATE.DEAD].includes(this.state) && this.noActionTimer > 8;
+      if (!stuck && !skillStateStuck) return;
+
+      this.watchdogRecoveries += 1;
+      const lineY = getAttackLineY(this.context);
+      this.state = this.state === ENEMY_STATE.DEAD ? ENEMY_STATE.DEAD : Number.isFinite(lineY) && this.y >= lineY ? ENEMY_STATE.ATTACKING : ENEMY_STATE.MOVING;
+      this.attackTimer = Math.max(this.attackTimer || 0, this.attackInterval || 1);
+      this.abilityTimer = Math.max(this.abilityTimer || 0, this.config.abilityCooldown || 5);
+
+      if (this.attackMode === "ranged") {
+        this.attackTimer = Math.max(this.attackTimer, this.config.rangedAttackInterval || this.attackInterval || 1);
+        if (!this.attackArrayCore(0)) this.prepareNaturalAdvance();
+      } else if (this.attackMode === "caster") {
+        const abilityResult = this.useAbility(0);
+        if (abilityResult === true) {
+          this.failedCastCount = 0;
+          this.recordAction();
+        } else {
+          this.castCasterFallback();
+        }
+      } else {
+        if (Number.isFinite(lineY) && this.y < lineY - 1) {
+          this.prepareNaturalAdvance();
+        } else {
+          this.state = ENEMY_STATE.ATTACKING;
+          this.attackTimer = Math.max(this.attackTimer || 0, this.attackInterval || 1);
+          this.attackArrayCore(0);
+        }
+      }
+
+      if (this.watchdogRecoveries >= 3 || this.noActionTimer > 15) {
+        this.watchdogHardRecoveries += 1;
+        this.state = ENEMY_STATE.MOVING;
+        this.moveSpeed = Math.max(20, Number(this.moveSpeed) || Number(this.baseMoveSpeed) || 20);
+        this.baseMoveSpeed = Math.max(20, Number(this.baseMoveSpeed) || this.moveSpeed);
+        this.noActionTimer = 0;
+        this.idleTimer = 0;
+      }
     }
 
     getStopY() {
       const lineY = getAttackLineY(this.context);
       const grid = getGrid(this.context);
       const monsterLaneTop = grid?.cellH || 0;
-      const minStopY = monsterLaneTop + 80;
-      const maxStopY = lineY - 120;
+      const minStopY = monsterLaneTop + 100;
+      const maxStopY = lineY - 140;
       if (this.attackMode === "ranged") {
-        const stopY = lineY - (this.config.rangedStopOffset || 220);
+        const safeOffset = Math.min(Number(this.config.rangedStopOffset) || 200, 210);
+        const stopY = lineY - safeOffset;
         return Math.max(minStopY, Math.min(maxStopY, stopY));
       }
       if (this.attackMode === "caster") {
-        const stopY = lineY - (this.config.casterStopOffset || 240);
+        const safeOffset = Math.min(Number(this.config.casterStopOffset) || 210, 230);
+        const stopY = lineY - safeOffset;
         return Math.max(minStopY, Math.min(maxStopY, stopY));
       }
       return lineY;
+    }
+
+    warnSuspiciousMovement(prevX, prevY) {
+      if (!Number.isFinite(prevX) || !Number.isFinite(prevY) || !Number.isFinite(this.x) || !Number.isFinite(this.y)) return;
+      const moveDelta = Math.hypot(this.x - prevX, this.y - prevY);
+      if (moveDelta <= 100 || this.largeMoveWarned) return;
+      this.largeMoveWarned = true;
+      console.warn("[Enemy] suspicious large movement", {
+        id: this.config?.id || this.id,
+        name: this.config?.name,
+        attackMode: this.attackMode,
+        state: this.state,
+        prevX,
+        prevY,
+        x: this.x,
+        y: this.y,
+        moveDelta,
+        idleTimer: this.idleTimer,
+        noActionTimer: this.noActionTimer,
+      });
     }
 
     updateStatuses(dt) {
@@ -364,6 +549,7 @@
         });
         if (affected > 0) {
           call(this.context, "setStatus", `${this.config.name}施放幽符，催动附近妖物。`);
+          this.recordAbilityAction();
           return true;
         }
         return false;
@@ -386,6 +572,7 @@
           sourceId: this.config.id,
         });
         call(this.context, "setStatus", `${this.config.name}施放骨符蚀阵，远程侵蚀阵眼。`);
+        this.recordAbilityAction();
         return true;
       }
       if (this.config.id === "redmane_demon_general" && this.abilityTimer >= (this.config.abilityCooldown || 6)) {
@@ -404,6 +591,7 @@
           sourceId: this.config.id,
         });
         call(this.context, "setStatus", `${this.config.name}妖甲覆身，短暂减伤。`);
+        this.recordAbilityAction();
         return true;
       }
       if (this.config.id === "black_gate_guardian" && this.abilityTimer >= (this.config.abilityCooldown || 6.5)) {
@@ -438,6 +626,7 @@
           sourceId: this.config.id,
         });
         call(this.context, "setStatus", `${this.config.name}妖甲震吼，护体并催动附近妖物。`);
+        this.recordAbilityAction();
         return true;
       }
       if (!this.config.isBoss) return null;
@@ -447,6 +636,7 @@
           call(this.context, "spawnEnemy", "enemy_little_yao");
         }
         call(this.context, "setStatus", "黑风妖将召来山野小妖。");
+        this.recordAbilityAction();
         return true;
       }
       if (this.config.id === "boss_bloodlotus" && this.abilityTimer >= 10) {
@@ -457,6 +647,7 @@
           }
         });
         call(this.context, "setStatus", "血莲魔修治疗附近敌人。");
+        this.recordAbilityAction();
         return true;
       }
       if (this.config.id === "boss_outer_demon" && this.abilityTimer >= 7) {
@@ -465,6 +656,7 @@
         call(this.context, "spawnEnemy", "enemy_little_yao");
         this.addStatus("freeze_immune", 2, 1);
         call(this.context, "setStatus", "域外魔影召唤魔影小怪。");
+        this.recordAbilityAction();
         return true;
       }
       return null;
@@ -495,12 +687,14 @@
   }
 
   function updateEnemies({ enemies, deltaTime }) {
-    enemies.forEach((enemy) => enemy.update(deltaTime));
+    const dt = Math.min(Math.max(Number(deltaTime) || 0, 0), 0.12);
+    enemies.forEach((enemy) => enemy.update(dt));
   }
 
   Object.assign(window.XM.Enemies, {
     Enemy,
     createEnemy,
+    isEnemyAlive,
     isEnemyTargetable,
     updateEnemies,
   });

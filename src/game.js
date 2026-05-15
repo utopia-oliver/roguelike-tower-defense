@@ -118,6 +118,7 @@ const {
 } = window.XM.Upgrades;
 const {
   createEnemy: createSystemEnemy,
+  isEnemyAlive,
   isEnemyTargetable,
   updateEnemies: updateSystemEnemies,
 } = window.XM.Enemies;
@@ -1912,23 +1913,122 @@ function checkProjectileHitEnemy(projectile, enemy) {
   });
 }
 
+function runBattleModule(name, fn) {
+  try {
+    return fn();
+  } catch (error) {
+    const now = performance.now();
+    state.__lastUpdateError = {
+      module: name,
+      message: error && error.message ? error.message : String(error),
+      stack: error && error.stack ? error.stack : "",
+      wave: state.wave,
+      tick: state.__updateTick || 0,
+    };
+    state.__moduleErrorLogAt = state.__moduleErrorLogAt || {};
+    if (!state.__moduleErrorLogAt[name] || now - state.__moduleErrorLogAt[name] > 3000) {
+      state.__moduleErrorLogAt[name] = now;
+      console.error(`[BattleUpdate] ${name} failed`, error);
+    }
+    return undefined;
+  }
+}
+
+function cleanupDeadEnemies() {
+  state.enemies = (state.enemies || []).filter((enemy) => {
+    if (!enemy) return false;
+    if (enemy.dead || enemy.isDead || enemy.markedForRemoval || enemy.state === ENEMY_STATE.DEAD) return false;
+    if (!Number.isFinite(enemy.hp) || enemy.hp <= 0) return false;
+    if (!Number.isFinite(enemy.x) || !Number.isFinite(enemy.y)) return false;
+    return true;
+  });
+}
+
+function diagnoseBattleLoop(dt) {
+  state.__updateTick = (state.__updateTick || 0) + 1;
+  state.__battleDiagElapsed = (state.__battleDiagElapsed || 0) + dt;
+  if (state.__battleDiagElapsed < 5) return;
+  state.__battleDiagElapsed = 0;
+  const aliveEnemies = (state.enemies || []).filter((enemy) => (typeof isEnemyAlive === "function" ? isEnemyAlive(enemy) : isEnemyTargetable(enemy)));
+  console.info("[BattleLoop] tick", {
+    appState: state.appState,
+    running: state.running,
+    paused: state.paused,
+    gameOver: state.gameOver,
+    wave: state.wave,
+    level: state.runLevel || state.level,
+    pendingLevelUps: state.pendingLevelUps,
+    enemies: state.enemies.length,
+    aliveEnemies: aliveEnemies.length,
+    projectiles: state.projectiles.length,
+    visualEvents: state.visualEvents?.length || 0,
+    lastUpdateAt: state.lastTime,
+    dt,
+    updateTick: state.__updateTick,
+    lastError: state.__lastUpdateError || null,
+  });
+
+  const modalHidden = perkModal.classList.contains("hidden");
+  if (state.appState === APP_STATE.LEVEL_UP_REWARD && modalHidden) {
+    console.warn("[BattleLoop] level reward state has hidden modal; recovering battle state", {
+      pendingLevelUps: state.pendingLevelUps,
+      wave: state.wave,
+    });
+    state.appState = APP_STATE.BATTLE;
+    state.running = true;
+    state.paused = false;
+  }
+
+  const hasAliveEnemies = aliveEnemies.length > 0;
+  const hasRoles = state.deployedRoles.length > 0;
+  const totalAttacks = state.deployedRoles.reduce((sum, role) => sum + (role.attacks || 0), 0);
+  if (state.wave === 10 && hasRoles && hasAliveEnemies && totalAttacks === (state.__lastRoleAttackDiagCount ?? totalAttacks)) {
+    state.__roleNoAttackTime = (state.__roleNoAttackTime || 0) + 5;
+    if (state.__roleNoAttackTime >= 5 && !state.__roleNoAttackWarned) {
+      state.__roleNoAttackWarned = true;
+      console.warn("[BattleLoop] roles have alive enemies but no recent attacks", {
+        wave: state.wave,
+        deployedRoles: state.deployedRoles.map((role) => ({
+          id: role.id || role.characterId || role.roleId,
+          cooldown: role.cooldown,
+          x: role.x,
+          y: role.y,
+        })),
+        aliveEnemies: aliveEnemies.slice(0, 8).map((enemy) => ({
+          id: enemy.config?.id || enemy.id,
+          name: enemy.config?.name,
+          hp: enemy.hp,
+          state: enemy.state,
+          attackMode: enemy.attackMode,
+          x: enemy.x,
+          y: enemy.y,
+          targetable: isEnemyTargetable(enemy),
+        })),
+      });
+    }
+  } else {
+    state.__roleNoAttackTime = 0;
+    state.__roleNoAttackWarned = false;
+  }
+  state.__lastRoleAttackDiagCount = totalAttacks;
+}
+
 function update(dt) {
   if (state.appState !== APP_STATE.BATTLE || state.gameOver) return;
   if (!state.waveActive) startWave();
 
-  updateWaveSpawns(dt);
-
-  updateEnemies(dt);
-  state.enemies = state.enemies.filter((enemy) => !enemy.dead);
-  state.deployedRoles.forEach((role) => updateRole(role, dt));
-  updateProjectiles(dt);
-  updateFormation(dt);
-  updateArtifact(dt);
-  updateEffects(dt);
-  state.enemies = state.enemies.filter((enemy) => enemy.state !== ENEMY_STATE.DEAD);
-
-  advanceWave();
-  updateUi();
+  diagnoseBattleLoop(dt);
+  runBattleModule("updateWaveSpawns", () => updateWaveSpawns(dt));
+  runBattleModule("updateEnemies", () => updateEnemies(dt));
+  runBattleModule("cleanupEnemiesAfterUpdate", cleanupDeadEnemies);
+  runBattleModule("updateRoles", () => state.deployedRoles.forEach((role) => updateRole(role, dt)));
+  runBattleModule("updateProjectiles", () => updateProjectiles(dt));
+  runBattleModule("updateFormation", () => updateFormation(dt));
+  runBattleModule("updateArtifacts", () => updateArtifact(dt));
+  runBattleModule("updateEffects", () => updateEffects(dt));
+  runBattleModule("cleanupEnemiesAfterEffects", cleanupDeadEnemies);
+  runBattleModule("advanceWave", advanceWave);
+  runBattleModule("updateUi", updateUi);
 }
 
 function updateArtifact(dt) {
@@ -1999,16 +2099,22 @@ function damageArrayCore(rawDamage, enemy = null) {
 }
 
 function updateEffects(dt) {
+  state.floaters = Array.isArray(state.floaters) ? state.floaters : [];
   state.floaters.forEach((floater) => {
     floater.ttl -= dt;
     floater.y -= dt * 24;
   });
   state.floaters = state.floaters.filter((floater) => floater.ttl > 0);
-  state.visualEvents = state.visualEvents || [];
+  state.visualEvents = Array.isArray(state.visualEvents) ? state.visualEvents : [];
   state.visualEvents.forEach((event) => {
-    event.elapsed = (event.elapsed || 0) + dt;
+    if (!event || !Number.isFinite(event.duration) || event.duration <= 0) {
+      if (event) event.elapsed = Infinity;
+      return;
+    }
+    event.elapsed = (Number(event.elapsed) || 0) + dt;
   });
-  state.visualEvents = state.visualEvents.filter((event) => event.elapsed < event.duration);
+  state.visualEvents = state.visualEvents.filter((event) => event && Number.isFinite(event.elapsed) && event.elapsed < event.duration);
+  state.zones = Array.isArray(state.zones) ? state.zones : [];
   state.zones.forEach((zone) => (zone.ttl -= dt));
   state.zones.forEach((zone) => {
     if (!zone.dps) return;
@@ -3431,14 +3537,26 @@ function makeId() {
 }
 
 function loop(timestamp) {
-  state.animationFrameRunning = true;
-  state.frameCount = (state.frameCount || 0) + 1;
-  const dt = Math.min(0.05, (timestamp - state.lastTime) / 1000 || 0);
-  state.lastTime = timestamp;
-  update(dt);
-  draw();
-  updateDebugPanel();
-  requestAnimationFrame(loop);
+  try {
+    state.animationFrameRunning = true;
+    state.frameCount = (state.frameCount || 0) + 1;
+    const dt = Math.min(0.05, (timestamp - state.lastTime) / 1000 || 0);
+    state.lastTime = timestamp;
+    runBattleModule("update", () => update(dt));
+    runBattleModule("draw", draw);
+    runBattleModule("updateDebugPanel", updateDebugPanel);
+  } catch (error) {
+    console.error("[Loop] uncaught frame error", error);
+    state.__lastUpdateError = {
+      module: "loop",
+      message: error && error.message ? error.message : String(error),
+      stack: error && error.stack ? error.stack : "",
+      wave: state.wave,
+      tick: state.__updateTick || 0,
+    };
+  } finally {
+    requestAnimationFrame(loop);
+  }
 }
 
 canvas.addEventListener("click", (event) => {

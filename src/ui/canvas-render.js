@@ -11,7 +11,7 @@
     state.deployedRoles.forEach((role) => drawRole({ ...context, role }));
     state.enemies.forEach((enemy) => drawEnemy({ ...context, enemy }));
     state.projectiles.forEach((projectile) => drawProjectile({ ...context, projectile }));
-    (state.visualEvents || []).forEach((event) => drawVisualEvent({ ...context, event }));
+    (state.visualEvents || []).filter(isDrawableVisualEvent).forEach((event) => drawVisualEvent({ ...context, event }));
     state.floaters.forEach((floater) => drawFloater({ ...context, floater }));
     drawBossBar(context);
   }
@@ -258,6 +258,14 @@
     return Math.min(1, Math.max(0, (event.elapsed || 0) / Math.max(0.01, event.duration || 0.35)));
   }
 
+  function isDrawableVisualEvent(event) {
+    if (!event || !Number.isFinite(event.duration) || event.duration <= 0) return false;
+    if (["chain_lightning"].includes(event.type)) return true;
+    const x = event.x ?? event.fromX;
+    const y = event.y ?? event.fromY;
+    return Number.isFinite(x) && Number.isFinite(y);
+  }
+
   function drawLightningPath(ctx, points, color) {
     if (points.length < 2) return;
     ctx.save();
@@ -336,13 +344,13 @@
       ctx.lineWidth = 3;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      ctx.arc(event.x, event.y, radius * (0.65 + progress * 0.25), 0, Math.PI * 2);
+      ctx.arc(event.x, event.y, radius * (0.65 + t * 0.25), 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.strokeStyle = eventColor(event, alpha * 0.65);
       ctx.lineWidth = 2;
       for (let i = 0; i < 3; i += 1) {
-        const angle = progress * Math.PI * 2 + i * (Math.PI * 2 / 3);
+        const angle = t * Math.PI * 2 + i * (Math.PI * 2 / 3);
         const markX = event.x + Math.cos(angle) * radius * 0.42;
         const markY = event.y + Math.sin(angle) * radius * 0.42;
         ctx.beginPath();
