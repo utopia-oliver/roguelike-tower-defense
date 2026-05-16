@@ -8,7 +8,73 @@
   </head>
   <body>
     <main id="app">
-      <section id="lobbyView" class="meta-view">
+      <section id="titleView" class="xm-screen xm-title-screen">
+        <div class="xm-title-bg" aria-hidden="true"></div>
+        <div class="xm-title-content">
+          <p class="xm-eyebrow">玄门镇妖录</p>
+          <h1>玄门镇妖录</h1>
+          <p class="xm-title-subtitle">妖门既开，山门当守</p>
+          <div class="xm-title-actions">
+            <button id="titleStartButton" class="primary xm-title-button" type="button">开始游戏</button>
+            <button id="titleContinueButton" class="secondary xm-title-button" type="button">继续游戏</button>
+            <button id="titleLoadButton" class="secondary xm-title-button" type="button">读取存档</button>
+            <button id="titleCodexButton" class="secondary xm-title-button" type="button">妖录图鉴</button>
+            <button id="titleSettingsButton" class="secondary xm-title-button" type="button">设置</button>
+          </div>
+          <small>Prototype v0.1</small>
+        </div>
+      </section>
+
+      <section id="mainHubView" class="xm-screen xm-hub hidden">
+        <div class="xm-hub-bg" aria-hidden="true">
+          <span class="xm-mountain xm-mountain--back"></span>
+          <span class="xm-mountain xm-mountain--front"></span>
+          <span class="xm-demon-gate"></span>
+          <span class="xm-array-glow"></span>
+        </div>
+        <header class="xm-topbar">
+          <div id="hubResourceBar" class="xm-resource-bar"></div>
+          <button id="hubSettingsButton" class="secondary xm-icon-button" type="button">设置</button>
+        </header>
+        <section class="xm-hub-main">
+          <p class="xm-eyebrow">当前主线</p>
+          <h1>第一章·妖门初启</h1>
+          <p>妖门裂隙初开，群妖窥山。整备宗门弟子、法宝与护山大阵，前往山门阵前历练。</p>
+          <button id="hubAdventureButton" class="primary" type="button">前往历练</button>
+        </section>
+        <nav id="hubBottomNav" class="xm-bottom-nav" aria-label="宗门主导航">
+          <button class="xm-nav-button" type="button" data-hub-page="CHARACTERS">角色</button>
+          <button class="xm-nav-button" type="button" data-hub-page="ARTIFACTS">法宝</button>
+          <button class="xm-nav-button" type="button" data-hub-page="FORMATIONS">护山大阵</button>
+          <button class="xm-nav-button" type="button" data-hub-page="BAG">背包</button>
+          <button class="xm-nav-button" type="button" data-hub-page="GACHA">抽取</button>
+          <button class="xm-nav-button" type="button" data-hub-page="CODEX">妖录</button>
+          <button class="xm-nav-button" type="button" data-hub-page="ADVENTURE">历练</button>
+        </nav>
+      </section>
+
+      <section id="featurePageView" class="xm-screen xm-page hidden">
+        <header class="xm-page-header">
+          <div>
+            <p class="xm-eyebrow">宗门事务</p>
+            <h1 id="featurePageTitle">角色</h1>
+            <p id="featurePageSubtitle">整备宗门事务。</p>
+          </div>
+          <button id="featureBackButton" class="secondary" type="button">返回宗门</button>
+        </header>
+        <div id="featurePageContent" class="xm-page-content"></div>
+        <nav id="featureBottomNav" class="xm-bottom-nav xm-bottom-nav--compact" aria-label="宗门分页导航">
+          <button class="xm-nav-button" type="button" data-hub-page="CHARACTERS">角色</button>
+          <button class="xm-nav-button" type="button" data-hub-page="ARTIFACTS">法宝</button>
+          <button class="xm-nav-button" type="button" data-hub-page="FORMATIONS">护山大阵</button>
+          <button class="xm-nav-button" type="button" data-hub-page="BAG">背包</button>
+          <button class="xm-nav-button" type="button" data-hub-page="GACHA">抽取</button>
+          <button class="xm-nav-button" type="button" data-hub-page="CODEX">妖录</button>
+          <button class="xm-nav-button" type="button" data-hub-page="ADVENTURE">历练</button>
+        </nav>
+      </section>
+
+      <section id="lobbyView" class="meta-view hidden">
         <header class="page-head">
           <div>
             <h1>玄门镇妖录</h1>
@@ -119,6 +185,8 @@
             <p>局内击杀只给灵气，灵石在这里统一结算。</p>
           </div>
           <button id="returnLobbyButton" class="primary">返回外部系统</button>
+          <button id="settlementAdventureButton" class="secondary" type="button">再战一次</button>
+          <button id="settlementCodexButton" class="secondary" type="button">查看妖录</button>
         </header>
         <div class="meta-grid">
           <article class="panel">
@@ -142,6 +210,19 @@
         <h2>灵气突破</h2>
         <p>选择一项机缘，本局立即生效。</p>
         <div class="perk-grid" id="perkGrid"></div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="settingsModal">
+      <div class="modal-panel xm-settings-modal">
+        <h2>设置</h2>
+        <p>音量：暂未开放</p>
+        <p>画面：普通 / 高性能（占位）</p>
+        <p id="settingsNotice" class="hint"></p>
+        <div class="xm-settings-actions">
+          <button id="settingsResetButton" class="secondary" type="button">重置本地存档</button>
+          <button id="settingsCloseButton" class="primary" type="button">返回</button>
+        </div>
       </div>
     </div>
 

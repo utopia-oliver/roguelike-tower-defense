@@ -8,13 +8,36 @@ window.addEventListener("unhandledrejection", (event) => {
   window.__TEST_ERRORS__.push(event.reason && event.reason.message ? event.reason.message : String(event.reason));
 });
 
+const titleView = document.querySelector("#titleView");
+const mainHubView = document.querySelector("#mainHubView");
+const featurePageView = document.querySelector("#featurePageView");
 const lobbyView = document.querySelector("#lobbyView");
 const loadoutView = document.querySelector("#loadoutView");
 const battleView = document.querySelector("#battleView");
 const settlementView = document.querySelector("#settlementView");
+const titleStartButton = document.querySelector("#titleStartButton");
+const titleContinueButton = document.querySelector("#titleContinueButton");
+const titleLoadButton = document.querySelector("#titleLoadButton");
+const titleCodexButton = document.querySelector("#titleCodexButton");
+const titleSettingsButton = document.querySelector("#titleSettingsButton");
+const hubResourceBar = document.querySelector("#hubResourceBar");
+const hubSettingsButton = document.querySelector("#hubSettingsButton");
+const hubAdventureButton = document.querySelector("#hubAdventureButton");
+const hubBottomNav = document.querySelector("#hubBottomNav");
+const featurePageTitle = document.querySelector("#featurePageTitle");
+const featurePageSubtitle = document.querySelector("#featurePageSubtitle");
+const featurePageContent = document.querySelector("#featurePageContent");
+const featureBackButton = document.querySelector("#featureBackButton");
+const featureBottomNav = document.querySelector("#featureBottomNav");
 const goLoadoutButton = document.querySelector("#goLoadoutButton");
 const enterDeployButton = document.querySelector("#enterDeployButton");
 const returnLobbyButton = document.querySelector("#returnLobbyButton");
+const settlementAdventureButton = document.querySelector("#settlementAdventureButton");
+const settlementCodexButton = document.querySelector("#settlementCodexButton");
+const settingsModal = document.querySelector("#settingsModal");
+const settingsCloseButton = document.querySelector("#settingsCloseButton");
+const settingsResetButton = document.querySelector("#settingsResetButton");
+const settingsNotice = document.querySelector("#settingsNotice");
 const metaLevel = document.querySelector("#metaLevel");
 const metaLingstone = document.querySelector("#metaLingstone");
 const ownedRolesList = document.querySelector("#ownedRolesList");
@@ -195,9 +218,11 @@ const {
   syncPlayerMetaAliases: syncSystemPlayerMetaAliases,
 } = window.XM.State;
 const {
+  renderFeaturePage: renderSystemFeaturePage,
   renderHud: renderSystemHud,
   renderLoadout: renderSystemLoadout,
   renderLobby: renderSystemLobby,
+  renderMainHub: renderSystemMainHub,
   renderPerkChoiceCard: renderSystemPerkChoiceCard,
   renderSetupLists: renderSystemSetupLists,
   renderSettlement: renderSystemSettlement,
@@ -221,6 +246,7 @@ let debugTabsRenderKey = "";
 let debugActionsRenderKey = "";
 let debugNoticeText = "";
 let debugValidationErrors = new Map();
+let featureReturnState = APP_STATE.MAIN_HUB;
 const DEFAULT_GAME_DATA = deepClone(DATA);
 let DEFAULT_QINGYA_BRANCH_UPGRADES = [];
 let debugOverrides = loadDebugOverrides();
@@ -599,13 +625,23 @@ function syncBaseHpAliases() {
   return syncSystemBaseHpAliases({ state });
 }
 
-function resetGame() {
+function resetGame(targetAppState = APP_STATE.TITLE) {
   applyPlayerLevelUnlocks();
   syncPlayerMetaAliases();
   const arrayCore = initialArrayCoreState();
+  const targetPhase = targetAppState === APP_STATE.TITLE
+    ? "title"
+    : targetAppState === APP_STATE.MAIN_HUB
+      ? "main_hub"
+      : HUB_PAGE_STATES.has(targetAppState)
+        ? "hub_page"
+        : "lobby";
+  featureReturnState = targetAppState === APP_STATE.CODEX && featureReturnState === APP_STATE.TITLE
+    ? APP_STATE.TITLE
+    : APP_STATE.MAIN_HUB;
   Object.assign(state, {
-    appState: APP_STATE.LOBBY,
-    phase: "lobby",
+    appState: targetAppState,
+    phase: targetPhase,
     running: false,
     paused: false,
     gameOver: false,
@@ -644,7 +680,7 @@ function resetGame() {
     frameCount: 0,
     lastError: "",
     lastTime: 0,
-    status: "山门待命。先在外部系统进入战前配置。",
+    status: "山门待命。先在宗门主界面整备，再从历练进入战前配置。",
     bonuses: defaultRunBonuses(),
     modifiers: createInitialModifiers(),
   });
@@ -729,10 +765,53 @@ function getDebugActions() {
   };
 }
 
+const HUB_PAGE_STATES = new Set([
+  APP_STATE.CHARACTERS,
+  APP_STATE.ARTIFACTS,
+  APP_STATE.FORMATIONS,
+  APP_STATE.BAG,
+  APP_STATE.GACHA,
+  APP_STATE.CODEX,
+  APP_STATE.ADVENTURE,
+]);
+
 function showView(view) {
-  [lobbyView, loadoutView, battleView, settlementView].forEach((item) => {
+  [titleView, mainHubView, featurePageView, lobbyView, loadoutView, battleView, settlementView].forEach((item) => {
     item.classList.toggle("hidden", item !== view);
   });
+}
+
+function enterTitle() {
+  state.appState = APP_STATE.TITLE;
+  state.phase = "title";
+  updateUi();
+}
+
+function enterMainHub(notice = "") {
+  applyPlayerLevelUnlocks();
+  syncPlayerMetaAliases();
+  state.appState = APP_STATE.MAIN_HUB;
+  state.phase = "main_hub";
+  if (notice) setStatus(notice);
+  updateUi();
+}
+
+function enterHubPage(page, returnState = APP_STATE.MAIN_HUB) {
+  if (!HUB_PAGE_STATES.has(page)) return;
+  featureReturnState = returnState;
+  state.appState = page;
+  state.phase = "hub_page";
+  updateUi();
+}
+
+function openSettings(notice = "") {
+  if (!settingsModal) return;
+  settingsNotice.textContent = notice;
+  settingsModal.classList.remove("hidden");
+}
+
+function closeSettings() {
+  settingsModal?.classList.add("hidden");
 }
 
 function enterLoadout() {
@@ -2585,6 +2664,34 @@ function renderLobby() {
   });
 }
 
+function renderMainHub() {
+  renderSystemMainHub({
+    elements: {
+      hubResourceBar,
+    },
+    playerProfile: playerMeta,
+  });
+}
+
+function renderFeaturePage() {
+  if (!HUB_PAGE_STATES.has(state.appState)) return;
+  featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回标题" : "返回宗门";
+  renderSystemFeaturePage({
+    elements: {
+      featurePageTitle,
+      featurePageSubtitle,
+      featurePageContent,
+    },
+    page: state.appState,
+    DATA,
+    playerProfile: playerMeta,
+    state,
+    helpers: {
+      getCharacterLevel,
+    },
+  });
+}
+
 function renderLoadout() {
   renderSystemLoadout({
     elements: {
@@ -2664,6 +2771,9 @@ function renderSetupLists() {
 }
 
 function updateUi() {
+  if (state.appState === APP_STATE.TITLE) showView(titleView);
+  if (state.appState === APP_STATE.MAIN_HUB) showView(mainHubView);
+  if (HUB_PAGE_STATES.has(state.appState)) showView(featurePageView);
   if (state.appState === APP_STATE.LOBBY) showView(lobbyView);
   if (state.appState === APP_STATE.LOADOUT) showView(loadoutView);
   if (state.appState === APP_STATE.DEPLOY || state.appState === APP_STATE.BATTLE || state.appState === APP_STATE.LEVEL_UP_REWARD) {
@@ -2671,6 +2781,8 @@ function updateUi() {
   }
   if (state.appState === APP_STATE.SETTLEMENT) showView(settlementView);
   renderLobby();
+  renderMainHub();
+  renderFeaturePage();
   renderSystemHud({
     elements: {
       waveText,
@@ -3568,10 +3680,71 @@ canvas.addEventListener("click", (event) => {
   deployRole(col, row);
 });
 
+function handleHubNavClick(event) {
+  const button = event.target.closest("[data-hub-page]");
+  if (!button) return;
+  enterHubPage(button.dataset.hubPage);
+}
+
+titleStartButton.addEventListener("click", () => enterMainHub());
+titleContinueButton.addEventListener("click", () => {
+  applyPlayerProfile(loadPlayerProfile());
+  enterMainHub(playerProfileLoadedFromStorage ? "" : "未检测到旧存档，已创建新存档。");
+});
+titleLoadButton.addEventListener("click", () => openSettings("读取存档功能暂未开放，当前使用本地自动存档。"));
+titleCodexButton.addEventListener("click", () => enterHubPage(APP_STATE.CODEX, APP_STATE.TITLE));
+titleSettingsButton.addEventListener("click", () => openSettings());
+hubAdventureButton.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
+hubSettingsButton.addEventListener("click", () => openSettings());
+hubBottomNav.addEventListener("click", handleHubNavClick);
+featureBottomNav.addEventListener("click", handleHubNavClick);
+featureBackButton.addEventListener("click", () => {
+  if (featureReturnState === APP_STATE.TITLE) enterTitle();
+  else enterMainHub();
+});
+featurePageContent.addEventListener("click", (event) => {
+  const action = event.target.closest("[data-page-action]");
+  if (action?.dataset.pageAction === "start-adventure") {
+    enterLoadout();
+    return;
+  }
+  const gacha = event.target.closest("[data-hub-gacha]");
+  if (gacha) {
+    performGacha();
+    renderFeaturePage();
+    return;
+  }
+  const roleUpgrade = event.target.closest("[data-role-upgrade-id]");
+  if (roleUpgrade) {
+    upgradeCharacter(roleUpgrade.dataset.roleUpgradeId);
+    renderFeaturePage();
+    return;
+  }
+  const formation = event.target.closest("[data-hub-formation-id]");
+  if (formation) {
+    state.loadoutFormationId = formation.dataset.hubFormationId;
+    setStatus(`已预选护山大阵：${DATA.formations[state.loadoutFormationId]?.name || state.loadoutFormationId}`);
+    renderFeaturePage();
+  }
+});
+settingsCloseButton.addEventListener("click", closeSettings);
+settingsResetButton.addEventListener("click", () => {
+  clearPlayerProfileWithConfirm();
+  closeSettings();
+});
+settingsModal.addEventListener("click", (event) => {
+  if (event.target === settingsModal) closeSettings();
+});
 goLoadoutButton.addEventListener("click", enterLoadout);
 enterDeployButton.addEventListener("click", enterDeploy);
 startButton.addEventListener("click", startRun);
-returnLobbyButton.addEventListener("click", resetGame);
+returnLobbyButton.addEventListener("click", () => resetGame(APP_STATE.MAIN_HUB));
+settlementAdventureButton.addEventListener("click", () => {
+  resetGame(APP_STATE.ADVENTURE);
+});
+settlementCodexButton.addEventListener("click", () => {
+  resetGame(APP_STATE.CODEX);
+});
 roleUpgradeButton.addEventListener("click", () => {
   const first = playerMeta.ownedCharacters[0];
   if (first) upgradeCharacter(first);

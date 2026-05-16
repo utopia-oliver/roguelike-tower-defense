@@ -2,6 +2,16 @@ window.XM = window.XM || {};
 
 window.XM.Constants = window.XM.Constants || {
   APP_STATE: Object.freeze({
+    TITLE: "TITLE",
+    MAIN_HUB: "MAIN_HUB",
+    CHARACTERS: "CHARACTERS",
+    ARTIFACTS: "ARTIFACTS",
+    FORMATIONS: "FORMATIONS",
+    BAG: "BAG",
+    GACHA: "GACHA",
+    CODEX: "CODEX",
+    ADVENTURE: "ADVENTURE",
+    SETTINGS: "SETTINGS",
     LOBBY: "LOBBY",
     LOADOUT: "LOADOUT",
     DEPLOY: "DEPLOY",
