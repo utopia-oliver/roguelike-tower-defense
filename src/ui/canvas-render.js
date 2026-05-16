@@ -19,16 +19,26 @@
   function drawGrid({ ctx, canvas, grid, helpers }) {
     for (let row = 0; row < grid.rows; row += 1) {
       for (let col = 0; col < grid.columns; col += 1) {
+        const x = col * grid.cellW;
+        const y = row * grid.cellH;
+        const isDeploySlot = helpers.isDeployable(col, row);
         ctx.fillStyle =
           row === 0
-            ? "#263a2b"
+            ? "#1f3028"
             : row === grid.rows - 1
-            ? "#3b2f25"
-            : "#20362a";
-        ctx.fillRect(col * grid.cellW, row * grid.cellH, grid.cellW - 1, grid.cellH - 1);
+            ? "#23382f"
+            : "#1d3028";
+        ctx.fillRect(x, y, grid.cellW - 1, grid.cellH - 1);
+        if (row === grid.rows - 1) {
+          const gradient = ctx.createLinearGradient(x, y, x, y + grid.cellH);
+          gradient.addColorStop(0, "rgba(77, 190, 151, 0.16)");
+          gradient.addColorStop(0.55, "rgba(216, 172, 82, 0.08)");
+          gradient.addColorStop(1, "rgba(10, 18, 14, 0.38)");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x + 1, y + 1, grid.cellW - 2, grid.cellH - 2);
+        }
         if (helpers.isDeployable(col, row)) {
-          ctx.strokeStyle = "rgba(222, 204, 147, 0.34)";
-          ctx.strokeRect(col * grid.cellW + 5, row * grid.cellH + 5, grid.cellW - 10, grid.cellH - 10);
+          drawFormationSlot({ ctx, x, y, w: grid.cellW, h: grid.cellH, active: isDeploySlot });
         }
       }
     }
@@ -46,6 +56,38 @@
       ctx.lineTo(col * grid.cellW + grid.cellW / 2, canvas.height);
       ctx.stroke();
     }
+  }
+
+  function drawFormationSlot({ ctx, x, y, w, h }) {
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const radius = Math.min(w, h) * 0.28;
+    ctx.save();
+    ctx.strokeStyle = "rgba(109, 226, 190, 0.46)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x + 7, y + 7, w - 14, h - 14);
+    ctx.strokeStyle = "rgba(219, 188, 115, 0.45)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius * 0.52, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(109, 226, 190, 0.28)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i += 1) {
+      const angle = i * (Math.PI / 2) + Math.PI / 4;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(angle) * radius * 0.72, cy + Math.sin(angle) * radius * 0.72);
+      ctx.lineTo(cx + Math.cos(angle) * radius * 1.18, cy + Math.sin(angle) * radius * 1.18);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(228, 241, 218, 0.64)";
+    ctx.font = "12px Microsoft YaHei";
+    ctx.textAlign = "center";
+    ctx.fillText("阵", cx, cy + 4);
+    ctx.restore();
   }
 
   function drawFormationArea({ ctx, canvas, state, DATA, grid, helpers }) {
@@ -482,6 +524,7 @@
     drawEnemy,
     drawFloater,
     drawFormationArea,
+    drawFormationSlot,
     drawGrid,
     drawProjectile,
     drawRole,

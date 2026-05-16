@@ -68,7 +68,7 @@
       if (!formation) return;
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "choice";
+      button.className = "choice choice--formation";
       button.classList.toggle("selected", state.loadoutFormationId === id);
       button.dataset.loadoutFormationId = id;
       button.innerHTML = [
@@ -86,7 +86,7 @@
       const selected = state.loadoutRoleIds.includes(id);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "choice";
+      button.className = "choice choice--role";
       button.classList.toggle("selected", selected);
       button.dataset.loadoutRoleId = id;
       button.innerHTML = `<strong>${safeText(role.name)}</strong><span>${safeText(role.rarity)} · ${safeText(role.rankTitle || role.rank)} · Lv${helpers.getCharacterLevel(id)} · ${safeText(role.trajectoryType)}</span>`;
@@ -104,7 +104,7 @@
       : [];
     elements.loadoutArtifactList.innerHTML = "";
     const artifactSummary = document.createElement("div");
-    artifactSummary.className = "unlock-tip";
+    artifactSummary.className = "unlock-tip loadout-summary";
     artifactSummary.innerHTML = `
       <strong>法宝位：已选择 ${selectedArtifactIds.length} / ${artifactSlots}</strong>
       <span>当前已选择：${selectedArtifactIds.length ? selectedArtifactIds.map((id) => safeText(DATA.artifacts[id]?.name || id)).join("、") : "无"}</span>
@@ -117,7 +117,7 @@
       const selected = selectedArtifactIds.includes(id);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "choice";
+      button.className = "choice choice--artifact";
       button.classList.toggle("selected", selected);
       button.dataset.loadoutArtifactId = id;
       button.innerHTML = `
@@ -146,7 +146,7 @@
       const formation = DATA.formations[state.selectedFormationId];
       if (formation) {
         const item = document.createElement("div");
-        item.className = "choice selected";
+        item.className = "choice choice--formation selected";
         item.innerHTML = `<strong>${safeText(formation.name)}</strong><span>战斗中不可更换</span>`;
         elements.formationList.appendChild(item);
       }
@@ -159,7 +159,7 @@
       const deployed = state.deployedRoles.some((item) => item.roleId === roleId);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "choice";
+      button.className = "choice choice--role";
       button.classList.toggle("selected", roleId === state.selectedRoleId);
       button.classList.toggle("deployed", deployed);
       button.dataset.setupRoleId = roleId;
@@ -178,7 +178,7 @@
       const artifact = DATA.artifacts[artifactId];
       if (artifact) {
         const item = document.createElement("div");
-        item.className = "choice selected";
+        item.className = "choice choice--artifact selected";
         item.innerHTML = `<strong>${safeText(artifact.name)}</strong><span>自动攻击 · 战斗中不可更换</span>`;
         elements.artifactList.appendChild(item);
       }
@@ -190,13 +190,33 @@
     elements.hpText.textContent = `${Math.max(0, Math.ceil(state.arrayCoreHp))} / ${state.arrayCoreMaxHp}${
       state.arrayCoreDefense > 0 ? `\n防御：${state.arrayCoreDefense}` : ""
     }`;
+    const hpRatio = state.arrayCoreMaxHp > 0 ? Math.max(0, Math.min(1, state.arrayCoreHp / state.arrayCoreMaxHp)) : 0;
+    elements.hpText.parentElement?.classList.toggle("hud-meter", true);
+    elements.hpText.parentElement?.classList.toggle("hud-meter--danger", hpRatio < 0.35);
+    elements.hpText.parentElement?.style.setProperty("--hud-fill", `${Math.round(hpRatio * 100)}%`);
     const next = nextLevelRequirement();
+    const qiRatio = next < Infinity && next > 0 ? Math.max(0, Math.min(1, state.lingqi / next)) : 1;
     elements.lingqiText.textContent =
       next < Infinity
         ? `Lv${state.runLevel} · ${Math.floor(state.lingqi)} / ${next}`
         : `Lv${state.runLevel} · 已满`;
+    elements.lingqiText.parentElement?.classList.toggle("hud-meter", true);
+    elements.lingqiText.parentElement?.classList.toggle("hud-meter--lingqi", true);
+    elements.lingqiText.parentElement?.style.setProperty("--hud-fill", `${Math.round(qiRatio * 100)}%`);
     const formationName = DATA.formations[state.selectedFormationId]?.name;
-    elements.runStatus.textContent = formationName ? `${state.status} 当前阵法：${formationName}` : state.status;
+    const artifactNames = (state.selectedArtifactIds || [])
+      .map((id) => DATA.artifacts[id]?.name || id)
+      .filter(Boolean);
+    const activeBonds = window.XM.Artifacts?.getActiveArtifactBonds
+      ? window.XM.Artifacts.getActiveArtifactBonds(state.selectedArtifactIds || [])
+      : [];
+    const statusLines = [
+      safeText(state.status),
+      formationName ? `当前阵法：${safeText(formationName)}` : "",
+      artifactNames.length ? `当前法宝：${artifactNames.map(safeText).join("、")}` : "当前法宝：无",
+      activeBonds.length ? `已激活羁绊：${activeBonds.map((bond) => safeText(bond.name)).join("、")}` : "当前未激活法宝羁绊",
+    ].filter(Boolean);
+    elements.runStatus.innerHTML = statusLines.join("<br>");
     elements.startButton.textContent = state.appState === elements.deployState ? "开始战斗" : "战斗中";
     elements.startButton.disabled = state.appState !== elements.deployState || state.deployedRoles.length !== state.availableRoles.length;
     elements.deployHint.textContent =
