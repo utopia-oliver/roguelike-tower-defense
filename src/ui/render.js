@@ -74,10 +74,10 @@
     if (!root) return;
     const summary = currentChapterSummary({ DATA, playerProfile, helpers });
     root.innerHTML = `
-      <span>Lv. ${safeText(playerProfile.playerLevel || 1)}</span>
-      <span>灵石 ${safeText(playerProfile.spiritStones || 0)}</span>
-      <span>最高波次 ${safeText(playerProfile.highestWave || 0)}</span>
-      <span>主线：${safeText(summary.complete ? "第一章已平定" : summary.node ? `${summary.node.displayId} ${summary.node.name}` : "妖门初启")}</span>
+      <span class="xm-resource-label">道行 Lv. ${safeText(playerProfile.playerLevel || 1)}</span>
+      <span class="xm-resource-label">靈石 <strong class="xm-resource-value">${safeText(playerProfile.spiritStones || 0)}</strong></span>
+      <span class="xm-resource-label">最高妖潮 <strong class="xm-resource-value">${safeText(playerProfile.highestWave || 0)}</strong></span>
+      <span class="xm-resource-label">當前章節：${safeText(summary.complete ? "第一章已平定" : summary.node ? `${summary.node.displayId} ${summary.node.name}` : "妖門初啟")}</span>
     `;
   }
 
@@ -101,8 +101,8 @@
       FORMATIONS: ["护山大阵", "每局选择一个阵法，影响整局战斗节奏。"],
       BAG: ["背包", "材料、消耗、特殊与任务物品。"],
       GACHA: ["抽取", "以灵石抽取宗门角色，后续扩展法宝抽取。"],
-      CODEX: ["妖录", "角色、法宝、妖物、阵法与剧情档案。"],
-      ADVENTURE: ["历练", "选择章节关卡，并进入战前配置。"],
+      CODEX: ["妖錄", "角色、法寶、妖物、陣法與劇情檔案。"],
+      ADVENTURE: ["歷練", "選擇章節關卡，並進入戰前配置。"],
     };
     return config[page] || config.CHARACTERS;
   }
@@ -458,9 +458,9 @@
   }
 
   function renderHud({ elements, state, DATA, nextLevelRequirement }) {
-    elements.waveText.textContent = `${state.wave} / ${DATA.config.maxWaves}`;
+    elements.waveText.textContent = `第 ${state.wave} / ${DATA.config.maxWaves} 波`;
     elements.hpText.textContent = `${Math.max(0, Math.ceil(state.arrayCoreHp))} / ${state.arrayCoreMaxHp}${
-      state.arrayCoreDefense > 0 ? `\n防御：${state.arrayCoreDefense}` : ""
+      state.arrayCoreDefense > 0 ? `\n陣防：${state.arrayCoreDefense}` : ""
     }`;
     const hpRatio = state.arrayCoreMaxHp > 0 ? Math.max(0, Math.min(1, state.arrayCoreHp / state.arrayCoreMaxHp)) : 0;
     elements.hpText.parentElement?.classList.toggle("hud-meter", true);
@@ -470,8 +470,8 @@
     const qiRatio = next < Infinity && next > 0 ? Math.max(0, Math.min(1, state.lingqi / next)) : 1;
     elements.lingqiText.textContent =
       next < Infinity
-        ? `Lv${state.runLevel} · ${Math.floor(state.lingqi)} / ${next}`
-        : `Lv${state.runLevel} · 已满`;
+        ? `Lv.${state.runLevel} · ${Math.floor(state.lingqi)} / ${next}`
+        : `Lv.${state.runLevel} · 已滿`;
     elements.lingqiText.parentElement?.classList.toggle("hud-meter", true);
     elements.lingqiText.parentElement?.classList.toggle("hud-meter--lingqi", true);
     elements.lingqiText.parentElement?.style.setProperty("--hud-fill", `${Math.round(qiRatio * 100)}%`);
@@ -484,12 +484,12 @@
       : [];
     const statusLines = [
       safeText(state.status),
-      formationName ? `当前阵法：${safeText(formationName)}` : "",
-      artifactNames.length ? `当前法宝：${artifactNames.map(safeText).join("、")}` : "当前法宝：无",
+      formationName ? `當前陣法：${safeText(formationName)}` : "",
+      artifactNames.length ? `當前法寶：${artifactNames.map(safeText).join("、")}` : "當前法寶：無",
       activeBonds.length ? `已激活羁绊：${activeBonds.map((bond) => safeText(bond.name)).join("、")}` : "当前未激活法宝羁绊",
     ].filter(Boolean);
     elements.runStatus.innerHTML = statusLines.join("<br>");
-    elements.startButton.textContent = state.appState === elements.deployState ? "开始战斗" : "战斗中";
+    elements.startButton.textContent = state.appState === elements.deployState ? "開始鎮守" : "鎮守中";
     elements.startButton.disabled = state.appState !== elements.deployState || state.deployedRoles.length !== state.availableRoles.length;
     elements.deployHint.textContent =
       state.appState === elements.deployState

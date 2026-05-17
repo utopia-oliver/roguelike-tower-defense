@@ -18,8 +18,19 @@ const settlementView = document.querySelector("#settlementView");
 const titleStartButton = document.querySelector("#titleStartButton");
 const titleContinueButton = document.querySelector("#titleContinueButton");
 const titleLoadButton = document.querySelector("#titleLoadButton");
+const titleGuestButton = document.querySelector("#titleGuestButton");
+const titleLoginButton = document.querySelector("#titleLoginButton");
 const titleCodexButton = document.querySelector("#titleCodexButton");
+const titleRealmButton = document.querySelector("#titleRealmButton");
+const titleNoticeButton = document.querySelector("#titleNoticeButton");
+const titleNoticeButtonSecondary = document.querySelector("#titleNoticeButtonSecondary");
 const titleSettingsButton = document.querySelector("#titleSettingsButton");
+const titleSettingsButtonSecondary = document.querySelector("#titleSettingsButtonSecondary");
+const titleNoticeModal = document.querySelector("#titleNoticeModal");
+const titleNoticeCloseButton = document.querySelector("#titleNoticeCloseButton");
+const titleLoginModal = document.querySelector("#titleLoginModal");
+const titleLoginContinueButton = document.querySelector("#titleLoginContinueButton");
+const titleLoginBackButton = document.querySelector("#titleLoginBackButton");
 const hubResourceBar = document.querySelector("#hubResourceBar");
 const hubSettingsButton = document.querySelector("#hubSettingsButton");
 const hubAdventureButton = document.querySelector("#hubAdventureButton");
@@ -833,6 +844,27 @@ function openSettings(notice = "") {
 
 function closeSettings() {
   settingsModal?.classList.add("hidden");
+}
+
+function openTitleNotice() {
+  titleNoticeModal?.classList.remove("hidden");
+}
+
+function closeTitleNotice() {
+  titleNoticeModal?.classList.add("hidden");
+}
+
+function openTitleLogin() {
+  titleLoginModal?.classList.remove("hidden");
+}
+
+function closeTitleLogin() {
+  titleLoginModal?.classList.add("hidden");
+}
+
+function enterLocalTrial(notice = "") {
+  closeTitleLogin();
+  enterMainHub(notice);
 }
 
 function getChapter(chapterId = "chapter_1") {
@@ -2798,7 +2830,7 @@ function renderMainHub() {
 
 function renderFeaturePage() {
   if (!HUB_PAGE_STATES.has(state.appState)) return;
-  featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回标题" : "返回宗门";
+  featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回啟卷" : "返回宗門";
   renderSystemFeaturePage({
     elements: {
       featurePageTitle,
@@ -4769,14 +4801,29 @@ function handleHubNavClick(event) {
   enterHubPage(button.dataset.hubPage);
 }
 
-titleStartButton.addEventListener("click", () => enterMainHub());
-titleContinueButton.addEventListener("click", () => {
+titleStartButton?.addEventListener("click", () => enterLocalTrial());
+titleGuestButton?.addEventListener("click", () => enterLocalTrial("當前為本地試玩模式。"));
+titleLoginButton?.addEventListener("click", openTitleLogin);
+titleRealmButton?.addEventListener("click", () => openSettings("界域系統暫未開放。"));
+titleNoticeButton?.addEventListener("click", openTitleNotice);
+titleNoticeButtonSecondary?.addEventListener("click", openTitleNotice);
+titleContinueButton?.addEventListener("click", () => {
   applyPlayerProfile(loadPlayerProfile());
   enterMainHub(playerProfileLoadedFromStorage ? "" : "未检测到旧存档，已创建新存档。");
 });
-titleLoadButton.addEventListener("click", () => openSettings("读取存档功能暂未开放，当前使用本地自动存档。"));
-titleCodexButton.addEventListener("click", () => enterHubPage(APP_STATE.CODEX, APP_STATE.TITLE));
-titleSettingsButton.addEventListener("click", () => openSettings());
+titleLoadButton?.addEventListener("click", () => openSettings("读取存档功能暂未开放，当前使用本地自动存档。"));
+titleCodexButton?.addEventListener("click", () => enterHubPage(APP_STATE.CODEX, APP_STATE.TITLE));
+titleSettingsButton?.addEventListener("click", () => openSettings());
+titleSettingsButtonSecondary?.addEventListener("click", () => openSettings());
+titleNoticeCloseButton?.addEventListener("click", closeTitleNotice);
+titleNoticeModal?.addEventListener("click", (event) => {
+  if (event.target === titleNoticeModal) closeTitleNotice();
+});
+titleLoginContinueButton?.addEventListener("click", () => enterLocalTrial("當前為本地試玩模式。"));
+titleLoginBackButton?.addEventListener("click", closeTitleLogin);
+titleLoginModal?.addEventListener("click", (event) => {
+  if (event.target === titleLoginModal) closeTitleLogin();
+});
 hubAdventureButton.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
 hubSettingsButton.addEventListener("click", () => openSettings());
 hubBottomNav.addEventListener("click", handleHubNavClick);

@@ -3,26 +3,52 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>玄门镇妖录</title>
+    <title>玄門鎮妖錄</title>
     <link rel="stylesheet" href="src/styles.css" />
   </head>
   <body>
     <main id="app">
       <section id="titleView" class="xm-screen xm-title-screen">
-        <div class="xm-title-bg" aria-hidden="true"></div>
-        <div class="xm-title-content">
-          <p class="xm-eyebrow">玄门镇妖录</p>
-          <h1>玄门镇妖录</h1>
-          <p class="xm-title-subtitle">妖门既开，山门当守</p>
-          <div class="xm-title-actions">
-            <button id="titleStartButton" class="primary xm-title-button" type="button">开始游戏</button>
-            <button id="titleContinueButton" class="secondary xm-title-button" type="button">继续游戏</button>
-            <button id="titleLoadButton" class="secondary xm-title-button" type="button">读取存档</button>
-            <button id="titleCodexButton" class="secondary xm-title-button" type="button">妖录图鉴</button>
-            <button id="titleSettingsButton" class="secondary xm-title-button" type="button">设置</button>
-          </div>
-          <small>Prototype v0.1</small>
+        <div class="xm-title-bg" aria-hidden="true">
+          <span class="xm-title-mountains"></span>
+          <span class="xm-title-gate"></span>
+          <span class="xm-title-rift"></span>
+          <span class="xm-title-array"></span>
+          <span class="xm-title-steps"></span>
+          <span class="xm-title-fog xm-title-fog--one"></span>
+          <span class="xm-title-fog xm-title-fog--two"></span>
         </div>
+        <header class="xm-title-topbar">
+          <button id="titleRealmButton" class="xm-title-link" type="button">當前界域：青冥一界</button>
+          <div class="xm-title-top-actions">
+            <button id="titleNoticeButton" class="xm-title-link" type="button">宗門告示</button>
+            <button id="titleSettingsButton" class="xm-title-link" type="button">設置</button>
+          </div>
+        </header>
+        <div class="xm-title-content">
+          <p class="xm-eyebrow">山門啟卷</p>
+          <h1 class="xm-title-logo">玄門鎮妖錄</h1>
+          <p class="xm-title-subtitle">妖門既開，山門當守</p>
+          <p class="xm-title-version">Prototype v0.1</p>
+          <div class="xm-title-login-panel">
+            <button id="titleStartButton" class="primary xm-title-button xm-title-button--main" type="button">進入宗門</button>
+            <div class="xm-title-actions">
+              <button id="titleLoginButton" class="secondary xm-title-button" type="button">帳號登入</button>
+              <button id="titleGuestButton" class="secondary xm-title-button" type="button">游客試煉</button>
+            </div>
+            <div class="xm-title-minor-actions">
+              <button id="titleCodexButton" class="xm-title-link" type="button">妖錄圖鑑</button>
+              <button id="titleNoticeButtonSecondary" class="xm-title-link" type="button">宗門告示</button>
+              <button id="titleSettingsButtonSecondary" class="xm-title-link" type="button">設置</button>
+            </div>
+            <p>帳號系統即將開放，當前為本地原型試玩。</p>
+            <label class="xm-title-agreement"><input type="checkbox" checked /> 已閱《修行者須知》與《玄門試煉告示》</label>
+          </div>
+        </div>
+        <footer class="xm-title-footer">
+          <span>玄門鎮妖錄 開發原型</span>
+          <span>本地原型試玩版 / 存檔保存在瀏覽器</span>
+        </footer>
       </section>
 
       <section id="mainHubView" class="xm-screen xm-hub hidden">
@@ -141,15 +167,15 @@
       <section id="battleView" class="game-shell hidden">
         <header class="hud">
           <div>
-            <span class="label">波次</span>
+            <span class="label xm-wave-label">妖潮進度</span>
             <strong id="waveText">1 / 15</strong>
           </div>
           <div>
-            <span class="label">护山阵眼</span>
+            <span class="label xm-resource-label">護山陣眼</span>
             <strong id="hpText">180 / 180</strong>
           </div>
           <div>
-            <span class="label">灵气</span>
+            <span class="label xm-resource-label">靈氣</span>
             <strong id="lingqiText">Lv1 · 0 / 40</strong>
           </div>
           <button id="startButton" class="primary">开始战斗</button>
@@ -224,6 +250,33 @@
         <div class="xm-settings-actions">
           <button id="settingsResetButton" class="secondary" type="button">重置本地存档</button>
           <button id="settingsCloseButton" class="primary" type="button">返回</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="titleNoticeModal">
+      <div class="modal-panel xm-title-modal">
+        <h2>宗門告示</h2>
+        <ul>
+          <li>當前版本為原型試玩版。</li>
+          <li>登入系統尚未接入伺服器，暫以本地存檔遊玩。</li>
+          <li>第一章·妖門初啟 已開放。</li>
+          <li>開發者調試功能僅用於測試。</li>
+          <li>後續將逐步加入宗門主界面美術、歷練地圖美術、角色攻擊表現優化。</li>
+        </ul>
+        <div class="xm-settings-actions">
+          <button id="titleNoticeCloseButton" class="primary" type="button">關閉</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="titleLoginModal">
+      <div class="modal-panel xm-title-modal">
+        <h2>帳號登入</h2>
+        <p>帳號系統尚未接入。當前版本為本地原型試玩，存檔將保存在瀏覽器中。</p>
+        <div class="xm-settings-actions">
+          <button id="titleLoginContinueButton" class="primary" type="button">繼續本地試玩</button>
+          <button id="titleLoginBackButton" class="secondary" type="button">返回</button>
         </div>
       </div>
     </div>
