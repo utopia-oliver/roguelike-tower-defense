@@ -3026,24 +3026,35 @@ function clearRuntimeThreats() {
 function debugJumpToWave(targetWave) {
   const rawWave = Number(targetWave);
   if (!Number.isInteger(rawWave) || rawWave < 1) {
-    setDebugNotice("请输入有效的正整数波次。");
+    setDebugNotice("请输入有效波次");
     return false;
   }
-  const waves = (DATA.waves || []).map((wave) => Number(wave.wave)).filter(Number.isFinite);
-  if (!waves.length) {
-    setDebugNotice("未找到任何波次配置，已取消跳转。");
+  const waveConfig = (DATA.waves || []).find((wave) => Number(wave.wave) === rawWave);
+  if (!waveConfig) {
+    setDebugNotice("未找到该波配置");
     return false;
   }
-  const resolvedWave = waves.includes(rawWave)
-    ? rawWave
-    : waves.reduce((best, wave) => (Math.abs(wave - rawWave) < Math.abs(best - rawWave) ? wave : best), waves[0]);
+  if (!state.loadoutFormationId) state.loadoutFormationId = playerMeta.unlockedFormations[0] || DATA.initial.formation || "";
+  if (!state.selectedFormationId) state.selectedFormationId = state.loadoutFormationId;
+  if (!Number.isFinite(state.arrayCoreMaxHp) || state.arrayCoreMaxHp <= 0) initializeArrayCoreForRun();
   clearRuntimeThreats();
-  state.wave = resolvedWave;
+  state.wave = rawWave;
   state.waveActive = false;
   state.spawnJobs = [];
   state.waveElapsed = 0;
-  startWave();
-  setDebugNotice(resolvedWave === rawWave ? `已跳到第 ${resolvedWave} 波。` : `未找到第 ${rawWave} 波配置，已使用最近可用的第 ${resolvedWave} 波。`);
+  state.waveStallWarned = false;
+  state.appState = APP_STATE.BATTLE;
+  state.phase = "combat";
+  state.running = true;
+  state.paused = false;
+  state.gameOver = false;
+  if (startButton) startButton.disabled = true;
+  if (!startWave()) {
+    setDebugNotice("未找到该波配置");
+    return false;
+  }
+  setDebugNotice(`已跳转到第 ${rawWave} 波。`);
+  updateUi();
   return true;
 }
 

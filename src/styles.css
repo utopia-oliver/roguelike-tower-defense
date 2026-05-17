@@ -1075,6 +1075,36 @@ h2 {
   padding: 4px 6px;
 }
 
+.debug-panel select,
+.debug-panel option {
+  background-color: #0b1d16;
+  color: #f5f0d6;
+}
+
+.debug-panel select.debug-field,
+.debug-panel select {
+  background: #10281f;
+  border: 1px solid rgba(197, 164, 90, 0.75);
+  color: #f5f0d6;
+}
+
+.debug-panel select:focus {
+  border-color: #d9b86c;
+  box-shadow: 0 0 0 2px rgba(217, 184, 108, 0.2);
+  outline: none;
+}
+
+.debug-panel option {
+  background: #0b1d16;
+  color: #f5f0d6;
+}
+
+.debug-panel option:checked,
+.debug-panel option:hover {
+  background: #1f5a44;
+  color: #fff7d6;
+}
+
 .debug-field.changed {
   border-color: #d7ad5d;
 }
