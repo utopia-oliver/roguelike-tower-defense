@@ -254,6 +254,9 @@ let debugSelectedArtifactId = "";
 let debugSelectedFormationId = "";
 let debugSelectedEnemyId = "";
 let debugPerkFilter = "all";
+const DEBUG_UI_STATE = {
+  targetWaveInput: null,
+};
 let featureReturnState = APP_STATE.MAIN_HUB;
 const DEFAULT_GAME_DATA = deepClone(DATA);
 let DEFAULT_QINGYA_BRANCH_UPGRADES = [];
@@ -3016,6 +3019,17 @@ function debugControlNumber(name, fallback = 0) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function syncDebugUiStateFromDom() {
+  const targetWaveInput = debugContent?.querySelector?.('[data-debug-input="target-wave"]');
+  if (targetWaveInput) DEBUG_UI_STATE.targetWaveInput = targetWaveInput.value;
+}
+
+function getDebugTargetWaveInput() {
+  syncDebugUiStateFromDom();
+  if (DEBUG_UI_STATE.targetWaveInput == null) DEBUG_UI_STATE.targetWaveInput = String(state.wave || 1);
+  return DEBUG_UI_STATE.targetWaveInput;
+}
+
 function clearRuntimeThreats() {
   state.enemies = [];
   state.projectiles = [];
@@ -3053,6 +3067,7 @@ function debugJumpToWave(targetWave) {
     setDebugNotice("未找到该波配置");
     return false;
   }
+  DEBUG_UI_STATE.targetWaveInput = String(rawWave);
   setDebugNotice(`已跳转到第 ${rawWave} 波。`);
   updateUi();
   return true;
@@ -4110,11 +4125,13 @@ function renderDebugChapterWaveTab() {
   const chapters = Object.values(DATA.chapters || {});
   const chapter = getChapter(debugSelectedChapterId) || chapters[0];
   const nodes = chapter?.nodes || [];
+  if (DEBUG_UI_STATE.targetWaveInput == null) DEBUG_UI_STATE.targetWaveInput = String(state.wave || 1);
   return `
     <section class="debug-tool-section">
       <h3>自由跳波</h3>
       <div class="debug-control-row">
-        <label>目标波次 <input class="debug-field" data-debug-control="target-wave" type="number" min="1" step="1" value="${safeText(state.wave || 1)}" /></label>
+        <span>当前波次：${safeText(state.wave || 1)}</span>
+        <label>目标波次 <input class="debug-field" data-debug-control="target-wave" data-debug-input="target-wave" type="number" min="1" step="1" value="${safeText(DEBUG_UI_STATE.targetWaveInput)}" /></label>
         <button type="button" data-debug-action="jumpWaveCustom">跳到指定波次</button>
       </div>
       ${renderDebugButtonGrid([
@@ -4486,6 +4503,7 @@ function clearPlayerProfileWithConfirm() {
 function updateDebugPanel() {
   if (!debugPanel || debugPanel.classList.contains("hidden")) return;
   if (debugExportOpen) return;
+  syncDebugUiStateFromDom();
   if (debugEditMode && document.activeElement?.matches?.("[data-debug-field]")) return;
   renderDebugTabs();
   renderDebugActions();
@@ -4526,7 +4544,7 @@ function runDebugAction(action) {
     jumpWave5: () => debugJumpToWave(5),
     jumpWave10: () => debugJumpToWave(10),
     jumpWave15: () => debugJumpToWave(15),
-    jumpWaveCustom: () => debugJumpToWave(debugControlNumber("target-wave", NaN)),
+    jumpWaveCustom: () => debugJumpToWave(Number.parseInt(getDebugTargetWaveInput(), 10)),
     nextWave: () => debugJumpToWave((Number(state.wave) || 0) + 1),
     healCore: () => healArrayCoreFull(),
     clearEnemies: () => {
@@ -4853,9 +4871,15 @@ debugActionsPanel.addEventListener("click", (event) => {
   runDebugAction(button.dataset.debugAction);
 });
 debugContent.addEventListener("input", (event) => {
+  if (event.target.matches('[data-debug-input="target-wave"]')) {
+    DEBUG_UI_STATE.targetWaveInput = event.target.value;
+  }
   if (event.target.matches("[data-debug-field]")) handleDebugFieldChange(event.target);
 });
 debugContent.addEventListener("change", (event) => {
+  if (event.target.matches('[data-debug-input="target-wave"]')) {
+    DEBUG_UI_STATE.targetWaveInput = event.target.value;
+  }
   if (event.target.matches("[data-debug-field]")) handleDebugFieldChange(event.target);
   const control = event.target.closest("[data-debug-control]");
   if (control) {
