@@ -247,6 +247,13 @@ let debugTabsRenderKey = "";
 let debugActionsRenderKey = "";
 let debugNoticeText = "";
 let debugValidationErrors = new Map();
+let debugSelectedChapterId = "chapter_1";
+let debugSelectedNodeId = "chapter1_1";
+let debugSelectedRoleId = "";
+let debugSelectedArtifactId = "";
+let debugSelectedFormationId = "";
+let debugSelectedEnemyId = "";
+let debugPerkFilter = "all";
 let featureReturnState = APP_STATE.MAIN_HUB;
 const DEFAULT_GAME_DATA = deepClone(DATA);
 let DEFAULT_QINGYA_BRANCH_UPGRADES = [];
@@ -2970,9 +2977,528 @@ function refreshRuntimeFromDebugData() {
   updateUi();
 }
 
+function setDebugNotice(text) {
+  debugNoticeText = text || "";
+  if (text) setStatus(text);
+}
+
+function ensureDebugSelections() {
+  const firstRoleId = Object.keys(DATA.roles || {})[0] || "";
+  const firstArtifactId = Object.keys(DATA.artifacts || {})[0] || "";
+  const firstFormationId = Object.keys(DATA.formations || {})[0] || "";
+  const firstEnemyId = Object.keys(DATA.enemies || {})[0] || "";
+  const firstChapterId = Object.keys(DATA.chapters || {})[0] || "chapter_1";
+  debugSelectedChapterId = DATA.chapters?.[debugSelectedChapterId] ? debugSelectedChapterId : firstChapterId;
+  debugSelectedNodeId = getChapterNode(debugSelectedChapterId, debugSelectedNodeId)?.nodeId
+    || DATA.chapters?.[debugSelectedChapterId]?.nodes?.[0]?.nodeId
+    || "chapter1_1";
+  debugSelectedRoleId = DATA.roles?.[debugSelectedRoleId] ? debugSelectedRoleId : firstRoleId;
+  debugSelectedArtifactId = DATA.artifacts?.[debugSelectedArtifactId] ? debugSelectedArtifactId : firstArtifactId;
+  debugSelectedFormationId = DATA.formations?.[debugSelectedFormationId] ? debugSelectedFormationId : firstFormationId;
+  debugSelectedEnemyId = DATA.enemies?.[debugSelectedEnemyId] ? debugSelectedEnemyId : firstEnemyId;
+}
+
+function debugSelectOptions(items, selectedId, labelOf = (item) => item.name || item.id) {
+  return items
+    .map((item) => `<option value="${safeText(item.id || item.chapterId || item.nodeId)}" ${String(item.id || item.chapterId || item.nodeId) === String(selectedId) ? "selected" : ""}>${safeText(labelOf(item))}</option>`)
+    .join("");
+}
+
+function debugControlValue(name, fallback = "") {
+  const field = debugContent.querySelector(`[data-debug-control="${name}"]`);
+  if (!field) return fallback;
+  if (field.type === "checkbox") return field.checked;
+  return field.value;
+}
+
+function debugControlNumber(name, fallback = 0) {
+  const value = Number(debugControlValue(name, fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function clearRuntimeThreats() {
+  state.enemies = [];
+  state.projectiles = [];
+  state.visualEvents = [];
+  state.zones = [];
+}
+
+function debugJumpToWave(targetWave) {
+  const rawWave = Number(targetWave);
+  if (!Number.isInteger(rawWave) || rawWave < 1) {
+    setDebugNotice("请输入有效的正整数波次。");
+    return false;
+  }
+  const waves = (DATA.waves || []).map((wave) => Number(wave.wave)).filter(Number.isFinite);
+  if (!waves.length) {
+    setDebugNotice("未找到任何波次配置，已取消跳转。");
+    return false;
+  }
+  const resolvedWave = waves.includes(rawWave)
+    ? rawWave
+    : waves.reduce((best, wave) => (Math.abs(wave - rawWave) < Math.abs(best - rawWave) ? wave : best), waves[0]);
+  clearRuntimeThreats();
+  state.wave = resolvedWave;
+  state.waveActive = false;
+  state.spawnJobs = [];
+  state.waveElapsed = 0;
+  startWave();
+  setDebugNotice(resolvedWave === rawWave ? `已跳到第 ${resolvedWave} 波。` : `未找到第 ${rawWave} 波配置，已使用最近可用的第 ${resolvedWave} 波。`);
+  return true;
+}
+
+function debugForceLoadout() {
+  enterLoadout();
+  setDebugNotice("已强制进入 LOADOUT。");
+}
+
+function debugForceDeploy() {
+  enterLoadout();
+  if (!state.loadoutRoleIds.length && playerMeta.ownedCharacters[0]) state.loadoutRoleIds = [playerMeta.ownedCharacters[0]];
+  enterDeploy();
+  setDebugNotice("已强制进入 DEPLOY。");
+}
+
+function debugForceBattle() {
+  if (!state.loadoutFormationId) state.loadoutFormationId = playerMeta.unlockedFormations[0] || DATA.initial.formation || "";
+  if (!state.loadoutRoleIds.length && playerMeta.ownedCharacters[0]) state.loadoutRoleIds = [playerMeta.ownedCharacters[0]];
+  if (!state.loadoutArtifactIds?.length && playerMeta.ownedArtifacts[0]) {
+    state.loadoutArtifactIds = [playerMeta.ownedArtifacts[0]];
+    state.loadoutArtifactId = state.loadoutArtifactIds[0];
+  }
+  enterDeploy();
+  if (!state.deployedRoles.length && state.availableRoles[0]) {
+    state.selectedRoleId = state.availableRoles[0];
+    deployRole(0, grid.rows - 1);
+  }
+  if (state.deployedRoles.length && state.deployedRoles.length === state.availableRoles.length) startRun();
+  else {
+    state.appState = APP_STATE.BATTLE;
+    state.phase = "combat";
+    state.running = true;
+    state.paused = false;
+  }
+  setDebugNotice("已强制进入 BATTLE。");
+}
+
+function resetChapterProgress(chapterId = "chapter_1") {
+  const chapter = getChapter(chapterId);
+  if (!chapter) return false;
+  const firstNodeId = chapter.nodes?.[0]?.nodeId || "";
+  playerMeta.chapterProgress = playerMeta.chapterProgress || {};
+  playerMeta.chapterProgress[chapterId] = {
+    unlockedNodeIds: firstNodeId ? [firstNodeId] : [],
+    clearedNodeIds: [],
+    currentNodeId: firstNodeId,
+    lastClearedNodeId: null,
+    storyFlags: {},
+  };
+  savePlayerProfile();
+  state.selectedAdventureChapterId = chapterId;
+  state.selectedAdventureNodeId = firstNodeId;
+  return true;
+}
+
+function unlockAllChapterNodes(chapterId = "chapter_1") {
+  const chapter = getChapter(chapterId);
+  const progress = getChapterProgress(chapterId);
+  if (!chapter || !progress) return false;
+  progress.unlockedNodeIds = chapter.nodes.map((node) => node.nodeId);
+  progress.currentNodeId = progress.unlockedNodeIds.find((id) => !progress.clearedNodeIds.includes(id)) || progress.unlockedNodeIds[0] || "";
+  savePlayerProfile();
+  return true;
+}
+
+function debugEnterSelectedNode() {
+  startAdventureNode(debugSelectedNodeId, debugSelectedChapterId);
+  setDebugNotice(`已进入节点 ${debugSelectedNodeId} 的 LOADOUT。`);
+}
+
+function debugMarkSelectedNodeCleared() {
+  const result = markAdventureNodeCleared(debugSelectedChapterId, debugSelectedNodeId);
+  setDebugNotice(result ? `已标记通关：${result.node.displayId} ${result.node.name}` : "标记通关失败：节点不存在。");
+}
+
+function debugUnlockAllNodes() {
+  setDebugNotice(unlockAllChapterNodes(debugSelectedChapterId) ? "已解锁当前章节全部节点。" : "解锁节点失败。");
+}
+
+function debugResetChapter() {
+  setDebugNotice(resetChapterProgress(debugSelectedChapterId) ? "已重置当前章节进度。" : "重置章节进度失败。");
+}
+
+function debugUnlockCharacter(roleId = debugSelectedRoleId) {
+  if (!DATA.roles?.[roleId]) return false;
+  if (!playerMeta.ownedCharacters.includes(roleId)) playerMeta.ownedCharacters.push(roleId);
+  if (!playerMeta.unlockedCharacterIds.includes(roleId)) playerMeta.unlockedCharacterIds.push(roleId);
+  if (!playerMeta.ownedRoles.includes(roleId)) playerMeta.ownedRoles.push(roleId);
+  playerMeta.characterLevels[roleId] = playerMeta.characterLevels[roleId] || 1;
+  syncPlayerMetaAliases();
+  savePlayerProfile();
+  return true;
+}
+
+function debugDeployRole(roleId = debugSelectedRoleId) {
+  const role = DATA.roles?.[roleId];
+  if (!role) return false;
+  debugUnlockCharacter(roleId);
+  if (![APP_STATE.DEPLOY, APP_STATE.BATTLE].includes(state.appState)) debugForceDeploy();
+  if (!state.availableRoles.includes(roleId)) state.availableRoles.push(roleId);
+  if (!state.loadoutRoleIds.includes(roleId)) state.loadoutRoleIds.push(roleId);
+  if (state.deployedRoles.some((item) => item.roleId === roleId)) return true;
+  const row = grid.rows - 1;
+  const col = Array.from({ length: grid.columns }, (_, index) => index).find((index) => !roleAt(index, row));
+  if (col === undefined) {
+    setDebugNotice("底部 5 格已满，无法继续上阵。");
+    return false;
+  }
+  if (state.appState === APP_STATE.BATTLE) {
+    const pos = cellCenter(col, row);
+    state.deployedRoles.push({
+      id: makeId(),
+      roleId,
+      col,
+      row,
+      x: pos.x,
+      y: pos.y,
+      cooldown: 0,
+      attacks: 0,
+      lastTargetId: null,
+      sameTargetStacks: 0,
+      personalDamage: 1,
+      personalSpeed: 1,
+    });
+    const art = martialArtForCharacter(roleId);
+    if (art) getMartialRunState(art.id);
+    return true;
+  }
+  const originalMaxSlots = playerMeta.maxDeploySlots;
+  playerMeta.maxDeploySlots = Math.max(originalMaxSlots, state.deployedRoles.length + 1);
+  state.selectedRoleId = roleId;
+  const result = deployRole(col, row);
+  playerMeta.maxDeploySlots = originalMaxSlots;
+  return Boolean(result?.ok || state.deployedRoles.some((item) => item.roleId === roleId));
+}
+
+function debugRemoveRole(roleId = debugSelectedRoleId) {
+  state.deployedRoles = state.deployedRoles.filter((role) => role.roleId !== roleId);
+  state.availableRoles = (state.availableRoles || []).filter((id) => id !== roleId);
+  state.loadoutRoleIds = (state.loadoutRoleIds || []).filter((id) => id !== roleId);
+  return true;
+}
+
+function setRoleMartialLevel(roleId, level) {
+  const art = martialArtForCharacter(roleId);
+  if (!art) {
+    setDebugNotice("该角色没有绑定先天武学。");
+    return false;
+  }
+  const safeLevel = Math.max(1, Math.min(Number(art.maxLevel) || 7, Math.floor(Number(level) || 1)));
+  state.martialArtLevels[art.id] = safeLevel;
+  const runtime = getMartialRunState(art.id);
+  const activeLevels = (art.levels || []).filter((item) => Number(item.level) <= safeLevel);
+  runtime.selectedUpgradeIds = activeLevels.map((item) => `${art.id}_lv${item.level}`);
+  runtime.minorEvolutionSelected = activeLevels.some((item) => item.evolutionType === "minor_evolution");
+  const major = activeLevels.find((item) => item.evolutionType === "major_evolution");
+  runtime.majorEvolutionSelected = Boolean(major);
+  runtime.majorEvolutionId = major ? `${art.id}_${major.effectType || "major"}` : null;
+  runtime.level = safeLevel;
+  setDebugNotice(`${DATA.roles[roleId]?.name || roleId} 武学已设为 Lv${safeLevel}。`);
+  return true;
+}
+
+function debugTriggerMartialEvolution(roleId, type) {
+  const art = martialArtForCharacter(roleId);
+  if (!art) return false;
+  const level = (art.levels || []).find((item) => item.evolutionType === type);
+  return setRoleMartialLevel(roleId, level?.level || (type === "major_evolution" ? 7 : 3));
+}
+
+function debugAddMajorEnhance(roleId = debugSelectedRoleId) {
+  const art = martialArtForCharacter(roleId);
+  if (!art) return false;
+  const runtime = getMartialRunState(art.id);
+  const upgrade = (art.evolvedUpgrades || []).find((item) => !runtime.evolvedUpgradeIds.includes(item.id));
+  if (!upgrade) {
+    setDebugNotice("该武学没有可添加的大成强化，或已全部添加。");
+    return false;
+  }
+  runtime.majorEvolutionSelected = true;
+  runtime.majorEvolutionId = runtime.majorEvolutionId || `${art.id}_major`;
+  runtime.evolvedUpgradeIds.push(upgrade.id);
+  if (!runtime.selectedUpgradeIds.includes(upgrade.id)) runtime.selectedUpgradeIds.push(upgrade.id);
+  applyMartialModifierEffect({
+    type: upgrade.effectType,
+    martialArtId: art.id,
+    value: Number(upgrade.value) || 0,
+  });
+  setDebugNotice(`已添加大成强化：${upgrade.title || upgrade.name || upgrade.id}`);
+  return true;
+}
+
+function debugSetCharacterLevel(roleId = debugSelectedRoleId) {
+  const level = Math.max(1, Math.floor(debugControlNumber("role-level", 1)));
+  debugUnlockCharacter(roleId);
+  playerMeta.characterLevels[roleId] = level;
+  savePlayerProfile();
+  setDebugNotice(`${DATA.roles[roleId]?.name || roleId} 角色等级已设为 ${level}。`);
+}
+
+function debugSetRoleDamageMultiplier(roleId = debugSelectedRoleId) {
+  const multiplier = debugControlNumber("role-damage-mult", 1);
+  if (!Number.isFinite(multiplier) || multiplier <= 0) {
+    setDebugNotice("基础伤害倍率必须大于 0。");
+    return;
+  }
+  state.deployedRoles.filter((role) => role.roleId === roleId).forEach((role) => {
+    role.personalDamage = multiplier;
+  });
+  setDebugNotice(`${DATA.roles[roleId]?.name || roleId} 本局伤害倍率已设为 ${multiplier}。`);
+}
+
+function debugUnlockArtifact(artifactId = debugSelectedArtifactId) {
+  if (!DATA.artifacts?.[artifactId]) return false;
+  if (!playerMeta.ownedArtifacts.includes(artifactId)) playerMeta.ownedArtifacts.push(artifactId);
+  playerMeta.artifactLevels[artifactId] = playerMeta.artifactLevels[artifactId] || 1;
+  savePlayerProfile();
+  return true;
+}
+
+function debugCarryArtifact(artifactId = debugSelectedArtifactId) {
+  if (!DATA.artifacts?.[artifactId]) return false;
+  debugUnlockArtifact(artifactId);
+  state.selectedArtifactIds = Array.isArray(state.selectedArtifactIds) ? state.selectedArtifactIds : [];
+  state.loadoutArtifactIds = Array.isArray(state.loadoutArtifactIds) ? state.loadoutArtifactIds : [];
+  if (!state.selectedArtifactIds.includes(artifactId)) state.selectedArtifactIds.push(artifactId);
+  if (!state.loadoutArtifactIds.includes(artifactId)) state.loadoutArtifactIds.push(artifactId);
+  state.selectedArtifactId = state.selectedArtifactIds[0] || artifactId;
+  state.loadoutArtifactId = state.loadoutArtifactIds[0] || artifactId;
+  getSystemArtifactRuntimeState({ state, artifactId });
+  return true;
+}
+
+function debugRemoveArtifact(artifactId = debugSelectedArtifactId) {
+  state.selectedArtifactIds = (state.selectedArtifactIds || []).filter((id) => id !== artifactId);
+  state.loadoutArtifactIds = (state.loadoutArtifactIds || []).filter((id) => id !== artifactId);
+  state.selectedArtifactId = state.selectedArtifactIds[0] || "";
+  state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
+}
+
+function setArtifactDebugLevel(artifactId, level) {
+  debugCarryArtifact(artifactId);
+  const runtime = getSystemArtifactRuntimeState({ state, artifactId });
+  runtime.level = Math.max(1, Math.min(7, Math.floor(Number(level) || 1)));
+  runtime.minorEvolutionSelected = runtime.level >= 3 ? runtime.minorEvolutionSelected : false;
+  runtime.majorEvolutionSelected = runtime.level >= 7 ? true : runtime.majorEvolutionSelected && runtime.level >= 7;
+  if (runtime.majorEvolutionSelected) runtime.majorEvolutionId = runtime.majorEvolutionId || `${artifactId}_major_evolution`;
+  setDebugNotice(`${DATA.artifacts[artifactId]?.name || artifactId} 已设为 Lv${runtime.level}。`);
+}
+
+function debugTriggerArtifactEvolution(artifactId, type) {
+  debugCarryArtifact(artifactId);
+  const runtime = getSystemArtifactRuntimeState({ state, artifactId });
+  if (type === "minor") {
+    runtime.level = Math.max(runtime.level, 3);
+    runtime.minorEvolutionSelected = true;
+  } else {
+    runtime.level = 7;
+    runtime.majorEvolutionSelected = true;
+    runtime.majorEvolutionId = runtime.majorEvolutionId || `${artifactId}_major_evolution`;
+  }
+  setDebugNotice(`${DATA.artifacts[artifactId]?.name || artifactId} 已触发${type === "minor" ? "小进化" : "大成"}。`);
+}
+
+function artifactDebugCallbacks() {
+  return {
+    addFloater(floater) {
+      state.floaters.push(floater);
+    },
+    addZone(zone) {
+      state.zones = state.zones || [];
+      state.zones.push(zone);
+    },
+    addVisualEvent,
+    areaDamage,
+    damageEnemy(enemy, damage, source) {
+      enemy.takeDamage(damage, source);
+    },
+    drawShot,
+    getArtifactOrigin() {
+      return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
+    },
+    healArrayCore(amount) {
+      state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + amount);
+      syncBaseHpAliases();
+    },
+    spawnArtifactProjectile,
+  };
+}
+
+function debugTriggerArtifactNow(artifactId = debugSelectedArtifactId) {
+  debugCarryArtifact(artifactId);
+  const triggered = window.XM.Artifacts.triggerArtifact({ state, DATA, artifactId, callbacks: artifactDebugCallbacks() });
+  setDebugNotice(triggered ? `已立即触发法宝：${DATA.artifacts[artifactId]?.name || artifactId}` : "法宝未触发：当前没有可用目标或配置缺失。");
+}
+
+function debugResetArtifactCooldown(artifactId = debugSelectedArtifactId) {
+  const runtime = getSystemArtifactRuntimeState({ state, artifactId });
+  runtime.cooldownTimer = 0;
+  state.artifactCooldowns[artifactId] = 0;
+  setDebugNotice("法宝冷却已重置。");
+}
+
+function debugSwitchFormation(formationId = debugSelectedFormationId) {
+  const formation = DATA.formations?.[formationId];
+  if (!formation) return false;
+  if (!playerMeta.unlockedFormations.includes(formationId)) playerMeta.unlockedFormations.push(formationId);
+  state.selectedFormationId = formationId;
+  state.loadoutFormationId = formationId;
+  window.XM.Formations.applyFormationPassive({ state, formation });
+  savePlayerProfile();
+  return true;
+}
+
+function formationDebugCallbacks() {
+  return {
+    addZone(zone) {
+      state.zones.push(zone);
+    },
+    addFloater(floater) {
+      state.floaters.push(floater);
+    },
+    addVisualEvent,
+    damageEnemy(enemy, damage, source) {
+      enemy.takeDamage(damage, source);
+    },
+    gainLingqi,
+    getFormationBase() {
+      return { x: canvas.width / 2, y: canvas.height - grid.cellH / 2 };
+    },
+    healArrayCore(amount) {
+      state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + amount);
+      syncBaseHpAliases();
+    },
+    nearestEnemies,
+    setStatus,
+    spawnFormationProjectile(payload) {
+      spawnArtifactProjectile({
+        artifact: { id: payload.formation.id, name: payload.formation.name },
+        target: payload.target,
+        origin: payload.origin,
+        projectileIndex: payload.projectileIndex,
+        projectileCount: payload.projectileCount,
+        projectileType: payload.formation.projectileType || "formation_sword_projectile",
+        sourceType: "formation",
+        damage: payload.formation.damage,
+        pierceCount: payload.formation.pierceCount,
+        speed: 430,
+        hitRadius: 16,
+        color: "#e9ffff",
+      });
+    },
+  };
+}
+
+function debugTriggerFormationNow(formationId = debugSelectedFormationId) {
+  debugSwitchFormation(formationId);
+  const formation = DATA.formations?.[formationId];
+  const triggered = formation && window.XM.Formations.triggerFormation({
+    state,
+    DATA,
+    formation,
+    callbacks: formationDebugCallbacks(),
+    helpers: { distance, grid },
+  });
+  setDebugNotice(triggered ? `已立即触发阵法：${formation.name}` : "阵法未触发：当前没有可用目标或配置缺失。");
+}
+
+function debugResetFormationCooldown(formationId = debugSelectedFormationId) {
+  const runtime = window.XM.Formations.getFormationRuntimeState({ state, formationId });
+  runtime.cooldownTimer = 0;
+  state.formationCooldown = 0;
+  setDebugNotice("阵法冷却已重置。");
+}
+
+function debugSetArrayCoreHp(ratioOrValue) {
+  const value = ratioOrValue <= 1 ? state.arrayCoreMaxHp * ratioOrValue : ratioOrValue;
+  state.arrayCoreHp = Math.max(1, Math.min(state.arrayCoreMaxHp, Math.round(value)));
+  syncBaseHpAliases();
+}
+
+function debugSpawnEnemy(enemyId = debugSelectedEnemyId, count = 1, position = "gate") {
+  if (!DATA.enemies?.[enemyId]) {
+    setDebugNotice("怪物配置不存在。");
+    return false;
+  }
+  const safeCount = Math.max(1, Math.min(50, Math.floor(Number(count) || 1)));
+  const lineY = attackLineY();
+  const minX = grid.cellW * 0.35;
+  const maxX = canvas.width - grid.cellW * 0.35;
+  const yByPosition = {
+    gate: grid.cellH * 0.25,
+    upper: grid.cellH * 1.5,
+    middle: grid.cellH * 3.2,
+    front: Math.max(grid.cellH, lineY - grid.cellH * 0.35),
+  };
+  for (let i = 0; i < safeCount; i += 1) {
+    const enemy = createEnemy(enemyId);
+    const laneX = ((i % grid.columns) + 0.5) * grid.cellW;
+    enemy.x = position === "random" ? minX + Math.random() * (maxX - minX) : Math.max(minX, Math.min(maxX, laneX));
+    enemy.y = position === "random"
+      ? grid.cellH * 0.4 + Math.random() * Math.max(1, lineY - grid.cellH * 0.9)
+      : yByPosition[position] ?? yByPosition.gate;
+    enemy.y = Math.max(-grid.cellH * 0.35, Math.min(lineY - 4, enemy.y));
+    enemy.progress = Math.max(0, Math.min(0.94, (enemy.y + grid.cellH * 0.35) / (lineY + grid.cellH * 0.35)));
+    enemy.lastX = enemy.x;
+    enemy.lastY = enemy.y;
+    state.enemies.push(enemy);
+  }
+  setDebugNotice(`已生成 ${safeCount} 只 ${DATA.enemies[enemyId].name || enemyId}。`);
+  return true;
+}
+
+function debugSpawnBoss() {
+  const boss = Object.values(DATA.enemies || {}).find((enemy) => enemy.id === "black_gate_guardian")
+    || Object.values(DATA.enemies || {}).find((enemy) => enemy.isBoss);
+  if (!boss) {
+    setDebugNotice("没有找到 Boss 配置。");
+    return;
+  }
+  debugSpawnEnemy(boss.id, 1, "upper");
+}
+
+function debugOpenPerkChoices() {
+  state.appState = APP_STATE.LEVEL_UP_REWARD;
+  state.running = false;
+  state.paused = true;
+  showPerkChoices();
+  setDebugNotice("已打开当前三选一。");
+}
+
+function getFilteredDebugPerkRows() {
+  const rows = getDebugPerkRows();
+  const filter = debugPerkFilter;
+  if (filter === "martial") return rows.filter((row) => row.targetType === "martial_art" || row.scope === "martial_art" || String(row.category).includes("武学"));
+  if (filter === "artifact") return rows.filter((row) => row.targetType === "artifact" || row.scope === "artifact" || String(row.category).includes("法宝"));
+  if (filter === "major") return rows.filter((row) => String(row.upgradeType || row.upgradeKind || row.category).includes("major") || String(row.category).includes("大成"));
+  if (filter === "normal") return rows.filter((row) => !row.invalidReason && !String(row.category).includes("大成"));
+  if (filter === "invalid") return rows.filter((row) => row.invalidReason);
+  return rows;
+}
+
+function unlockAllArtifacts() {
+  Object.keys(DATA.artifacts || {}).forEach((id) => debugUnlockArtifact(id));
+  setDebugNotice("已解锁全部法宝。");
+}
+
 function getDebugSnapshot() {
+  const chapterProgress = playerMeta.chapterProgress?.chapter_1 || {};
   return {
     APP_STATE: state.appState,
+    currentView: state.phase || "",
+    currentChapterId: state.currentChapterId || "",
+    currentNodeId: state.currentNodeId || "",
+    currentBattleConfigId: state.currentBattleConfigId || "",
     "player.level": state.runLevel,
     "profile.playerLevel": playerMeta.playerLevel,
     "profile.playerExp": playerMeta.playerExp,
@@ -2992,6 +3518,7 @@ function getDebugSnapshot() {
     activePerkModal: !perkModal.classList.contains("hidden"),
     "enemies.length": state.enemies.length,
     "characters.length": state.deployedRoles.length,
+    "visualEvents.length": state.visualEvents?.length || 0,
     animationFrame: state.animationFrameRunning ? `running (${state.frameCount})` : "stopped",
     battlePaused: state.paused,
     running: state.running,
@@ -3007,6 +3534,17 @@ function getDebugSnapshot() {
     roleAttackCount: state.deployedRoles.reduce((sum, role) => sum + role.attacks, 0),
     "artifacts.length": (state.selectedArtifactIds || []).length,
     selectedArtifact: (state.selectedArtifactIds || []).join(", "),
+    selectedArtifacts: (state.selectedArtifactIds || []).join(", "),
+    selectedFormation: state.selectedFormationId || state.loadoutFormationId || "",
+    selectedCharacters: (state.availableRoles || state.loadoutRoleIds || []).join(", "),
+    deployedCharacters: state.deployedRoles.map((role) => role.roleId).join(", "),
+    chapterProgress: JSON.stringify({
+      unlocked: chapterProgress.unlockedNodeIds?.length || 0,
+      cleared: chapterProgress.clearedNodeIds?.length || 0,
+      current: chapterProgress.currentNodeId || "",
+      lastCleared: chapterProgress.lastClearedNodeId || "",
+      storyFlags: Object.keys(chapterProgress.storyFlags || {}),
+    }),
     artifactCooldown: JSON.stringify(state.artifactCooldowns || {}),
     firstEnemyProgress: state.enemies[0] ? Number(state.enemies[0].progress).toFixed(3) : "none",
     firstEnemyMode: state.enemies[0] ? state.enemies[0].state : "none",
@@ -3226,6 +3764,10 @@ function getDebugStateRows() {
   const snapshot = getDebugSnapshot();
   return [
     ["APP_STATE", snapshot.APP_STATE],
+    ["currentView", snapshot.currentView],
+    ["currentChapterId", snapshot.currentChapterId],
+    ["currentNodeId", snapshot.currentNodeId],
+    ["currentBattleConfigId", snapshot.currentBattleConfigId],
     ["wave", snapshot.wave],
     ["arrayCoreHp / arrayCoreMaxHp", `${snapshot.arrayCoreHp} / ${snapshot.arrayCoreMaxHp}`],
     ["arrayCoreDefense", snapshot.arrayCoreDefense],
@@ -3233,6 +3775,7 @@ function getDebugStateRows() {
     ["spiritQi / nextLevelSpiritQi", `${snapshot["player.spiritQi"]} / ${snapshot["player.nextLevelSpiritQi"]}`],
     ["enemies.length", snapshot["enemies.length"]],
     ["projectiles.length", snapshot["projectiles.length"]],
+    ["visualEvents.length", snapshot["visualEvents.length"]],
     ["playerProfile.loadedFromLocalStorage", snapshot["profile.loadedFromLocalStorage"]],
     ["playerProfile.playerLevel", snapshot["profile.playerLevel"]],
     ["playerProfile.playerExp", snapshot["profile.playerExp"]],
@@ -3241,8 +3784,11 @@ function getDebugStateRows() {
     ["playerProfile.characterLevels", snapshot["profile.characterLevels"]],
     ["playerProfile.highestWave", snapshot["profile.highestWave"]],
     ["playerProfile.totalKills", snapshot["profile.totalKills"]],
-    ["当前上阵角色", state.deployedRoles.map((role) => DATA.roles[role.roleId]?.name || role.roleId).join(", ")],
-    ["当前携带法宝", (state.selectedArtifactIds || []).map((id) => DATA.artifacts[id]?.name || id).join(", ")],
+    ["selected characters", snapshot.selectedCharacters],
+    ["deployed characters", snapshot.deployedCharacters],
+    ["selected artifacts", snapshot.selectedArtifacts],
+    ["selected formation", snapshot.selectedFormation],
+    ["chapterProgress", snapshot.chapterProgress],
   ].map(([key, value]) => ({ key, value }));
 }
 
@@ -3276,22 +3822,29 @@ function getDebugRoleRows() {
 }
 
 function getDebugArtifactRows() {
-  return Object.values(DATA.artifacts || {}).map((artifact) => ({
-    id: artifact.id,
-    __scope: "artifacts",
-    __id: artifact.id,
-    name: artifact.name,
-    rarity: artifact.rarity || "",
-    owned: playerMeta.ownedArtifacts.includes(artifact.id),
-    selected: (state.selectedArtifactIds || []).includes(artifact.id),
-    damage: artifact.damage,
-    cooldown: artifact.cooldown,
-    projectileType: artifact.projectileType || "",
-    effectType: artifact.effectType || "",
-    targetRule: artifact.targetRule || artifact.targeting || "",
-    description: artifact.description || artifact.attackText || "",
-    runtimeCooldown: state.artifactCooldowns?.[artifact.id] ?? "",
-  }));
+  return Object.values(DATA.artifacts || {}).map((artifact) => {
+    const runtime = state.artifactRuntime?.[artifact.id] || {};
+    return {
+      id: artifact.id,
+      __scope: "artifacts",
+      __id: artifact.id,
+      name: artifact.name,
+      rarity: artifact.rarity || "",
+      role: artifact.role || artifact.type || "",
+      owned: playerMeta.ownedArtifacts.includes(artifact.id),
+      selected: (state.selectedArtifactIds || []).includes(artifact.id),
+      runtimeLevel: runtime.level || 1,
+      minorEvolutionSelected: Boolean(runtime.minorEvolutionSelected),
+      majorEvolutionSelected: Boolean(runtime.majorEvolutionSelected),
+      damage: artifact.damage,
+      cooldown: artifact.cooldown,
+      projectileType: artifact.projectileType || "",
+      effectType: artifact.effectType || "",
+      targetRule: artifact.targetRule || artifact.targeting || "",
+      description: artifact.description || artifact.attackText || "",
+      runtimeCooldown: state.artifactCooldowns?.[artifact.id] ?? runtime.cooldownTimer ?? "",
+    };
+  });
 }
 
 function getDebugMartialRows() {
@@ -3386,6 +3939,9 @@ function getDebugPerkRows() {
       targetId: getPerkTargetId(perk),
       targetName: perk.targetName || "",
       targetType: perk.targetType || perk.scope,
+      scope: perk.scope || "",
+      category: perk.category || "",
+      upgradeType: perk.upgradeType || perk.upgradeKind || perk.effect?.upgradeType || "",
       effectType: perk.effect?.type || perk.effectType,
       value: perk.effect?.value ?? "",
       weight: perkUpgradeWeight(perk),
@@ -3446,6 +4002,7 @@ function getDebugFormationRows() {
     __scope: "formations",
     __id: formation.id,
     name: formation.name,
+    selected: state.selectedFormationId === formation.id || state.loadoutFormationId === formation.id,
     triggerType: formation.triggerType || "cooldown",
     triggerInterval: formation.triggerInterval || formation.cooldown,
     effectType: formation.effectType,
@@ -3453,6 +4010,7 @@ function getDebugFormationRows() {
     cooldown: formation.cooldown,
     unlockCondition: formation.unlockCondition || formation.rarity || "",
     description: formation.description || formation.effectText || "",
+    runtime: JSON.stringify(state.formationRuntime?.[formation.id] || {}),
   }));
 }
 
@@ -3498,46 +4056,314 @@ function renderDebugActions() {
     ["toggleEdit", debugEditMode ? "编辑模式：开" : "编辑模式：关"],
     ["applyRun", "应用本局"],
     ["save", "保存到本地调试数据"],
-    ["savePlayerProfile", "保存玩家存档"],
-    ["reset", "重置调试数据"],
-    ["clearPlayerProfile", "清空玩家存档"],
     ["export", "导出 JSON"],
-    ["grantLingqi100", "+100 灵气"],
-    ["levelUp", "本局升一级"],
-    ["qingyaLv3", "陆青崖武学 Lv3"],
-    ["qingyaLv6", "陆青崖武学 Lv6"],
-    ["qingyaLv7", "陆青崖武学 Lv7"],
-    ["jumpWave5", "跳到第5波"],
-    ["jumpWave10", "跳到第10波"],
-    ["healCore", "阵眼回满血"],
-    ["clearEnemies", "清空怪物"],
-    ["clearProjectiles", "清空弹道"],
-    ["grantSpiritStones1000", "+1000 灵石"],
-    ["unlockAllCharacters", "解锁全部角色"],
   ];
   const renderKey = actions.map(([id, label]) => `${id}:${label}`).join("|");
   if (debugActionsRenderKey === renderKey) return;
   debugActionsRenderKey = renderKey;
   debugActionsPanel.innerHTML = actions.map(([id, label]) => `<button type="button" data-debug-action="${id}">${safeText(label)}</button>`).join("");
 }
+
+function renderDebugButtonGrid(buttons) {
+  return `<div class="debug-button-grid">${buttons.map(([id, label]) => `<button type="button" data-debug-action="${safeText(id)}">${safeText(label)}</button>`).join("")}</div>`;
+}
+
+function renderDebugBattleTab() {
+  return `
+    <section class="debug-tool-section">
+      <h3>战斗调试</h3>
+      ${renderDebugButtonGrid([
+        ["refresh", "刷新运行时数据"],
+        ["levelUp", "本局升一级"],
+        ["grantLingqi100", "+100 灵气"],
+        ["grantSpiritStones1000", "+1000 灵石"],
+        ["healCore", "阵眼回满血"],
+        ["clearEnemies", "清空怪物"],
+        ["clearProjectiles", "清空弹道"],
+        ["clearVisualEvents", "清空 visualEvents"],
+        ["pauseBattle", "暂停战斗"],
+        ["resumeBattle", "恢复战斗"],
+        ["forceBattle", "强制进入 BATTLE"],
+        ["forceLoadout", "强制进入 LOADOUT"],
+        ["forceDeploy", "强制进入 DEPLOY"],
+        ["forceWin", "强制结算胜利"],
+        ["forceLose", "强制结算失败"],
+      ])}
+    </section>
+    ${debugTable([{ key: "key", label: "字段" }, { key: "value", label: "当前值" }], getDebugStateRows())}
+  `;
+}
+
+function renderDebugChapterWaveTab() {
+  ensureDebugSelections();
+  const chapters = Object.values(DATA.chapters || {});
+  const chapter = getChapter(debugSelectedChapterId) || chapters[0];
+  const nodes = chapter?.nodes || [];
+  return `
+    <section class="debug-tool-section">
+      <h3>自由跳波</h3>
+      <div class="debug-control-row">
+        <label>目标波次 <input class="debug-field" data-debug-control="target-wave" type="number" min="1" step="1" value="${safeText(state.wave || 1)}" /></label>
+        <button type="button" data-debug-action="jumpWaveCustom">跳到指定波次</button>
+      </div>
+      ${renderDebugButtonGrid([
+        ["jumpWave1", "跳到第1波"],
+        ["jumpWave5", "跳到第5波"],
+        ["jumpWave10", "跳到第10波"],
+        ["jumpWave15", "跳到第15波"],
+        ["nextWave", "下一波"],
+      ])}
+    </section>
+    <section class="debug-tool-section">
+      <h3>章节节点</h3>
+      <div class="debug-control-row">
+        <label>章节 <select class="debug-field" data-debug-control="chapter-select">${debugSelectOptions(chapters, debugSelectedChapterId, (item) => `${item.chapterId} · ${item.name}`)}</select></label>
+        <label>节点 <select class="debug-field" data-debug-control="node-select">${debugSelectOptions(nodes, debugSelectedNodeId, (item) => `${item.displayId} ${item.name}`)}</select></label>
+      </div>
+      ${renderDebugButtonGrid([
+        ["enterSelectedNode", "进入该节点"],
+        ["markSelectedNodeCleared", "标记该节点通关"],
+        ["unlockAllNodes", "解锁全部节点"],
+        ["resetChapterProgress", "重置章节进度"],
+      ])}
+    </section>
+    <h3>波次配置</h3>
+    ${debugEditableTable([{ key: "wave", editable: true, type: "number" }, { key: "enemyId", editable: true }, { key: "count", editable: true, type: "number" }, { key: "spawnInterval", editable: true, type: "number" }, { key: "delay", editable: true, type: "number", field: "startDelay" }, { key: "goal", editable: true }, { key: "isBossWave", editable: true, type: "boolean" }, { key: "active" }], getDebugWaveRows())}
+  `;
+}
+
+function renderDebugRoleMartialTab() {
+  ensureDebugSelections();
+  const role = DATA.roles?.[debugSelectedRoleId] || {};
+  const art = martialArtForCharacter(debugSelectedRoleId);
+  const deployed = state.deployedRoles.some((item) => item.roleId === debugSelectedRoleId);
+  const unlocked = playerMeta.ownedCharacters.includes(debugSelectedRoleId);
+  const martialLevel = art ? state.martialArtLevels?.[art.id] || 0 : 0;
+  return `
+    <section class="debug-tool-section">
+      <h3>通用角色 / 先天武学调试</h3>
+      <div class="debug-control-row">
+        <label>角色 <select class="debug-field" data-debug-control="role-select">${debugSelectOptions(Object.values(DATA.roles || {}), debugSelectedRoleId, (item) => `${item.name} · ${item.id}`)}</select></label>
+        <label>角色等级 <input class="debug-field" data-debug-control="role-level" type="number" min="1" step="1" value="${safeText(getCharacterLevel(debugSelectedRoleId) || 1)}" /></label>
+        <label>本局伤害倍率 <input class="debug-field" data-debug-control="role-damage-mult" type="number" min="0.01" step="0.05" value="${safeText(state.deployedRoles.find((item) => item.roleId === debugSelectedRoleId)?.personalDamage || 1)}" /></label>
+      </div>
+      <div class="debug-info-grid">
+        <span>角色：${safeText(role.name || "-")}</span>
+        <span>rarity：${safeText(role.rarity || "-")}</span>
+        <span>school：${safeText(role.school || "-")}</span>
+        <span>martialArtName：${safeText(art?.name || role.martialArtName || "-")}</span>
+        <span>本局武学等级：${safeText(martialLevel || "-")}</span>
+        <span>已上阵：${deployed ? "是" : "否"}</span>
+        <span>已解锁：${unlocked ? "是" : "否"}</span>
+      </div>
+      ${renderDebugButtonGrid([
+        ["unlockSelectedRole", "解锁该角色"],
+        ["deploySelectedRole", "上阵该角色"],
+        ["removeSelectedRole", "移除该角色"],
+        ["setRoleLevel", "设置角色等级"],
+        ["setRoleDamageMult", "设置基础伤害倍率"],
+        ["setRoleMartialLv1", "设置武学 Lv1"],
+        ["setRoleMartialLv3", "设置武学 Lv3"],
+        ["setRoleMartialLv6", "设置武学 Lv6"],
+        ["setRoleMartialLv7", "设置武学 Lv7"],
+        ["triggerRoleMinor", "触发小进化"],
+        ["triggerRoleMajor", "触发大成"],
+        ["addRoleMajorEnhance", "添加一次大成强化"],
+      ])}
+      <h4>陆青崖快捷</h4>
+      ${renderDebugButtonGrid([
+        ["qingyaLv3", "陆青崖武学 Lv3"],
+        ["qingyaLv6", "陆青崖武学 Lv6"],
+        ["qingyaLv7", "陆青崖武学 Lv7"],
+      ])}
+    </section>
+    <h3>角色表</h3>
+    ${debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "rarity", editable: true, options: ["SR", "SSR", "UR", "SP"] }, { key: "rankTitle", editable: true }, { key: "school", editable: true }, { key: "role", editable: true }, { key: "baseDamage", editable: true, type: "number" }, { key: "baseAttackSpeed", editable: true, type: "number" }, { key: "baseRange", editable: true, type: "number" }, { key: "projectileType", editable: true }, { key: "trajectoryType", editable: true }, { key: "owned" }, { key: "deployed" }, { key: "level" }], getDebugRoleRows())}
+    <h3>先天武学表</h3>
+    ${debugEditableTable([{ key: "martialArtId" }, { key: "name", editable: true }, { key: "ownerCharacterId", editable: true }, { key: "maxLevel", editable: true, type: "number" }, { key: "martialArtLevel" }, { key: "selectedUpgradeIds" }, { key: "minorEvolutionSelected" }, { key: "majorEvolutionSelected" }, { key: "projectileCount", editable: true, type: "number", field: "debugParams.projectileCount" }, { key: "volleyCount", editable: true, type: "number", field: "debugParams.volleyCount" }, { key: "damageMultiplier", editable: true, type: "number", field: "debugParams.damageMultiplier" }, { key: "attackIntervalMultiplier", editable: true, type: "number", field: "debugParams.attackIntervalMultiplier" }, { key: "pierceCount", editable: true, type: "number", field: "debugParams.pierceCount" }, { key: "majorEvolutionId" }], getDebugMartialRows())}
+  `;
+}
+
+function renderDebugArtifactTab() {
+  ensureDebugSelections();
+  const artifact = DATA.artifacts?.[debugSelectedArtifactId] || {};
+  const runtime = state.artifactRuntime?.[debugSelectedArtifactId] || {};
+  return `
+    <section class="debug-tool-section">
+      <h3>法宝调试</h3>
+      <div class="debug-control-row">
+        <label>法宝 <select class="debug-field" data-debug-control="artifact-select">${debugSelectOptions(Object.values(DATA.artifacts || {}), debugSelectedArtifactId, (item) => `${item.name} · ${item.id}`)}</select></label>
+      </div>
+      <div class="debug-info-grid">
+        <span>法宝名：${safeText(artifact.name || "-")}</span>
+        <span>定位：${safeText(artifact.role || artifact.type || "-")}</span>
+        <span>已拥有：${playerMeta.ownedArtifacts.includes(debugSelectedArtifactId) ? "是" : "否"}</span>
+        <span>本局携带：${(state.selectedArtifactIds || []).includes(debugSelectedArtifactId) ? "是" : "否"}</span>
+        <span>本局等级：${safeText(runtime.level || 1)}</span>
+        <span>小进化：${runtime.minorEvolutionSelected ? "是" : "否"}</span>
+        <span>大成：${runtime.majorEvolutionSelected ? "是" : "否"}</span>
+      </div>
+      ${renderDebugButtonGrid([
+        ["unlockSelectedArtifact", "解锁该法宝"],
+        ["carrySelectedArtifact", "本局携带该法宝"],
+        ["removeSelectedArtifact", "从本局移除该法宝"],
+        ["setArtifactLv1", "设置法宝 Lv1"],
+        ["setArtifactLv3", "设置法宝 Lv3"],
+        ["setArtifactLv6", "设置法宝 Lv6"],
+        ["setArtifactLv7", "设置法宝 Lv7"],
+        ["triggerArtifactMinor", "触发小进化"],
+        ["triggerArtifactMajor", "触发大成"],
+        ["triggerArtifactNow", "立即触发该法宝攻击"],
+        ["resetArtifactCooldown", "重置该法宝冷却"],
+      ])}
+    </section>
+    ${debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "rarity", editable: true }, { key: "role" }, { key: "runtimeLevel" }, { key: "owned" }, { key: "selected" }, { key: "minorEvolutionSelected" }, { key: "majorEvolutionSelected" }, { key: "damage", editable: true, type: "number" }, { key: "cooldown", editable: true, type: "number" }, { key: "projectileType", editable: true }, { key: "effectType", editable: true }, { key: "runtimeCooldown" }], getDebugArtifactRows())}
+  `;
+}
+
+function renderDebugFormationTab() {
+  ensureDebugSelections();
+  const formation = DATA.formations?.[debugSelectedFormationId] || {};
+  return `
+    <section class="debug-tool-section">
+      <h3>护山大阵调试</h3>
+      <div class="debug-control-row">
+        <label>阵法 <select class="debug-field" data-debug-control="formation-select">${debugSelectOptions(Object.values(DATA.formations || {}), debugSelectedFormationId, (item) => `${item.name} · ${item.id}`)}</select></label>
+      </div>
+      <div class="debug-info-grid">
+        <span>阵法名：${safeText(formation.name || "-")}</span>
+        <span>定位：${safeText(formation.role || formation.rarity || "-")}</span>
+        <span>本局选择：${state.selectedFormationId === debugSelectedFormationId || state.loadoutFormationId === debugSelectedFormationId ? "是" : "否"}</span>
+        <span>cooldown：${safeText(state.formationCooldown || 0)}</span>
+        <span>runtime：${safeText(JSON.stringify(state.formationRuntime?.[debugSelectedFormationId] || {}))}</span>
+      </div>
+      <p>${safeText(formation.effectText || formation.description || "")}</p>
+      ${renderDebugButtonGrid([
+        ["switchSelectedFormation", "本局切换为该阵法"],
+        ["triggerFormationNow", "立即触发阵法效果"],
+        ["resetFormationCooldown", "重置阵法冷却"],
+        ["healCore", "阵眼回满血"],
+        ["coreHp30", "阵眼设为 30% 血量"],
+        ["coreHp1", "阵眼设为 1 点血"],
+      ])}
+    </section>
+    ${debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "selected" }, { key: "triggerType", editable: true }, { key: "triggerInterval", editable: true, type: "number" }, { key: "effectType", editable: true }, { key: "effectValue", editable: true, type: "number", field: "maxTargets" }, { key: "cooldown", editable: true, type: "number" }, { key: "description", editable: true, type: "textarea", field: "effectText" }, { key: "runtime" }], getDebugFormationRows())}
+    ${debugTable([{ key: "key", label: "字段" }, { key: "value", label: "当前值" }], getDebugArrayCoreRows())}
+  `;
+}
+
+function renderDebugEnemyTab() {
+  ensureDebugSelections();
+  const enemy = DATA.enemies?.[debugSelectedEnemyId] || {};
+  const aliveCount = state.enemies.filter(isEnemyAlive).length;
+  const bossExists = state.enemies.some((item) => item.config?.isBoss || item.isBoss);
+  return `
+    <section class="debug-tool-section">
+      <h3>怪物生成器</h3>
+      <div class="debug-control-row">
+        <label>怪物 <select class="debug-field" data-debug-control="enemy-select">${debugSelectOptions(Object.values(DATA.enemies || {}), debugSelectedEnemyId, (item) => `${item.name} · ${item.id}`)}</select></label>
+        <label>数量 <input class="debug-field" data-debug-control="enemy-count" type="number" min="1" max="50" step="1" value="1" /></label>
+        <label>位置 <select class="debug-field" data-debug-control="enemy-position">
+          <option value="gate">妖门区</option>
+          <option value="upper">妖兽行进区上段</option>
+          <option value="middle">妖兽行进区中段</option>
+          <option value="front">阵眼前方</option>
+          <option value="random">随机位置</option>
+        </select></label>
+      </div>
+      <div class="debug-info-grid">
+        <span>当前配置：${safeText(enemy.name || "-")}</span>
+        <span>enemies.length：${state.enemies.length}</span>
+        <span>alive enemies：${aliveCount}</span>
+        <span>Boss 存在：${bossExists ? "是" : "否"}</span>
+      </div>
+      ${renderDebugButtonGrid([
+        ["spawnSelectedEnemy", "生成怪物"],
+        ["spawnEnemy1", "生成 1 只"],
+        ["spawnEnemy5", "生成 5 只"],
+        ["spawnEnemy10", "生成 10 只"],
+        ["spawnBoss", "生成 Boss"],
+        ["clearEnemies", "清空怪物"],
+      ])}
+    </section>
+    ${debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "hp", editable: true, type: "number" }, { key: "moveSpeed", editable: true, type: "number" }, { key: "attackDamage", editable: true, type: "number" }, { key: "attackInterval", editable: true, type: "number" }, { key: "spiritQiReward", editable: true, type: "number" }, { key: "hitRadius", editable: true, type: "number" }, { key: "isElite", editable: true, type: "boolean" }, { key: "isBoss", editable: true, type: "boolean" }], getDebugEnemyRows())}
+  `;
+}
+
+function renderDebugPerkTab() {
+  const filterOptions = [
+    ["all", "全部"],
+    ["martial", "角色武学"],
+    ["artifact", "法宝"],
+    ["major", "大成"],
+    ["normal", "普通"],
+    ["invalid", "无效候选"],
+  ];
+  return `
+    <section class="debug-tool-section">
+      <h3>机缘 / 升级候选调试</h3>
+      <div class="debug-control-row">
+        <label>过滤 <select class="debug-field" data-debug-control="perk-filter">${filterOptions.map(([value, label]) => `<option value="${value}" ${debugPerkFilter === value ? "selected" : ""}>${label}</option>`).join("")}</select></label>
+      </div>
+      ${renderDebugButtonGrid([
+        ["openPerkChoices", "立即打开三选一"],
+        ["perkFilterMartial", "生成角色武学候选"],
+        ["perkFilterArtifact", "生成法宝候选"],
+        ["perkFilterMajor", "生成大成候选"],
+        ["perkFilterNormal", "生成普通候选"],
+        ["perkRefresh", "刷新候选池"],
+        ["perkClear", "清空候选池"],
+      ])}
+    </section>
+    ${debugEditableTable([{ key: "id" }, { key: "displayName", editable: true, field: "name" }, { key: "targetType", editable: true }, { key: "targetId", editable: true }, { key: "targetName", editable: true }, { key: "category", editable: true }, { key: "effectType", editable: true }, { key: "upgradeType" }, { key: "duplicateKey" }, { key: "invalidReason" }, { key: "isDuplicateThisRoll" }, { key: "actualEffectPreview" }, { key: "finalWeight" }], getFilteredDebugPerkRows())}
+  `;
+}
+
+function renderDebugSaveTab() {
+  return `
+    <section class="debug-tool-section">
+      <h3>存档调试</h3>
+      ${renderDebugButtonGrid([
+        ["savePlayerProfile", "保存玩家存档"],
+        ["reloadPlayerProfile", "重新读取玩家存档"],
+        ["clearPlayerProfile", "清空玩家存档"],
+        ["reset", "清空调试数据"],
+        ["export", "导出 JSON"],
+        ["copyDebugExport", "复制 JSON 到剪贴板"],
+        ["resetChapterProgress", "重置章节进度"],
+        ["unlockAllCharacters", "解锁全部角色"],
+        ["unlockAllArtifacts", "解锁全部法宝"],
+        ["grantSpiritStones1000", "+1000 灵石"],
+      ])}
+    </section>
+    <textarea class="debug-json" readonly>${safeText(JSON.stringify({
+      playerProfile: playerMeta,
+      chapterProgress: playerMeta.chapterProgress,
+      debugOverrides,
+    }, null, 2))}</textarea>
+  `;
+}
+
 function renderDebugContent() {
   const rarityOptions = ["SR", "SSR", "UR", "SP", "初始", "普通", "稀有", "史诗", "传说"];
   if (activeDebugTab === "状态") {
     debugContent.innerHTML = debugTable([{ key: "key", label: "字段" }, { key: "value", label: "当前值" }], getDebugStateRows());
-  } else if (activeDebugTab === "角色") {
-    debugContent.innerHTML = debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "rarity", editable: true, options: ["SR", "SSR", "UR", "SP"] }, { key: "rankTitle", editable: true }, { key: "school", editable: true }, { key: "role", editable: true }, { key: "baseDamage", editable: true, type: "number" }, { key: "baseAttackSpeed", editable: true, type: "number" }, { key: "baseRange", editable: true, type: "number" }, { key: "projectileType", editable: true }, { key: "trajectoryType", editable: true }, { key: "passiveSkill", editable: true }, { key: "unlockType", editable: true }, { key: "unlockLevel", editable: true, type: "number" }, { key: "owned" }, { key: "deployed" }], getDebugRoleRows());
-  } else if (activeDebugTab === "先天武学") {
-    debugContent.innerHTML = debugEditableTable([{ key: "martialArtId" }, { key: "name", editable: true }, { key: "ownerCharacterId", editable: true }, { key: "maxLevel", editable: true, type: "number" }, { key: "baseProjectileType", label: "projectileType", editable: true, field: "projectileType" }, { key: "martialArtLevel" }, { key: "selectedUpgradeIds" }, { key: "minorEvolutionSelected" }, { key: "majorEvolutionSelected" }, { key: "projectileCount", editable: true, type: "number", field: "debugParams.projectileCount" }, { key: "volleyCount", editable: true, type: "number", field: "debugParams.volleyCount" }, { key: "volleyInterval", editable: true, type: "number", field: "debugParams.volleyInterval" }, { key: "damageMultiplier", editable: true, type: "number", field: "debugParams.damageMultiplier" }, { key: "attackIntervalMultiplier", editable: true, type: "number", field: "debugParams.attackIntervalMultiplier" }, { key: "pierceCount", editable: true, type: "number", field: "debugParams.pierceCount" }, { key: "projectileSpeed" }, { key: "majorEvolutionId" }, { key: "singleProjectileDamage" }, { key: "attackInterval" }, { key: "totalProjectiles" }, { key: "isGiantSword" }], getDebugMartialRows()) + "<h3>升级节点</h3>" + debugEditableTable([{ key: "id" }, { key: "displayName", editable: true, field: "name" }, { key: "targetType", editable: true }, { key: "targetId", editable: true }, { key: "targetName", editable: true }, { key: "category", editable: true }, { key: "effectType", editable: true }, { key: "value", editable: true, field: "valueText" }, { key: "weight", editable: true, type: "number" }, { key: "requires", editable: true }, { key: "maxStacks", editable: true, type: "number" }, { key: "description", editable: true, type: "textarea" }, { key: "selected" }, { key: "selectable" }, { key: "invalidReason" }], getDebugUpgradeRows());
+  } else if (activeDebugTab === "战斗") {
+    debugContent.innerHTML = renderDebugBattleTab();
+  } else if (activeDebugTab === "章节 / 波次") {
+    debugContent.innerHTML = renderDebugChapterWaveTab();
+  } else if (activeDebugTab === "角色 / 先天武学") {
+    debugContent.innerHTML = renderDebugRoleMartialTab();
   } else if (activeDebugTab === "机缘 / 升级候选") {
-    debugContent.innerHTML = debugEditableTable([{ key: "id" }, { key: "displayName", editable: true, field: "name" }, { key: "targetType", editable: true }, { key: "targetId", editable: true }, { key: "targetName", editable: true }, { key: "category", editable: true }, { key: "effectType", editable: true }, { key: "value", editable: true, type: "number" }, { key: "weight", editable: true, type: "number" }, { key: "enabled", editable: true, type: "boolean" }, { key: "description", editable: true, type: "textarea" }, { key: "isValidForCurrentRun" }, { key: "invalidReason" }, { key: "isDuplicateThisRoll" }, { key: "duplicateKey" }, { key: "actualEffectPreview" }, { key: "finalWeight" }], getDebugPerkRows());
+    debugContent.innerHTML = renderDebugPerkTab();
   } else if (activeDebugTab === "怪物") {
-    debugContent.innerHTML = debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "hp", editable: true, type: "number" }, { key: "moveSpeed", editable: true, type: "number" }, { key: "attackDamage", editable: true, type: "number" }, { key: "attackInterval", editable: true, type: "number" }, { key: "spiritQiReward", editable: true, type: "number" }, { key: "hitRadius", editable: true, type: "number" }, { key: "isElite", editable: true, type: "boolean" }, { key: "isBoss", editable: true, type: "boolean" }], getDebugEnemyRows());
-  } else if (activeDebugTab === "波次") {
-    debugContent.innerHTML = debugEditableTable([{ key: "wave", editable: true, type: "number" }, { key: "enemyId", editable: true }, { key: "count", editable: true, type: "number" }, { key: "spawnInterval", editable: true, type: "number" }, { key: "delay", editable: true, type: "number", field: "startDelay" }, { key: "goal", editable: true }, { key: "isBossWave", editable: true, type: "boolean" }, { key: "active" }], getDebugWaveRows());
+    debugContent.innerHTML = renderDebugEnemyTab();
   } else if (activeDebugTab === "法宝") {
-    debugContent.innerHTML = debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "rarity", editable: true, options: rarityOptions }, { key: "damage", editable: true, type: "number" }, { key: "cooldown", editable: true, type: "number" }, { key: "projectileType", editable: true }, { key: "effectType", editable: true }, { key: "targetRule", editable: true, field: "targeting" }, { key: "description", editable: true, type: "textarea", field: "attackText" }, { key: "owned" }, { key: "selected" }, { key: "runtimeCooldown" }], getDebugArtifactRows());
+    debugContent.innerHTML = renderDebugArtifactTab();
   } else if (activeDebugTab === "护山大阵") {
-    debugContent.innerHTML = debugEditableTable([{ key: "id" }, { key: "name", editable: true }, { key: "triggerType", editable: true }, { key: "triggerInterval", editable: true, type: "number" }, { key: "effectType", editable: true }, { key: "effectValue", editable: true, type: "number", field: "maxTargets" }, { key: "cooldown", editable: true, type: "number" }, { key: "unlockCondition", editable: true, field: "rarity" }, { key: "description", editable: true, type: "textarea", field: "effectText" }], getDebugFormationRows()) + debugTable([{ key: "key", label: "字段" }, { key: "value", label: "当前值" }], getDebugArrayCoreRows());
+    debugContent.innerHTML = renderDebugFormationTab();
+  } else if (activeDebugTab === "存档") {
+    debugContent.innerHTML = renderDebugSaveTab();
   }
 }
 
@@ -3584,9 +4410,12 @@ function exportDebugJson() {
   debugExportOpen = true;
   const payload = {
     debugOverrides,
+    snapshot: getDebugSnapshot(),
+    playerProfile: playerMeta,
+    chapterProgress: playerMeta.chapterProgress,
     mergedData: getMergedDebugData(),
   };
-  debugContent.innerHTML = `<div class="debug-export"><button type="button" data-debug-copy-export="overrides">复制 debugOverrides</button><button type="button" data-debug-copy-export="merged">复制 mergedData</button><textarea class="debug-json" readonly>${safeText(JSON.stringify(payload, null, 2))}</textarea></div>`;
+  debugContent.innerHTML = `<div class="debug-export"><button type="button" data-debug-copy-export="overrides">复制 debugOverrides</button><button type="button" data-debug-copy-export="merged">复制 mergedData</button><button type="button" data-debug-copy-export="profile">复制 playerProfile</button><textarea class="debug-json" readonly>${safeText(JSON.stringify(payload, null, 2))}</textarea></div>`;
 }
 
 function setQingyaDebugLevel(level) {
@@ -3676,13 +4505,18 @@ function runDebugAction(action) {
     reset: () => resetDebugData(),
     clearPlayerProfile: () => clearPlayerProfileWithConfirm(),
     export: () => exportDebugJson(),
+    copyDebugExport: () => copyDebugText(JSON.stringify({ playerProfile: playerMeta, chapterProgress: playerMeta.chapterProgress, debugOverrides }, null, 2)),
     grantLingqi100: () => getDebugActions().grantLingqi(100),
     levelUp: () => getDebugActions().grantLingqi(Math.max(1, nextLevelRequirement() - state.lingqi)),
     qingyaLv3: () => setQingyaDebugLevel(3),
     qingyaLv6: () => setQingyaDebugLevel(6),
     qingyaLv7: () => setQingyaDebugLevel(7),
-    jumpWave5: () => jumpToWave(5),
-    jumpWave10: () => jumpToWave(10),
+    jumpWave1: () => debugJumpToWave(1),
+    jumpWave5: () => debugJumpToWave(5),
+    jumpWave10: () => debugJumpToWave(10),
+    jumpWave15: () => debugJumpToWave(15),
+    jumpWaveCustom: () => debugJumpToWave(debugControlNumber("target-wave", NaN)),
+    nextWave: () => debugJumpToWave((Number(state.wave) || 0) + 1),
     healCore: () => healArrayCoreFull(),
     clearEnemies: () => {
       state.enemies = [];
@@ -3690,15 +4524,120 @@ function runDebugAction(action) {
     clearProjectiles: () => {
       state.projectiles = [];
     },
+    clearVisualEvents: () => {
+      state.visualEvents = [];
+    },
+    pauseBattle: () => {
+      state.paused = true;
+      state.running = false;
+    },
+    resumeBattle: () => {
+      state.paused = false;
+      state.running = true;
+      if (state.appState === APP_STATE.LEVEL_UP_REWARD) state.appState = APP_STATE.BATTLE;
+    },
+    forceBattle: () => debugForceBattle(),
+    forceLoadout: () => debugForceLoadout(),
+    forceDeploy: () => debugForceDeploy(),
+    forceWin: () => endGame(true),
+    forceLose: () => endGame(false),
+    enterSelectedNode: () => debugEnterSelectedNode(),
+    markSelectedNodeCleared: () => debugMarkSelectedNodeCleared(),
+    unlockAllNodes: () => debugUnlockAllNodes(),
+    resetChapterProgress: () => debugResetChapter(),
+    unlockSelectedRole: () => {
+      debugUnlockCharacter(debugSelectedRoleId);
+      setDebugNotice("角色已解锁。");
+    },
+    deploySelectedRole: () => {
+      debugDeployRole(debugSelectedRoleId);
+      setDebugNotice("角色已上阵。");
+    },
+    removeSelectedRole: () => {
+      debugRemoveRole(debugSelectedRoleId);
+      setDebugNotice("角色已从本局移除。");
+    },
+    setRoleLevel: () => debugSetCharacterLevel(debugSelectedRoleId),
+    setRoleDamageMult: () => debugSetRoleDamageMultiplier(debugSelectedRoleId),
+    setRoleMartialLv1: () => setRoleMartialLevel(debugSelectedRoleId, 1),
+    setRoleMartialLv3: () => setRoleMartialLevel(debugSelectedRoleId, 3),
+    setRoleMartialLv6: () => setRoleMartialLevel(debugSelectedRoleId, 6),
+    setRoleMartialLv7: () => setRoleMartialLevel(debugSelectedRoleId, 7),
+    triggerRoleMinor: () => debugTriggerMartialEvolution(debugSelectedRoleId, "minor_evolution"),
+    triggerRoleMajor: () => debugTriggerMartialEvolution(debugSelectedRoleId, "major_evolution"),
+    addRoleMajorEnhance: () => debugAddMajorEnhance(debugSelectedRoleId),
+    unlockSelectedArtifact: () => {
+      debugUnlockArtifact(debugSelectedArtifactId);
+      setDebugNotice("法宝已解锁。");
+    },
+    carrySelectedArtifact: () => {
+      debugCarryArtifact(debugSelectedArtifactId);
+      setDebugNotice("法宝已加入本局携带。");
+    },
+    removeSelectedArtifact: () => {
+      debugRemoveArtifact(debugSelectedArtifactId);
+      setDebugNotice("法宝已从本局移除。");
+    },
+    setArtifactLv1: () => setArtifactDebugLevel(debugSelectedArtifactId, 1),
+    setArtifactLv3: () => setArtifactDebugLevel(debugSelectedArtifactId, 3),
+    setArtifactLv6: () => setArtifactDebugLevel(debugSelectedArtifactId, 6),
+    setArtifactLv7: () => setArtifactDebugLevel(debugSelectedArtifactId, 7),
+    triggerArtifactMinor: () => debugTriggerArtifactEvolution(debugSelectedArtifactId, "minor"),
+    triggerArtifactMajor: () => debugTriggerArtifactEvolution(debugSelectedArtifactId, "major"),
+    triggerArtifactNow: () => debugTriggerArtifactNow(debugSelectedArtifactId),
+    resetArtifactCooldown: () => debugResetArtifactCooldown(debugSelectedArtifactId),
+    switchSelectedFormation: () => {
+      debugSwitchFormation(debugSelectedFormationId);
+      setDebugNotice("已切换本局阵法。");
+    },
+    triggerFormationNow: () => debugTriggerFormationNow(debugSelectedFormationId),
+    resetFormationCooldown: () => debugResetFormationCooldown(debugSelectedFormationId),
+    coreHp30: () => {
+      debugSetArrayCoreHp(0.3);
+      setDebugNotice("阵眼血量已设为 30%。");
+    },
+    coreHp1: () => {
+      debugSetArrayCoreHp(1);
+      setDebugNotice("阵眼血量已设为 1。");
+    },
+    spawnSelectedEnemy: () => debugSpawnEnemy(debugSelectedEnemyId, debugControlNumber("enemy-count", 1), debugControlValue("enemy-position", "gate")),
+    spawnEnemy1: () => debugSpawnEnemy(debugSelectedEnemyId, 1, debugControlValue("enemy-position", "gate")),
+    spawnEnemy5: () => debugSpawnEnemy(debugSelectedEnemyId, 5, debugControlValue("enemy-position", "gate")),
+    spawnEnemy10: () => debugSpawnEnemy(debugSelectedEnemyId, 10, debugControlValue("enemy-position", "gate")),
+    spawnBoss: () => debugSpawnBoss(),
+    openPerkChoices: () => debugOpenPerkChoices(),
+    perkFilterMartial: () => {
+      debugPerkFilter = "martial";
+    },
+    perkFilterArtifact: () => {
+      debugPerkFilter = "artifact";
+    },
+    perkFilterMajor: () => {
+      debugPerkFilter = "major";
+    },
+    perkFilterNormal: () => {
+      debugPerkFilter = "normal";
+    },
+    perkRefresh: () => {
+      setDebugNotice("候选池已刷新。");
+    },
+    perkClear: () => {
+      perkGrid.innerHTML = "";
+      setDebugNotice("正式三选一卡牌已清空。");
+    },
     grantSpiritStones1000: () => getDebugActions().grantSpiritStones(1000),
     unlockAllCharacters: () => unlockAllCharacters(),
+    unlockAllArtifacts: () => unlockAllArtifacts(),
+    reloadPlayerProfile: () => {
+      applyPlayerProfile(loadPlayerProfile());
+      setDebugNotice("玩家存档已重新读取。");
+    },
   };
   const handler = handlers[action];
   if (!handler) return;
   handler();
   if (action === "export") return;
   debugExportOpen = false;
-  if (!["applyRun", "savePlayerProfile", "clearPlayerProfile"].includes(action)) debugNoticeText = "";
   renderLobby();
   renderLoadout();
   updateUi();
@@ -3907,8 +4846,35 @@ debugContent.addEventListener("input", (event) => {
 });
 debugContent.addEventListener("change", (event) => {
   if (event.target.matches("[data-debug-field]")) handleDebugFieldChange(event.target);
+  const control = event.target.closest("[data-debug-control]");
+  if (control) {
+    const name = control.dataset.debugControl;
+    if (name === "chapter-select") {
+      debugSelectedChapterId = control.value;
+      debugSelectedNodeId = getChapter(debugSelectedChapterId)?.nodes?.[0]?.nodeId || "";
+    } else if (name === "node-select") {
+      debugSelectedNodeId = control.value;
+    } else if (name === "role-select") {
+      debugSelectedRoleId = control.value;
+    } else if (name === "artifact-select") {
+      debugSelectedArtifactId = control.value;
+    } else if (name === "formation-select") {
+      debugSelectedFormationId = control.value;
+    } else if (name === "enemy-select") {
+      debugSelectedEnemyId = control.value;
+    } else if (name === "perk-filter") {
+      debugPerkFilter = control.value;
+    }
+    markDebugContentDirty();
+    updateDebugPanel();
+  }
 });
 debugContent.addEventListener("click", (event) => {
+  const debugAction = event.target.closest("[data-debug-action]");
+  if (debugAction) {
+    runDebugAction(debugAction.dataset.debugAction);
+    return;
+  }
   const applyRow = event.target.closest("[data-debug-apply-row]");
   if (applyRow) {
     if (!debugValidationErrors.size) applyDebugOverridesForRun();
@@ -3924,7 +4890,11 @@ debugContent.addEventListener("click", (event) => {
   }
   const exportButton = event.target.closest("[data-debug-copy-export]");
   if (exportButton) {
-    const payload = exportButton.dataset.debugCopyExport === "merged" ? getMergedDebugData() : debugOverrides;
+    const payload = exportButton.dataset.debugCopyExport === "merged"
+      ? getMergedDebugData()
+      : exportButton.dataset.debugCopyExport === "profile"
+        ? playerMeta
+        : debugOverrides;
     copyDebugText(JSON.stringify(payload, null, 2));
   }
 });
