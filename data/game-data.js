@@ -3327,6 +3327,147 @@ window.GAME_DATA.martialArts = [
   });
 })();
 
+window.GAME_DATA.battleConfigs = {
+  chapter1_node1: { chapterId: "chapter_1", nodeId: "chapter1_1", waveStart: 1, waveEnd: 1 },
+  chapter1_node2: { chapterId: "chapter_1", nodeId: "chapter1_2", waveStart: 1, waveEnd: 2 },
+  chapter1_node3: { chapterId: "chapter_1", nodeId: "chapter1_3", waveStart: 1, waveEnd: 3 },
+  chapter1_node4: { chapterId: "chapter_1", nodeId: "chapter1_4", waveStart: 1, waveEnd: 4 },
+  chapter1_node5: { chapterId: "chapter_1", nodeId: "chapter1_5", waveStart: 1, waveEnd: 5 },
+  chapter1_node6: { chapterId: "chapter_1", nodeId: "chapter1_6", waveStart: 1, waveEnd: 6 },
+  chapter1_node7: { chapterId: "chapter_1", nodeId: "chapter1_7", waveStart: 1, waveEnd: 7 },
+  chapter1_node8: { chapterId: "chapter_1", nodeId: "chapter1_8", waveStart: 1, waveEnd: 8 },
+  chapter1_node9: { chapterId: "chapter_1", nodeId: "chapter1_9", waveStart: 1, waveEnd: 10 },
+  chapter1_boss: { chapterId: "chapter_1", nodeId: "chapter1_10", waveStart: 15, waveEnd: 15 }
+};
+
+window.GAME_DATA.chapters = {
+  chapter_1: {
+    chapterId: "chapter_1",
+    name: "第一章·妖门初启",
+    subtitle: "妖门裂隙初现，山门大阵初醒。",
+    description: "玄门山外，夜半云裂。外山禁地涌出紫黑妖气，护山大阵外环出现裂纹。你临危受命，成为新任执阵弟子，率领宗门众人守住山门。",
+    theme: "山门初危，护阵初醒",
+    nodes: [
+      {
+        nodeId: "chapter1_1",
+        displayId: "1-1",
+        name: "山门警钟",
+        type: "tutorial_battle",
+        description: "山门钟声九响，妖气自外山涌来。你第一次接管护山阵眼，率陆青崖守住第一道防线。",
+        storyText: "山门钟声穿过云海，惊醒了整座玄门。外山方向，紫黑妖气如潮涌来。执事只留下一句话：守住阵眼，莫让妖物踏入山门。",
+        enemyPreview: ["赤鬃獠"],
+        rewardPreview: ["灵石", "角色经验"],
+        battleConfigId: "chapter1_node1",
+        waveRange: "1-1",
+        unlockText: "完成基础部署教学。"
+      },
+      {
+        nodeId: "chapter1_2",
+        displayId: "1-2",
+        name: "青石外阶",
+        type: "normal_battle",
+        description: "青石阶上残留着外门弟子的血迹。掠影猲贴地疾行，试图越过防线直扑阵眼。",
+        storyText: "青石阶上残留着外门弟子的血迹。有黑影贴地疾行，比赤鬃獠更快，也更狡猾。",
+        enemyPreview: ["赤鬃獠", "掠影猲"],
+        rewardPreview: ["灵石", "法宝碎片"],
+        battleConfigId: "chapter1_node2"
+      },
+      {
+        nodeId: "chapter1_3",
+        displayId: "1-3",
+        name: "断桥谷",
+        type: "normal_battle",
+        description: "断桥谷中传来沉重脚步声。铁甲魈披着妖化骨甲，一步一步压向阵前。",
+        storyText: "断桥谷中传来沉重脚步声。铁甲魈披着妖化骨甲，一步一步压向阵前。",
+        enemyPreview: ["赤鬃獠", "铁甲魈"],
+        rewardPreview: ["灵石", "角色经验材料"],
+        battleConfigId: "chapter1_node3"
+      },
+      {
+        nodeId: "chapter1_4",
+        displayId: "1-4",
+        name: "外阵裂纹",
+        type: "mechanic_battle",
+        description: "外阵边缘亮起细碎裂纹。裂爪獠以爪尖撕扯阵光，阵眼第一次受到明显威胁。",
+        storyText: "外阵边缘亮起细碎裂纹。有妖物伏低身形，爪尖缠着污浊妖气，专门撕咬阵光。",
+        enemyPreview: ["裂爪獠", "掠影猲", "赤鬃獠"],
+        rewardPreview: ["阵纹残片", "灵石"],
+        battleConfigId: "chapter1_node4"
+      },
+      {
+        nodeId: "chapter1_5",
+        displayId: "1-5",
+        name: "幽符林口",
+        type: "elite_battle",
+        description: "幽符巫在妖群后方施咒，赤鬃妖将踏雾而来。玩家第一次面对施法怪与精英怪组合。",
+        storyText: "幽符林中挂满残破符纸，风一吹便发出低哑哭声。妖群后方，有巫者举骨铃施咒，赤鬃妖将踏雾而来。",
+        enemyPreview: ["幽符巫", "赤鬃妖将", "铁甲魈", "赤鬃獠"],
+        rewardPreview: ["抽取券", "灵石"],
+        battleConfigId: "chapter1_node5"
+      },
+      {
+        nodeId: "chapter1_6",
+        displayId: "1-6",
+        name: "旧阵残碑",
+        type: "story_battle",
+        description: "外山旧碑半埋在青苔与妖雾中，碑上残留四个古字：镇门于山。",
+        storyText: "外山旧碑半埋在青苔与妖雾中。碑上刻着四个残字：镇门于山。",
+        enemyPreview: ["腐瘴蜃", "赤鬃獠", "铁甲魈"],
+        rewardPreview: ["旧阵残拓", "灵石"],
+        battleConfigId: "chapter1_node6",
+        storyUnlock: "old_array_rubbing"
+      },
+      {
+        nodeId: "chapter1_7",
+        displayId: "1-7",
+        name: "黑雾前哨",
+        type: "ranged_battle",
+        description: "黑雾之中，妖物不再急于近身。幽箭猲与骨符祭巫开始从远处攻击阵眼。",
+        storyText: "黑雾之中，妖影不再急于近身。几道幽箭穿雾而来，直击阵眼光壁。",
+        enemyPreview: ["幽箭猲", "骨符祭巫", "掠影猲"],
+        rewardPreview: ["法宝材料", "灵石"],
+        battleConfigId: "chapter1_node7"
+      },
+      {
+        nodeId: "chapter1_8",
+        displayId: "1-8",
+        name: "裂隙外环",
+        type: "mechanic_battle",
+        description: "妖门裂隙尚未完全张开，噬阵螟已经开始啃噬外环阵纹。",
+        storyText: "妖门裂隙尚未完全张开，但阵纹已被啃出细孔。成群噬阵螟伏在阵光边缘，像是在啃食一块腐木。",
+        enemyPreview: ["噬阵螟", "幽箭猲", "铁甲魈", "腐瘴蜃"],
+        rewardPreview: ["护山大阵材料", "阵纹残片"],
+        battleConfigId: "chapter1_node8"
+      },
+      {
+        nodeId: "chapter1_9",
+        displayId: "1-9",
+        name: "封阵祭坛",
+        type: "mini_boss",
+        description: "封阵祭坛被妖气侵蚀，赤鬃妖将率群妖强行撕开祭坛外阵。",
+        storyText: "祭坛上的青金阵纹被紫黑妖气染成暗色。赤鬃妖将立于祭坛中央，胸口妖甲不断鼓动，像在等待某种命令。",
+        enemyPreview: ["赤鬃妖将", "幽符巫", "噬阵螟"],
+        rewardPreview: ["稀有妖核", "灵石"],
+        battleConfigId: "chapter1_node9",
+        boss: true
+      },
+      {
+        nodeId: "chapter1_10",
+        displayId: "1-10",
+        name: "妖门初开",
+        type: "boss",
+        description: "裂隙终于张开一线，黑渊门将自妖气深处踏出。护山大阵迎来第一场真正考验。",
+        storyText: "裂隙终于张开一线。紫黑妖气如潮倒灌，门影之后，有高大的黑甲妖影缓步踏出。它望着护山大阵，像望着一把旧锁。",
+        enemyPreview: ["黑渊门将", "噬阵螟", "幽箭猲", "骨符祭巫"],
+        rewardPreview: ["归门妖纹", "大量灵石", "黑渊门将图鉴"],
+        battleConfigId: "chapter1_boss",
+        storyUnlock: "return_gate_rune",
+        boss: true
+      }
+    ]
+  }
+};
+
 window.GAME_DATA.perks.push(
   {
     id: "perk_sword_school_damage",

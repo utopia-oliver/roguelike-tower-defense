@@ -61,18 +61,37 @@
       .join("");
   }
 
-  function renderResourceBar({ root, playerProfile }) {
+  function currentChapterSummary({ DATA, playerProfile, helpers }) {
+    const chapter = DATA.chapters?.chapter_1;
+    const nodeId = helpers?.getCurrentChapterNodeId ? helpers.getCurrentChapterNodeId("chapter_1") : playerProfile.chapterProgress?.chapter_1?.currentNodeId;
+    const node = helpers?.getChapterNode ? helpers.getChapterNode("chapter_1", nodeId) : chapter?.nodes?.find((item) => item.nodeId === nodeId);
+    const clearedCount = playerProfile.chapterProgress?.chapter_1?.clearedNodeIds?.length || 0;
+    const complete = chapter?.nodes?.length && clearedCount >= chapter.nodes.length;
+    return { chapter, node, clearedCount, complete };
+  }
+
+  function renderResourceBar({ root, playerProfile, DATA, helpers }) {
     if (!root) return;
+    const summary = currentChapterSummary({ DATA, playerProfile, helpers });
     root.innerHTML = `
       <span>Lv. ${safeText(playerProfile.playerLevel || 1)}</span>
       <span>灵石 ${safeText(playerProfile.spiritStones || 0)}</span>
       <span>最高波次 ${safeText(playerProfile.highestWave || 0)}</span>
-      <span>主线：妖门初启</span>
+      <span>主线：${safeText(summary.complete ? "第一章已平定" : summary.node ? `${summary.node.displayId} ${summary.node.name}` : "妖门初启")}</span>
     `;
   }
 
-  function renderMainHub({ elements, playerProfile }) {
-    renderResourceBar({ root: elements.hubResourceBar, playerProfile });
+  function renderMainHub({ elements, playerProfile, DATA, helpers }) {
+    const summary = currentChapterSummary({ DATA, playerProfile, helpers });
+    renderResourceBar({ root: elements.hubResourceBar, playerProfile, DATA, helpers });
+    if (elements.hubMainTitle) {
+      elements.hubMainTitle.textContent = summary.complete ? "第一章已平定" : summary.chapter?.name || "第一章·妖门初启";
+    }
+    if (elements.hubMainDescription) {
+      elements.hubMainDescription.textContent = summary.complete
+        ? "新的裂隙正在外山深处蔓延……"
+        : `当前节点：${summary.node ? `${summary.node.displayId} ${summary.node.name}` : "1-1 山门警钟"}。${summary.chapter?.subtitle || "妖门裂隙初现，山门大阵初醒。"}`;
+    }
   }
 
   function classifyPage(page) {
@@ -235,21 +254,65 @@
     `;
   }
 
-  function renderAdventurePage({ DATA }) {
-    const preview = (DATA.waves || [])
-      .filter((wave) => wave.wave <= 5)
-      .flatMap((wave) => (wave.enemies || wave.segments || []).map((segment) => segment.enemyId))
-      .filter(Boolean);
-    const names = [...new Set(preview)].map((id) => DATA.enemies?.[id]?.name || id).filter(Boolean);
+  function nodeTypeLabel(type) {
+    return {
+      tutorial_battle: "教学战斗",
+      normal_battle: "普通战斗",
+      mechanic_battle: "机制战斗",
+      elite_battle: "精英战斗",
+      story_battle: "剧情战斗",
+      ranged_battle: "远程压阵",
+      mini_boss: "小首领",
+      boss: "Boss",
+    }[type] || type || "战斗";
+  }
+
+  function renderAdventurePage({ DATA, playerProfile, state, helpers }) {
+    const chapter = DATA.chapters?.chapter_1;
+    if (!chapter) return `<section class="xm-page-panel"><h2>历练</h2><p>章节数据暂未开放。</p></section>`;
+    const progress = playerProfile.chapterProgress?.[chapter.chapterId] || {};
+    const selectedNodeId = state.selectedAdventureNodeId || progress.currentNodeId || chapter.nodes[0]?.nodeId;
+    const selectedNode = chapter.nodes.find((node) => node.nodeId === selectedNodeId) || chapter.nodes[0];
+    const selectedStatus = helpers.getChapterNodeStatus(chapter.chapterId, selectedNode.nodeId);
+    const clearedCount = progress.clearedNodeIds?.length || 0;
+    const nodeButton = (node) => {
+      const status = helpers.getChapterNodeStatus(chapter.chapterId, node.nodeId);
+      const isSelected = node.nodeId === selectedNode.nodeId;
+      return `
+        <button type="button" class="xm-map-node xm-map-node--${safeText(status)} ${node.boss || node.type === "boss" || node.type === "mini_boss" ? "xm-map-node--boss" : ""} ${isSelected ? "xm-map-node--selected" : ""}" data-adventure-chapter-id="${safeText(chapter.chapterId)}" data-adventure-node-id="${safeText(node.nodeId)}">
+          <span>${safeText(node.displayId)}</span>
+          <strong>${safeText(node.name)}</strong>
+          <small>${status === "locked" ? "未解锁" : status === "cleared" ? "已通关" : "可挑战"}${node.boss || node.type === "boss" ? " · Boss" : ""}</small>
+        </button>
+      `;
+    };
+    const enemies = (selectedNode.enemyPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
+    const rewards = (selectedNode.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
+    const locked = selectedStatus === "locked";
+    const startLabel = selectedStatus === "cleared" ? "再次挑战" : "开始历练";
     return `
-      <section class="xm-page-panel xm-adventure-panel">
-        <p class="xm-eyebrow">当前章节</p>
-        <h2>第一章·妖门初启</h2>
-        <h3>当前关卡：妖门初开</h3>
-        <p>推荐：整备 1 名以上角色，选择 1 个护山大阵，可携带法宝辅助守阵。</p>
-        <p>怪物预览：${names.length ? names.map(safeText).join("、") : "赤鬃獠、掠影猲、铁甲魈"}</p>
-        <p>奖励预览：灵气成长、局外灵石、玩家经验。</p>
-        <button type="button" class="primary" data-page-action="start-adventure">开始历练</button>
+      <section class="xm-adventure-map">
+        <aside class="xm-chapter-panel">
+          <p class="xm-eyebrow">山门外环历练图</p>
+          <h2>${safeText(chapter.name)}</h2>
+          <h3>${safeText(chapter.subtitle)}</h3>
+          <p>${safeText(chapter.description)}</p>
+          <p>章节进度：${clearedCount} / ${chapter.nodes.length}</p>
+          <p>主题：${safeText(chapter.theme)}</p>
+        </aside>
+        <div class="xm-node-route">
+          ${chapter.nodes.map(nodeButton).join("")}
+        </div>
+        <aside class="xm-node-detail ${locked ? "xm-node-detail--locked" : ""}">
+          <p class="xm-eyebrow">${safeText(selectedNode.displayId)} · ${safeText(nodeTypeLabel(selectedNode.type))}${selectedNode.boss || selectedNode.type === "boss" ? " · Boss" : ""}</p>
+          <h2>${safeText(selectedNode.name)}</h2>
+          <p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p>
+          <blockquote>${safeText(selectedNode.storyText || selectedNode.description)}</blockquote>
+          <div class="xm-preview-row"><strong>敌人预览</strong><div>${enemies || "<span>未知妖物</span>"}</div></div>
+          <div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards || "<span>灵石</span>"}</div></div>
+          <button type="button" class="primary" data-page-action="start-adventure" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(locked ? "尚未解锁" : startLabel)}</button>
+          <button type="button" class="secondary" data-page-action="back-main">返回宗门</button>
+        </aside>
       </section>
     `;
   }
@@ -265,7 +328,7 @@
       BAG: () => renderBagPage(),
       GACHA: () => renderGachaPage({ playerProfile }),
       CODEX: () => renderCodexPage({ DATA }),
-      ADVENTURE: () => renderAdventurePage({ DATA }),
+      ADVENTURE: () => renderAdventurePage({ DATA, playerProfile, state, helpers }),
     };
     elements.featurePageContent.innerHTML = (renderers[page] || renderers.CHARACTERS)();
   }

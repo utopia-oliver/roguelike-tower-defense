@@ -53,6 +53,7 @@ const settlementTitle = document.querySelector("#settlementTitle");
 const settlementWave = document.querySelector("#settlementWave");
 const settlementKills = document.querySelector("#settlementKills");
 const settlementLingstone = document.querySelector("#settlementLingstone");
+const settlementNodeInfo = document.querySelector("#settlementNodeInfo");
 const canvas = document.querySelector("#gameCanvas");
 const ctx = canvas.getContext("2d");
 const waveText = document.querySelector("#waveText");
@@ -377,6 +378,7 @@ const playerMeta = {
   arrayCoreLevel: 1,
   arrayCoreBaseHpBonus: 0,
   arrayCoreDefenseBonus: 0,
+  chapterProgress: createStoredDefaultPlayerProfile({ chapters: DATA.chapters }).chapterProgress,
 };
 let playerProfileLoadedFromStorage = false;
 let playerProfileSaveSuppressed = false;
@@ -415,6 +417,7 @@ function playerProfileStorageHelpers() {
     roles: DATA.roles,
     artifacts: DATA.artifacts,
     formations: DATA.formations,
+    chapters: DATA.chapters,
     getMaxDeploySlots,
     getMaxArtifactSlots,
   };
@@ -683,6 +686,14 @@ function resetGame(targetAppState = APP_STATE.TITLE) {
     status: "山门待命。先在宗门主界面整备，再从历练进入战前配置。",
     bonuses: defaultRunBonuses(),
     modifiers: createInitialModifiers(),
+    selectedAdventureChapterId: playerMeta.chapterProgress?.chapter_1 ? "chapter_1" : "",
+    selectedAdventureNodeId: getCurrentChapterNodeId("chapter_1"),
+    currentChapterId: "",
+    currentNodeId: "",
+    currentBattleConfigId: "",
+    lastChallengeChapterId: "",
+    lastChallengeNodeId: "",
+    lastBattleConfigId: "",
   });
   perkModal.classList.add("hidden");
   window.__SHOUSHANMEN_DEBUG__ = getDebugSnapshot;
@@ -812,6 +823,88 @@ function openSettings(notice = "") {
 
 function closeSettings() {
   settingsModal?.classList.add("hidden");
+}
+
+function getChapter(chapterId = "chapter_1") {
+  return DATA.chapters?.[chapterId] || null;
+}
+
+function getChapterProgress(chapterId = "chapter_1") {
+  if (!playerMeta.chapterProgress) playerMeta.chapterProgress = normalizePlayerProfile(playerMeta).chapterProgress;
+  const normalized = normalizePlayerProfile(playerMeta).chapterProgress;
+  playerMeta.chapterProgress = normalized;
+  return playerMeta.chapterProgress[chapterId];
+}
+
+function getChapterNode(chapterId, nodeId) {
+  return getChapter(chapterId)?.nodes?.find((node) => node.nodeId === nodeId) || null;
+}
+
+function getCurrentChapterNodeId(chapterId = "chapter_1") {
+  const chapter = getChapter(chapterId);
+  const progress = getChapterProgress(chapterId);
+  if (!chapter || !progress) return "";
+  return progress.unlockedNodeIds.find((id) => !progress.clearedNodeIds.includes(id))
+    || progress.currentNodeId
+    || chapter.nodes?.[0]?.nodeId
+    || "";
+}
+
+function getNextChapterNodeId(chapterId, nodeId) {
+  const nodes = getChapter(chapterId)?.nodes || [];
+  const index = nodes.findIndex((node) => node.nodeId === nodeId);
+  return index >= 0 ? nodes[index + 1]?.nodeId || "" : "";
+}
+
+function getChapterNodeStatus(chapterId, nodeId) {
+  const progress = getChapterProgress(chapterId);
+  if (!progress) return "locked";
+  if (progress.clearedNodeIds.includes(nodeId)) return "cleared";
+  if (progress.unlockedNodeIds.includes(nodeId)) return "available";
+  return "locked";
+}
+
+function selectAdventureNode(nodeId, chapterId = "chapter_1") {
+  state.selectedAdventureChapterId = chapterId;
+  state.selectedAdventureNodeId = nodeId;
+  renderFeaturePage();
+}
+
+function startAdventureNode(nodeId, chapterId = "chapter_1") {
+  const node = getChapterNode(chapterId, nodeId);
+  if (!node) return false;
+  const status = getChapterNodeStatus(chapterId, nodeId);
+  state.selectedAdventureChapterId = chapterId;
+  state.selectedAdventureNodeId = nodeId;
+  if (status === "locked") {
+    renderFeaturePage();
+    return false;
+  }
+  state.currentChapterId = chapterId;
+  state.currentNodeId = node.nodeId;
+  state.currentBattleConfigId = node.battleConfigId || "";
+  state.lastChallengeChapterId = chapterId;
+  state.lastChallengeNodeId = node.nodeId;
+  state.lastBattleConfigId = node.battleConfigId || "";
+  enterLoadout();
+  return true;
+}
+
+function markAdventureNodeCleared(chapterId, nodeId) {
+  const progress = getChapterProgress(chapterId);
+  const node = getChapterNode(chapterId, nodeId);
+  if (!progress || !node) return null;
+  if (!progress.clearedNodeIds.includes(nodeId)) progress.clearedNodeIds.push(nodeId);
+  if (!progress.unlockedNodeIds.includes(nodeId)) progress.unlockedNodeIds.push(nodeId);
+  const nextNodeId = getNextChapterNodeId(chapterId, nodeId);
+  if (nextNodeId && !progress.unlockedNodeIds.includes(nextNodeId)) progress.unlockedNodeIds.push(nextNodeId);
+  progress.currentNodeId = nextNodeId || nodeId;
+  progress.lastClearedNodeId = nodeId;
+  if (node.storyUnlock) progress.storyFlags[node.storyUnlock] = true;
+  state.selectedAdventureChapterId = chapterId;
+  state.selectedAdventureNodeId = progress.currentNodeId;
+  savePlayerProfile();
+  return { node, nextNodeId };
 }
 
 function enterLoadout() {
@@ -2619,6 +2712,9 @@ function endGame(win) {
   const levelRewards = checkPlayerLevelUp();
   playerMeta.highestWave = Math.max(playerMeta.highestWave || 0, state.highestWave);
   playerMeta.totalKills = (playerMeta.totalKills || 0) + state.kills;
+  const clearedAdventure = win && state.currentChapterId && state.currentNodeId
+    ? markAdventureNodeCleared(state.currentChapterId, state.currentNodeId)
+    : null;
   syncPlayerMetaAliases();
   savePlayerProfile();
   renderSystemSettlement({
@@ -2634,6 +2730,15 @@ function endGame(win) {
     playerExp,
     levelRewards,
   });
+  if (settlementNodeInfo) {
+    const node = getChapterNode(state.lastChallengeChapterId || state.currentChapterId, state.lastChallengeNodeId || state.currentNodeId);
+    const unlockText = clearedAdventure?.node?.storyUnlock
+      ? `剧情线索：${clearedAdventure.node.storyUnlock === "old_array_rubbing" ? "旧阵残拓" : "归门妖纹"}`
+      : "";
+    settlementNodeInfo.textContent = node
+      ? `${win ? "已完成" : "未通关"}：${node.displayId} ${node.name}${clearedAdventure?.nextNodeId ? ` · 已解锁 ${getChapterNode(state.currentChapterId, clearedAdventure.nextNodeId)?.displayId || ""}` : ""}${unlockText ? ` · ${unlockText}` : ""}`
+      : "";
+  }
   showView(settlementView);
   updateDebugPanel();
 }
@@ -2667,9 +2772,17 @@ function renderLobby() {
 function renderMainHub() {
   renderSystemMainHub({
     elements: {
+      hubMainTitle: document.querySelector("#hubMainTitle"),
+      hubMainDescription: document.querySelector("#hubMainDescription"),
       hubResourceBar,
     },
     playerProfile: playerMeta,
+    DATA,
+    helpers: {
+      getChapter,
+      getChapterNode,
+      getCurrentChapterNodeId,
+    },
   });
 }
 
@@ -2687,6 +2800,8 @@ function renderFeaturePage() {
     playerProfile: playerMeta,
     state,
     helpers: {
+      getChapterNodeStatus,
+      getCurrentChapterNodeId,
       getCharacterLevel,
     },
   });
@@ -3703,9 +3818,18 @@ featureBackButton.addEventListener("click", () => {
   else enterMainHub();
 });
 featurePageContent.addEventListener("click", (event) => {
+  const nodeButton = event.target.closest("[data-adventure-node-id]");
+  if (nodeButton) {
+    selectAdventureNode(nodeButton.dataset.adventureNodeId, nodeButton.dataset.adventureChapterId || "chapter_1");
+    return;
+  }
   const action = event.target.closest("[data-page-action]");
+  if (action?.dataset.pageAction === "back-main") {
+    enterMainHub();
+    return;
+  }
   if (action?.dataset.pageAction === "start-adventure") {
-    enterLoadout();
+    startAdventureNode(action.dataset.nodeId || state.selectedAdventureNodeId || getCurrentChapterNodeId("chapter_1"), action.dataset.chapterId || "chapter_1");
     return;
   }
   const gacha = event.target.closest("[data-hub-gacha]");
@@ -3738,9 +3862,13 @@ settingsModal.addEventListener("click", (event) => {
 goLoadoutButton.addEventListener("click", enterLoadout);
 enterDeployButton.addEventListener("click", enterDeploy);
 startButton.addEventListener("click", startRun);
-returnLobbyButton.addEventListener("click", () => resetGame(APP_STATE.MAIN_HUB));
+returnLobbyButton.addEventListener("click", () => enterMainHub());
 settlementAdventureButton.addEventListener("click", () => {
-  resetGame(APP_STATE.ADVENTURE);
+  enterHubPage(APP_STATE.ADVENTURE);
+});
+const settlementRetryButton = document.querySelector("#settlementRetryButton");
+settlementRetryButton?.addEventListener("click", () => {
+  startAdventureNode(state.lastChallengeNodeId || state.currentNodeId || getCurrentChapterNodeId("chapter_1"), state.lastChallengeChapterId || state.currentChapterId || "chapter_1");
 });
 settlementCodexButton.addEventListener("click", () => {
   resetGame(APP_STATE.CODEX);

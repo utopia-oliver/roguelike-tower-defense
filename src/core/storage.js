@@ -25,6 +25,7 @@
       formations: helpers.formations || null,
       getMaxDeploySlots: helpers.getMaxDeploySlots,
       getMaxArtifactSlots: helpers.getMaxArtifactSlots,
+      chapters: helpers.chapters || null,
     };
   }
 
@@ -74,7 +75,69 @@
       arrayCoreLevel: 1,
       arrayCoreBaseHpBonus: 0,
       arrayCoreDefenseBonus: 0,
+      chapterProgress: createDefaultChapterProgress(profileHelpers.chapters),
     };
+  }
+
+  function createDefaultChapterProgress(chapters) {
+    const chapterIds = Object.keys(chapters || {});
+    if (!chapterIds.length) {
+      return {
+        chapter_1: {
+          unlockedNodeIds: ["chapter1_1"],
+          clearedNodeIds: [],
+          currentNodeId: "chapter1_1",
+          lastClearedNodeId: null,
+          storyFlags: {},
+        },
+      };
+    }
+    return Object.fromEntries(
+      chapterIds.map((chapterId) => {
+        const firstNodeId = chapters[chapterId]?.nodes?.[0]?.nodeId || "";
+        return [
+          chapterId,
+          {
+            unlockedNodeIds: firstNodeId ? [firstNodeId] : [],
+            clearedNodeIds: [],
+            currentNodeId: firstNodeId,
+            lastClearedNodeId: null,
+            storyFlags: {},
+          },
+        ];
+      }),
+    );
+  }
+
+  function normalizeChapterProgress(value, chapters) {
+    const defaults = createDefaultChapterProgress(chapters);
+    const source = value && typeof value === "object" ? value : {};
+    return Object.fromEntries(
+      Object.entries(defaults).map(([chapterId, chapterDefaults]) => {
+        const chapter = chapters?.[chapterId] || {};
+        const validNodeIds = (chapter.nodes || []).map((node) => node.nodeId);
+        const raw = source[chapterId] && typeof source[chapterId] === "object" ? source[chapterId] : {};
+        const unlocked = compactIdList(raw.unlockedNodeIds || chapterDefaults.unlockedNodeIds, null).filter((id) => !validNodeIds.length || validNodeIds.includes(id));
+        const cleared = compactIdList(raw.clearedNodeIds || [], null).filter((id) => !validNodeIds.length || validNodeIds.includes(id));
+        chapterDefaults.unlockedNodeIds.forEach((id) => {
+          if (id && !unlocked.includes(id)) unlocked.unshift(id);
+        });
+        const currentNodeId = validNodeIds.includes(raw.currentNodeId)
+          ? raw.currentNodeId
+          : unlocked.find((id) => !cleared.includes(id)) || unlocked[unlocked.length - 1] || chapterDefaults.currentNodeId;
+        const lastClearedNodeId = validNodeIds.includes(raw.lastClearedNodeId) ? raw.lastClearedNodeId : null;
+        return [
+          chapterId,
+          {
+            unlockedNodeIds: unlocked,
+            clearedNodeIds: cleared,
+            currentNodeId,
+            lastClearedNodeId,
+            storyFlags: raw.storyFlags && typeof raw.storyFlags === "object" ? { ...raw.storyFlags } : {},
+          },
+        ];
+      }),
+    );
   }
 
   function normalizePlayerProfile(raw, helpers = {}) {
@@ -124,6 +187,7 @@
     profile.arrayCoreLevel = Math.max(1, Math.floor(Number(profile.arrayCoreLevel) || defaults.arrayCoreLevel));
     profile.arrayCoreBaseHpBonus = Math.max(0, Math.floor(Number(profile.arrayCoreBaseHpBonus) || defaults.arrayCoreBaseHpBonus));
     profile.arrayCoreDefenseBonus = Math.max(0, Math.floor(Number(profile.arrayCoreDefenseBonus) || defaults.arrayCoreDefenseBonus));
+    profile.chapterProgress = normalizeChapterProgress(profile.chapterProgress, profileHelpers.chapters);
 
     return {
       playerLevel: profile.playerLevel,
@@ -142,6 +206,7 @@
       arrayCoreLevel: profile.arrayCoreLevel,
       arrayCoreBaseHpBonus: profile.arrayCoreBaseHpBonus,
       arrayCoreDefenseBonus: profile.arrayCoreDefenseBonus,
+      chapterProgress: profile.chapterProgress,
     };
   }
 

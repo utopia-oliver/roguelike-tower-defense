@@ -38,8 +38,8 @@
         </header>
         <section class="xm-hub-main">
           <p class="xm-eyebrow">当前主线</p>
-          <h1>第一章·妖门初启</h1>
-          <p>妖门裂隙初开，群妖窥山。整备宗门弟子、法宝与护山大阵，前往山门阵前历练。</p>
+          <h1 id="hubMainTitle">第一章·妖门初启</h1>
+          <p id="hubMainDescription">妖门裂隙初开，群妖窥山。整备宗门弟子、法宝与护山大阵，前往山门阵前历练。</p>
           <button id="hubAdventureButton" class="primary" type="button">前往历练</button>
         </section>
         <nav id="hubBottomNav" class="xm-bottom-nav" aria-label="宗门主导航">
@@ -185,7 +185,8 @@
             <p>局内击杀只给灵气，灵石在这里统一结算。</p>
           </div>
           <button id="returnLobbyButton" class="primary">返回外部系统</button>
-          <button id="settlementAdventureButton" class="secondary" type="button">再战一次</button>
+          <button id="settlementAdventureButton" class="secondary" type="button">返回历练地图</button>
+          <button id="settlementRetryButton" class="secondary" type="button">再战一次</button>
           <button id="settlementCodexButton" class="secondary" type="button">查看妖录</button>
         </header>
         <div class="meta-grid">
@@ -200,6 +201,7 @@
           <article class="panel">
             <h2>获得局外灵石</h2>
             <strong id="settlementLingstone">0</strong>
+            <p id="settlementNodeInfo"></p>
           </article>
         </div>
       </section>
