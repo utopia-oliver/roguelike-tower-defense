@@ -132,18 +132,54 @@
     `;
   }
 
+  function subpageShell({ className = "", sidebarTitle, sidebar, mainTitle, main, detailTitle, detail }) {
+    return `
+      <section class="xm-subpage-body ${safeText(className)}">
+        <aside class="xm-subpage-sidebar xm-inner-panel">
+          <h2>${safeText(sidebarTitle)}</h2>
+          <div class="xm-scroll-list">${sidebar}</div>
+        </aside>
+        <main class="xm-subpage-main xm-inner-panel">
+          <h2>${safeText(mainTitle)}</h2>
+          ${main}
+        </main>
+        <aside class="xm-subpage-detail xm-inner-panel">
+          <h2>${safeText(detailTitle)}</h2>
+          ${detail}
+        </aside>
+      </section>
+    `;
+  }
+
   function renderCharactersPage({ DATA, playerProfile, helpers }) {
     const roles = Object.values(DATA.roles || {});
     const ownedCount = roles.filter((role) => playerProfile.ownedCharacters.includes(role.id)).length;
-    return `
-      <section class="xm-page-panel">
-        <h2>宗门弟子</h2>
-        <p>已拥有 ${ownedCount} / ${roles.length} · 上阵位 ${playerProfile.maxDeploySlots || 1}</p>
+    const currentRole = roles.find((role) => playerProfile.ownedCharacters.includes(role.id)) || roles[0] || {};
+    const currentLevel = currentRole.id ? helpers.getCharacterLevel(currentRole.id) : "-";
+    return subpageShell({
+      className: "xm-subpage--characters",
+      sidebarTitle: "门人名册",
+      sidebar: roles
+        .map((role) => `<article class="xm-item-card ${playerProfile.ownedCharacters.includes(role.id) ? "xm-item-card--selected" : "xm-card--disabled"}"><strong>${safeText(role.name)}</strong><span>${safeText(role.rarity)} · ${safeText(role.school || "宗门")}</span></article>`)
+        .join(""),
+      mainTitle: "洞府修行",
+      main: `
+        <div class="xm-subpage-hero xm-subpage-hero--character">
+          <span>${safeText(currentRole.name || "门人")}</span>
+        </div>
+        <p class="xm-important-text">已拥有 ${ownedCount} / ${roles.length} · 上阵位 ${playerProfile.maxDeploySlots || 1}</p>
         <div class="xm-card-grid xm-card-grid--roles">
           ${roles.map((role) => roleCard(role, DATA, playerProfile, helpers)).join("")}
         </div>
-      </section>
-    `;
+      `,
+      detailTitle: "修行札记",
+      detail: `
+        <p><strong>当前门人</strong> ${safeText(currentRole.name || "-")}</p>
+        <p><strong>修为等级</strong> Lv.${safeText(currentLevel)}</p>
+        <p><strong>先天武学</strong> ${safeText(currentRole.id ? martialArtNameForRole(DATA, currentRole) : "-")}</p>
+        <p><strong>上阵状态</strong> 请于战前整备中选择。</p>
+      `,
+    });
   }
 
   function renderArtifactsPage({ DATA, playerProfile }) {
@@ -152,10 +188,16 @@
     const bonds = window.XM.Artifacts?.getActiveArtifactBonds
       ? window.XM.Artifacts.getActiveArtifactBonds(playerProfile.ownedArtifacts || [])
       : [];
-    return `
-      <section class="xm-page-panel">
-        <h2>法宝阁</h2>
-        <p>法宝位随玩家等级解锁；局外升级暂未开放。</p>
+    const currentArtifact = artifacts.find((artifact) => owned.has(artifact.id)) || artifacts[0] || {};
+    return subpageShell({
+      className: "xm-subpage--artifacts",
+      sidebarTitle: "器谱",
+      sidebar: artifacts
+        .map((artifact) => `<article class="xm-item-card ${owned.has(artifact.id) ? "xm-item-card--selected" : "xm-card--disabled"}"><strong>${safeText(artifact.name)}</strong><span>${safeText(artifact.role || artifact.rarity || "法宝")}</span></article>`)
+        .join(""),
+      mainTitle: "炼器案台",
+      main: `
+        <div class="xm-subpage-hero xm-subpage-hero--artifact"><span>${safeText(currentArtifact.name || "法宝")}</span></div>
         <p>${bonds.length ? `已发现羁绊：${bonds.map((bond) => safeText(bond.name)).join("、")}` : "已发现羁绊：暂无"}</p>
         <div class="xm-card-grid">
           ${artifacts
@@ -171,52 +213,81 @@
             )
             .join("")}
         </div>
-      </section>
-    `;
+      `,
+      detailTitle: "器灵卷宗",
+      detail: `
+        <p><strong>当前法宝</strong> ${safeText(currentArtifact.name || "-")}</p>
+        <p>${safeText(currentArtifact.attackText || currentArtifact.description || "法宝祭炼、羁绊共鸣与器灵大成将在后续开放。")}</p>
+        <p><strong>携带规则</strong> 战前整备中选择本局随行法宝。</p>
+      `,
+    });
   }
 
   function renderFormationsPage({ DATA, playerProfile, state }) {
     const formations = Object.values(DATA.formations || {});
     const unlocked = new Set(playerProfile.unlockedFormations || []);
-    return `
-      <section class="xm-page-panel xm-formation-page">
+    const currentFormation = formations.find((formation) => state.loadoutFormationId === formation.id) || formations[0] || {};
+    return subpageShell({
+      className: "xm-subpage--formations",
+      sidebarTitle: "阵法目录",
+      sidebar: formations
+        .map((formation) => `<article class="xm-item-card ${state.loadoutFormationId === formation.id ? "xm-item-card--selected" : ""} ${unlocked.has(formation.id) ? "" : "xm-card--disabled"}"><strong>${safeText(formation.name)}</strong><span>${safeText(formation.role || formation.rarity || "护山大阵")}</span></article>`)
+        .join(""),
+      mainTitle: "阵枢图",
+      main: `
         <div class="xm-array-preview"><span>阵</span></div>
-        <div>
-          <h2>护山大阵</h2>
-          <p>护山大阵与阵眼为同一区域；阵法局外升级暂未开放。</p>
-          <div class="xm-card-grid">
-            ${formations
-              .map(
-                (formation) => `
-                  <button type="button" class="xm-detail-card xm-detail-button ${state.loadoutFormationId === formation.id ? "xm-card--selected" : ""} ${unlocked.has(formation.id) ? "" : "xm-card--disabled"}" data-hub-formation-id="${safeText(formation.id)}">
-                    <small>${safeText(formation.role || formation.rarity || "护山大阵")}</small>
-                    <strong>${safeText(formation.name)}</strong>
-                    <span>${safeText(formation.effectText || formation.description || "")}</span>
-                  </button>
-                `,
-              )
-              .join("")}
-          </div>
+        <p>护山大阵与阵眼为同一区域；阵法局外升级暂未开放。</p>
+        <div class="xm-card-grid">
+          ${formations
+            .map(
+              (formation) => `
+                <button type="button" class="xm-detail-card xm-detail-button ${state.loadoutFormationId === formation.id ? "xm-card--selected" : ""} ${unlocked.has(formation.id) ? "" : "xm-card--disabled"}" data-hub-formation-id="${safeText(formation.id)}">
+                  <small>${safeText(formation.role || formation.rarity || "护山大阵")}</small>
+                  <strong>${safeText(formation.name)}</strong>
+                  <span>${safeText(formation.effectText || formation.description || "")}</span>
+                </button>
+              `,
+            )
+            .join("")}
         </div>
-      </section>
-    `;
+      `,
+      detailTitle: "阵纹注解",
+      detail: `
+        <p><strong>当前阵法</strong> ${safeText(currentFormation.name || "-")}</p>
+        <p>${safeText(currentFormation.effectText || currentFormation.description || "阵纹流转，镇守五方。")}</p>
+        <p><strong>当前选择</strong> ${safeText(state.loadoutFormationId || "未选择")}</p>
+      `,
+    });
   }
 
   function renderBagPage() {
-    return `
-      <section class="xm-page-panel">
-        <h2>背包</h2>
-        <div class="xm-card-grid">
-          ${["材料", "消耗", "特殊", "任务"].map((name) => `<article class="xm-detail-card"><h3>${name}</h3><p>背包系统暂未开放，后续用于存放妖核、阵纹残片、法宝材料等。</p></article>`).join("")}
+    const categories = ["材料", "消耗", "特殊", "任务"];
+    return subpageShell({
+      className: "xm-subpage--bag",
+      sidebarTitle: "库藏分类",
+      sidebar: categories.map((name, index) => `<article class="xm-item-card ${index === 0 ? "xm-item-card--selected" : ""}"><strong>${safeText(name)}</strong><span>待整理</span></article>`).join(""),
+      mainTitle: "宗门宝库",
+      main: `
+        <div class="xm-inventory-grid">
+          ${Array.from({ length: 16 }, (_, index) => `<span>${index + 1}</span>`).join("")}
         </div>
-      </section>
-    `;
+      `,
+      detailTitle: "物资说明",
+      detail: "<p>库藏系统暂未开放，后续用于存放妖核、阵纹残片、法宝材料等。</p>",
+    });
   }
 
   function renderGachaPage({ playerProfile }) {
-    return `
-      <section class="xm-page-panel">
-        <h2>抽取</h2>
+    return subpageShell({
+      className: "xm-subpage--gacha",
+      sidebarTitle: "祈召门类",
+      sidebar: `
+        <article class="xm-item-card xm-item-card--selected"><strong>门人祈召</strong><span>当前开放</span></article>
+        <article class="xm-item-card xm-card--disabled"><strong>法宝祈召</strong><span>筹备中</span></article>
+      `,
+      mainTitle: "祈灵台",
+      main: `
+        <div class="xm-subpage-hero xm-subpage-hero--gacha"><span>祈</span></div>
         <p>当前灵石：${safeText(playerProfile.spiritStones || 0)}</p>
         <div class="xm-card-grid">
           <article class="xm-detail-card">
@@ -230,8 +301,10 @@
             <button type="button" class="secondary" disabled>十连暂未开放</button>
           </article>
         </div>
-      </section>
-    `;
+      `,
+      detailTitle: "卡池说明",
+      detail: "<p>焚香祈灵，感召门人与法宝机缘。概率说明沿用当前抽取规则，后续补充正式卡池公告。</p>",
+    });
   }
 
   function renderCodexPage({ DATA }) {
@@ -245,9 +318,12 @@
         <p>${items.slice(0, 16).map(safeText).join("、") || "暂无"}</p>
       </article>
     `;
-    return `
-      <section class="xm-page-panel">
-        <h2>妖录 / 图鉴</h2>
+    return subpageShell({
+      className: "xm-subpage--codex",
+      sidebarTitle: "封妖目录",
+      sidebar: ["妖物", "角色", "法宝", "阵法", "剧情线索"].map((name, index) => `<article class="xm-item-card ${index === 0 ? "xm-item-card--selected" : ""}"><strong>${safeText(name)}</strong><span>卷宗</span></article>`).join(""),
+      mainTitle: "镇妖录卷",
+      main: `
         <div class="xm-card-grid">
           ${section("角色图鉴", roleItems)}
           ${section("法宝图鉴", artifactItems)}
@@ -255,8 +331,10 @@
           ${section("阵法图鉴", formationItems)}
           ${section("剧情档案", ["第一章·妖门初启", "妖门既开，山门当守"])}
         </div>
-      </section>
-    `;
+      `,
+      detailTitle: "条目详情",
+      detail: "<p>封妖志异，记录妖物、法宝、阵法与旧日线索。后续可在此展开单条目详情。</p>",
+    });
   }
 
   function nodeTypeLabel(type) {
