@@ -52,18 +52,6 @@
       </section>
 
       <section id="mainHubView" class="xm-screen xm-hub hidden">
-        <div class="xm-hub-bg" aria-hidden="true">
-          <span class="xm-hub-clouds"></span>
-          <span class="xm-mountain xm-mountain--back"></span>
-          <span class="xm-mountain xm-mountain--front"></span>
-          <span class="xm-hub-palace"></span>
-          <span class="xm-hub-bridge"></span>
-          <span class="xm-hub-tower xm-hub-tower--left"></span>
-          <span class="xm-hub-tower xm-hub-tower--right"></span>
-          <span class="xm-demon-gate"></span>
-          <span class="xm-array-glow"></span>
-          <span class="xm-hub-plaza"></span>
-        </div>
         <header class="xm-topbar">
           <button id="hubRealmButton" class="xm-title-link" type="button">當前界域：青冥一界</button>
           <div class="xm-hub-top-actions">
@@ -71,27 +59,30 @@
             <button id="hubSettingsButton" class="xm-title-link" type="button">設置</button>
           </div>
         </header>
-        <section class="xm-hub-main xm-hub-main--ambient">
-          <p class="xm-eyebrow">山門值守</p>
-          <h1 id="hubMainTitle">第一章·妖门初启</h1>
-          <p id="hubNodeTitle" class="xm-hub-node-label">当前节点：1-1 山门警钟</p>
-          <p id="hubMainDescription">妖门裂隙初开，群妖窥山。整备宗门弟子、法宝与护山大阵，前往山门阵前历练。</p>
-          <button id="hubAdventureButton" class="primary xm-title-button" type="button">前往歷練</button>
+        <section class="xm-hub-scene-frame" aria-label="宗门主场景">
+          <div class="xm-hub-bg" aria-hidden="true">
+            <span class="xm-hub-clouds"></span>
+            <span class="xm-demon-gate"></span>
+            <span class="xm-array-glow"></span>
+          </div>
           <div class="xm-hub-hotspots" aria-label="宗门场景入口">
-            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--hall" data-hub-page="ADVENTURE"><strong>山門大殿</strong><span>前往歷練</span></button>
-            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--array" data-hub-page="FORMATIONS"><strong>陣閣</strong><span>護山大陣</span></button>
-            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--forge" data-hub-page="ARTIFACTS"><strong>煉器閣</strong><span>法寶</span></button>
-            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--dojo" data-hub-page="CHARACTERS"><strong>演武堂</strong><span>角色</span></button>
-            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--archive" data-hub-page="CODEX"><strong>藏經閣</strong><span>妖錄</span></button>
+            <!-- Reserved later: 藏经阁=功法/武学, 万宝阁=商店/兑换, 宗务殿=建设/状态, 功德殿=任务/成就, 演武场=切磋/测试, 丹房=丹药, 执法堂=宗规事件, 灵兽苑=灵兽。 -->
+            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--scene-dojo" data-building-id="characters" data-glow="jade" data-hub-page="CHARACTERS" aria-label="洞府，门人角色"><strong>洞府</strong><span>门人 / 角色</span></button>
+            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--scene-forge" data-building-id="artifacts" data-glow="goldcyan" data-hub-page="ARTIFACTS" aria-label="炼器阁，法宝"><strong>炼器阁</strong><span>法寶</span></button>
+            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--scene-array" data-building-id="formations" data-glow="array" data-hub-page="FORMATIONS" aria-label="阵枢殿，护山大阵"><strong>阵枢殿</strong><span>護山大陣</span></button>
+            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--scene-storehouse" data-building-id="bag" data-glow="vault" data-hub-page="BAG" aria-label="库藏殿，物资背包"><strong>库藏殿</strong><span>物资 / 背包</span></button>
+            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--scene-altar" data-building-id="gacha" data-glow="spirit" data-hub-page="GACHA" aria-label="祈灵台，祈召抽取"><strong>祈灵台</strong><span>祈召 / 抽取</span></button>
+            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--scene-archive" data-building-id="codex" data-glow="seal" data-hub-page="CODEX" aria-label="镇妖录，妖物图鉴"><strong>镇妖录</strong><span>妖物 / 图鉴</span></button>
+            <button type="button" class="xm-hub-hotspot xm-hub-hotspot--scene-gate" data-building-id="adventure" data-glow="outer" data-hub-page="ADVENTURE" aria-label="山门外，历练"><strong>山门外</strong><span>歷練</span></button>
           </div>
         </section>
         <nav id="hubBottomNav" class="xm-bottom-nav" aria-label="宗门主导航">
-          <button class="xm-nav-button" type="button" data-hub-page="CHARACTERS"><strong>演武堂</strong><span>角色</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="CHARACTERS"><strong>洞府</strong><span>门人 / 角色</span></button>
           <button class="xm-nav-button" type="button" data-hub-page="ARTIFACTS"><strong>煉器閣</strong><span>法寶</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="FORMATIONS"><strong>陣閣</strong><span>護山大陣</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="BAG"><strong>庫房</strong><span>背包</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="GACHA"><strong>祈靈台</strong><span>抽取</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="CODEX"><strong>藏經閣</strong><span>妖錄</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="FORMATIONS"><strong>阵枢殿</strong><span>護山大陣</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="BAG"><strong>库藏殿</strong><span>物资 / 背包</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="GACHA"><strong>祈靈台</strong><span>祈召 / 抽取</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="CODEX"><strong>镇妖录</strong><span>妖物 / 图鉴</span></button>
           <button class="xm-nav-button" type="button" data-hub-page="ADVENTURE"><strong>山門外</strong><span>歷練</span></button>
         </nav>
       </section>
@@ -107,12 +98,12 @@
         </header>
         <div id="featurePageContent" class="xm-page-content"></div>
         <nav id="featureBottomNav" class="xm-bottom-nav xm-bottom-nav--compact" aria-label="宗门分页导航">
-          <button class="xm-nav-button" type="button" data-hub-page="CHARACTERS"><strong>演武堂</strong><span>角色</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="CHARACTERS"><strong>洞府</strong><span>门人 / 角色</span></button>
           <button class="xm-nav-button" type="button" data-hub-page="ARTIFACTS"><strong>煉器閣</strong><span>法寶</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="FORMATIONS"><strong>陣閣</strong><span>護山大陣</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="BAG"><strong>庫房</strong><span>背包</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="GACHA"><strong>祈靈台</strong><span>抽取</span></button>
-          <button class="xm-nav-button" type="button" data-hub-page="CODEX"><strong>藏經閣</strong><span>妖錄</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="FORMATIONS"><strong>阵枢殿</strong><span>護山大陣</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="BAG"><strong>库藏殿</strong><span>物资 / 背包</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="GACHA"><strong>祈靈台</strong><span>祈召 / 抽取</span></button>
+          <button class="xm-nav-button" type="button" data-hub-page="CODEX"><strong>镇妖录</strong><span>妖物 / 图鉴</span></button>
           <button class="xm-nav-button" type="button" data-hub-page="ADVENTURE"><strong>山門外</strong><span>歷練</span></button>
         </nav>
       </section>

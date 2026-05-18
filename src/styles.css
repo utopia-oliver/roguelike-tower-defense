@@ -108,7 +108,20 @@ button:disabled {
 
 .xm-hub {
   background:
-    linear-gradient(180deg, rgba(0, 10, 8, 0.04), rgba(0, 8, 6, 0.22)),
+    radial-gradient(circle at 50% 80%, rgba(109, 226, 190, 0.14), transparent 20rem),
+    radial-gradient(circle at 84% 12%, rgba(110, 49, 95, 0.12), transparent 24rem),
+    linear-gradient(180deg, rgba(15, 32, 27, 0.97), rgba(5, 9, 8, 0.98));
+  flex-direction: column;
+  gap: 12px;
+  padding: 72px 16px 104px;
+  width: min(100%, 1320px);
+}
+
+.xm-hub-scene-frame {
+  aspect-ratio: 16 / 9;
+  background:
+    linear-gradient(180deg, rgba(0, 10, 8, 0.04), rgba(0, 8, 6, 0.12)),
+    url("../assets/images/bg/main-hub-sect-v2.webp"),
     url("../assets/images/bg/main-hub-sect-v1.webp"),
     radial-gradient(circle at 50% 80%, rgba(109, 226, 190, 0.14), transparent 20rem),
     radial-gradient(circle at 84% 12%, rgba(110, 49, 95, 0.12), transparent 24rem),
@@ -116,6 +129,13 @@ button:disabled {
   background-position: center center;
   background-repeat: no-repeat;
   background-size: cover;
+  border: 1px solid rgba(216, 172, 82, 0.36);
+  border-radius: 10px;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.22), inset 0 0 42px rgba(109, 226, 190, 0.04);
+  margin: 0 auto;
+  overflow: hidden;
+  position: relative;
+  width: min(100%, 1280px, calc((100vh - 188px) * 16 / 9));
 }
 
 .xm-title-screen {
@@ -123,15 +143,9 @@ button:disabled {
 }
 
 .xm-hub::after {
-  background: linear-gradient(to top, rgba(0, 8, 6, 0.46), rgba(0, 8, 6, 0));
-  bottom: 0;
   content: "";
-  height: 14%;
-  left: 0;
+  display: none;
   pointer-events: none;
-  position: absolute;
-  right: 0;
-  z-index: 1;
 }
 
 .xm-title-bg,
@@ -144,9 +158,9 @@ button:disabled {
 
 .xm-title-bg {
   background:
-    radial-gradient(circle at 50% 38%, rgba(241, 217, 154, 0.16), transparent 30rem),
-    linear-gradient(180deg, rgba(0, 10, 8, 0.24), rgba(0, 8, 7, 0.46)),
-    radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.38) 100%),
+    radial-gradient(circle at 50% 38%, rgba(241, 217, 154, 0.13), transparent 30rem),
+    linear-gradient(180deg, rgba(0, 10, 8, 0.08), rgba(0, 8, 7, 0.18)),
+    radial-gradient(ellipse at center, transparent 48%, rgba(0, 0, 0, 0.18) 100%),
     url("../assets/images/bg/title-gate-v1.webp"),
     radial-gradient(circle at 18% 0%, rgba(76, 154, 121, 0.24), transparent 34rem),
     radial-gradient(circle at 80% 14%, rgba(110, 49, 95, 0.22), transparent 26rem),
@@ -309,6 +323,14 @@ button:disabled {
   right: 17%;
 }
 
+.xm-hub .xm-mountain,
+.xm-hub .xm-hub-palace,
+.xm-hub .xm-hub-bridge,
+.xm-hub .xm-hub-tower,
+.xm-hub .xm-hub-plaza {
+  display: none;
+}
+
 .xm-title-mountains {
   background:
     linear-gradient(135deg, transparent 44%, rgba(35, 64, 54, 0.54) 45%, rgba(7, 13, 11, 0.88) 76%),
@@ -353,6 +375,12 @@ button:disabled {
 
 .xm-title-gate::after {
   right: 42px;
+}
+
+.xm-title-mountains,
+.xm-title-gate,
+.xm-title-steps {
+  display: none;
 }
 
 .xm-title-rift {
@@ -523,11 +551,11 @@ button:disabled {
 .xm-title-login-panel {
   background:
     linear-gradient(135deg, rgba(255, 248, 231, 0.1), transparent 42%),
-    rgba(4, 12, 10, 0.58);
+    rgba(4, 12, 10, 0.46);
   border: 1px solid rgba(216, 172, 82, 0.42);
   border-radius: 8px;
   box-shadow:
-    0 20px 70px rgba(0, 0, 0, 0.36),
+    0 20px 70px rgba(0, 0, 0, 0.28),
     0 0 0 1px rgba(109, 226, 190, 0.08),
     inset 0 0 34px rgba(109, 226, 190, 0.06);
   margin: 0 auto;
@@ -640,8 +668,9 @@ button:disabled {
 }
 
 .xm-hub-main--ambient {
-  bottom: 104px;
-  left: 28px;
+  bottom: 5%;
+  left: 3%;
+  max-width: 320px;
   position: absolute;
   text-align: left;
 }
@@ -662,68 +691,262 @@ button:disabled {
 
 .xm-hub-hotspots {
   inset: 0;
+  overflow: hidden;
   pointer-events: none;
-  position: fixed;
-  z-index: 2;
+  position: absolute;
+  z-index: 4;
 }
 
 .xm-hub-hotspot {
-  background: rgba(5, 15, 12, 0.34);
-  border: 1px solid rgba(216, 172, 82, 0.26);
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.16), inset 0 0 18px rgba(109, 226, 190, 0.04);
-  color: #fff7db;
-  display: grid;
-  gap: 2px;
-  min-width: 96px;
-  padding: 8px 10px;
+  --hub-glow: rgba(160, 235, 215, 0.34);
+  --hub-glow-soft: rgba(160, 235, 215, 0.14);
+  --hub-mote: rgba(230, 255, 240, 0.82);
+  --hub-glow-h: 46%;
+  --hub-glow-w: 64%;
+  --hub-glow-x: 50%;
+  --hub-glow-y: 50%;
+  --hub-particles-h: 150%;
+  --hub-particles-w: 160%;
+  --hub-particles-x: 50%;
+  --hub-particles-y: 48%;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: transparent;
+  display: block;
+  min-height: 0;
+  min-width: 0;
+  opacity: 1;
+  padding: 0;
   pointer-events: auto;
   position: absolute;
   text-align: center;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s ease, filter 0.18s ease, transform 0.18s ease;
+}
+
+.xm-hub-hotspot::before,
+.xm-hub-hotspot::after {
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transition: opacity 0.2s ease;
+}
+
+.xm-hub-hotspot::before {
+  animation: none;
+  background:
+    radial-gradient(ellipse at center, var(--hub-glow), var(--hub-glow-soft) 38%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(3px);
+  height: var(--hub-glow-h);
+  left: var(--hub-glow-x);
+  top: var(--hub-glow-y);
+  transform: translate(-50%, -50%);
+  width: var(--hub-glow-w);
+}
+
+.xm-hub-hotspot::after {
+  background:
+    radial-gradient(circle at 12% 72%, var(--hub-mote) 0 1.5px, transparent 3px),
+    radial-gradient(circle at 22% 36%, var(--hub-glow) 0 2px, transparent 4px),
+    radial-gradient(circle at 34% 84%, rgba(245, 255, 234, 0.44) 0 1px, transparent 3px),
+    radial-gradient(circle at 44% 18%, var(--hub-mote) 0 1.5px, transparent 4px),
+    radial-gradient(circle at 56% 62%, var(--hub-glow) 0 2px, transparent 4px),
+    radial-gradient(circle at 66% 30%, rgba(245, 255, 234, 0.48) 0 1px, transparent 3px),
+    radial-gradient(circle at 76% 78%, var(--hub-mote) 0 1.5px, transparent 4px),
+    radial-gradient(circle at 88% 44%, var(--hub-glow) 0 2px, transparent 4px),
+    radial-gradient(circle at 50% 94%, rgba(245, 255, 234, 0.36) 0 1px, transparent 3px),
+    radial-gradient(circle at 6% 48%, var(--hub-glow-soft) 0 2px, transparent 5px);
+  filter: blur(0.2px);
+  height: var(--hub-particles-h);
+  left: var(--hub-particles-x);
+  top: var(--hub-particles-y);
+  transform: translate(-50%, -50%);
+  width: var(--hub-particles-w);
 }
 
 .xm-hub-hotspot strong {
-  font-family: var(--font-display);
-  font-size: 14px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .xm-hub-hotspot span {
-  color: #d6cbb8;
-  font-family: var(--font-accent);
-  font-size: 12px;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
-.xm-hub-hotspot:hover {
-  background: rgba(16, 45, 35, 0.52);
-  border-color: rgba(109, 226, 190, 0.58);
-  box-shadow: 0 0 22px rgba(109, 226, 190, 0.18);
+.xm-hub-hotspot:hover,
+.xm-hub-hotspot:focus-visible {
+  cursor: pointer;
+  outline: none;
 }
 
-.xm-hub-hotspot--hall {
-  left: 50%;
-  top: 34%;
-  transform: translate(-50%, -50%);
+.xm-hub-hotspot:hover::before,
+.xm-hub-hotspot:focus-visible::before {
+  animation: xmHotspotGlowPulse 2.6s ease-in-out infinite;
+  opacity: 0.88;
 }
 
-.xm-hub-hotspot--array {
-  left: 50%;
-  top: 68%;
-  transform: translate(-50%, -50%);
+.xm-hub-hotspot:hover::after,
+.xm-hub-hotspot:focus-visible::after {
+  animation: xmHubMotesFloat 2.8s ease-in-out infinite;
+  opacity: 0.92;
 }
 
-.xm-hub-hotspot--forge {
-  right: 22%;
-  top: 47%;
+.xm-hub-hotspot:active {
+  transform: translate(-50%, -50%) scale(0.985);
 }
 
-.xm-hub-hotspot--dojo {
-  left: 20%;
-  top: 50%;
+.xm-hub-hotspot:active::before {
+  opacity: 1;
+  filter: blur(2px);
 }
 
-.xm-hub-hotspot--archive {
-  right: 16%;
-  top: 30%;
+.xm-hub-hotspot--scene-dojo {
+  --hub-glow-h: 42%;
+  --hub-glow-w: 58%;
+  --hub-glow-y: 42%;
+  --hub-particles-h: 150%;
+  --hub-particles-w: 150%;
+  height: 16%;
+  left: 16%;
+  top: 15%;
+  width: 10%;
 }
+
+.xm-hub-hotspot--scene-forge {
+  --hub-glow-h: 44%;
+  --hub-glow-w: 62%;
+  --hub-glow-y: 40%;
+  --hub-particles-h: 165%;
+  --hub-particles-w: 170%;
+  height: 18%;
+  left: 76%;
+  top: 16%;
+  width: 12%;
+}
+
+.xm-hub-hotspot--scene-array {
+  --hub-glow-h: 48%;
+  --hub-glow-w: 56%;
+  --hub-glow-y: 58%;
+  --hub-particles-h: 210%;
+  --hub-particles-w: 220%;
+  height: 20%;
+  left: 46%;
+  top: 42%;
+  width: 14%;
+}
+
+.xm-hub-hotspot--scene-storehouse {
+  --hub-glow-h: 42%;
+  --hub-glow-w: 58%;
+  --hub-glow-y: 52%;
+  --hub-particles-h: 165%;
+  --hub-particles-w: 175%;
+  height: 18%;
+  left: 76%;
+  top: 42%;
+  width: 14%;
+}
+
+.xm-hub-hotspot--scene-altar {
+  --hub-glow-h: 54%;
+  --hub-glow-w: 68%;
+  --hub-glow-y: 58%;
+  --hub-particles-h: 190%;
+  --hub-particles-w: 200%;
+  height: 14%;
+  left: 47%;
+  top: 16%;
+  width: 10%;
+}
+
+.xm-hub-hotspot--scene-archive {
+  --hub-glow-h: 42%;
+  --hub-glow-w: 60%;
+  --hub-glow-y: 44%;
+  --hub-particles-h: 150%;
+  --hub-particles-w: 160%;
+  height: 18%;
+  left: 10%;
+  top: 42%;
+  width: 10%;
+}
+
+.xm-hub-hotspot--scene-gate {
+  --hub-glow-h: 52%;
+  --hub-glow-w: 62%;
+  --hub-glow-y: 46%;
+  --hub-particles-h: 170%;
+  --hub-particles-w: 180%;
+  height: 18%;
+  left: 90%;
+  top: 62%;
+  width: 8%;
+}
+
+.xm-hub-hotspot[data-glow="jade"] {
+  --hub-glow: rgba(194, 255, 230, 0.42);
+  --hub-glow-soft: rgba(194, 255, 230, 0.16);
+  --hub-mote: rgba(229, 255, 240, 0.84);
+}
+
+.xm-hub-hotspot[data-glow="spirit"] {
+  --hub-glow: rgba(178, 222, 255, 0.44);
+  --hub-glow-soft: rgba(178, 222, 255, 0.17);
+  --hub-mote: rgba(232, 248, 255, 0.86);
+}
+
+.xm-hub-hotspot[data-glow="goldcyan"] {
+  --hub-glow: rgba(224, 210, 133, 0.42);
+  --hub-glow-soft: rgba(118, 225, 196, 0.15);
+  --hub-mote: rgba(255, 245, 190, 0.78);
+}
+
+.xm-hub-hotspot[data-glow="array"] {
+  --hub-glow: rgba(126, 229, 236, 0.48);
+  --hub-glow-soft: rgba(126, 229, 236, 0.18);
+  --hub-mote: rgba(217, 255, 255, 0.86);
+}
+
+.xm-hub-hotspot[data-glow="vault"] {
+  --hub-glow: rgba(214, 198, 126, 0.38);
+  --hub-glow-soft: rgba(156, 225, 195, 0.13);
+  --hub-mote: rgba(250, 238, 182, 0.76);
+}
+
+.xm-hub-hotspot[data-glow="seal"] {
+  --hub-glow: rgba(207, 248, 245, 0.42);
+  --hub-glow-soft: rgba(207, 248, 245, 0.15);
+  --hub-mote: rgba(235, 255, 252, 0.82);
+}
+
+.xm-hub-hotspot[data-glow="outer"] {
+  --hub-glow: rgba(222, 211, 255, 0.42);
+  --hub-glow-soft: rgba(160, 232, 226, 0.13);
+  --hub-mote: rgba(245, 240, 255, 0.82);
+}
+
+.xm-hub.show-hotspot-bounds .xm-hub-hotspot {
+  border-color: rgba(255, 255, 255, 0.35);
+  opacity: 0.5;
+}
+
+/* TODO: 后续可接入 assets/images/hub-masks/*.webp，实现建筑真实轮廓高亮。 */
 
 .xm-hub-node-label {
   color: var(--gold-soft);
@@ -795,9 +1018,9 @@ button:disabled {
 .xm-bottom-nav {
   align-items: center;
   background:
-    linear-gradient(180deg, rgba(9, 19, 16, 0.58), rgba(4, 8, 7, 0.84)),
+    linear-gradient(180deg, rgba(9, 19, 16, 0.42), rgba(4, 8, 7, 0.7)),
     radial-gradient(ellipse at center, rgba(109, 226, 190, 0.09), transparent 70%);
-  border: 1px solid rgba(216, 172, 82, 0.28);
+  border: 1px solid rgba(216, 172, 82, 0.24);
   border-radius: 8px;
   bottom: 18px;
   display: flex;
@@ -810,6 +1033,12 @@ button:disabled {
   z-index: 3;
 }
 
+.xm-hub > .xm-bottom-nav {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(18px);
+}
+
 .xm-bottom-nav--compact {
   bottom: 14px;
 }
@@ -817,7 +1046,7 @@ button:disabled {
 .xm-nav-button {
   background:
     linear-gradient(180deg, rgba(241, 217, 154, 0.08), transparent 32%),
-    rgba(18, 38, 31, 0.9);
+    rgba(18, 38, 31, 0.74);
   border-color: rgba(216, 172, 82, 0.34);
   box-shadow: inset 0 -10px 20px rgba(0, 0, 0, 0.16);
   display: grid;
@@ -1318,6 +1547,35 @@ button:disabled {
   to {
     opacity: 0.96;
     filter: drop-shadow(0 0 30px rgba(109, 226, 190, 0.34));
+  }
+}
+
+@keyframes xmHotspotGlowPulse {
+  0% {
+    opacity: 0.34;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  50% {
+    opacity: 0.88;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+  100% {
+    opacity: 0.42;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+
+@keyframes xmHubMotesFloat {
+  0% {
+    opacity: 0.2;
+    transform: translate(-50%, -42%);
+  }
+  45% {
+    opacity: 0.92;
+  }
+  100% {
+    opacity: 0.22;
+    transform: translate(-50%, -62%);
   }
 }
 
@@ -2061,6 +2319,17 @@ h2 {
   .xm-hub {
     align-items: stretch;
     flex-direction: column;
+    padding: 0 0 96px;
+  }
+
+  .xm-hub-scene-frame {
+    aspect-ratio: auto;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    max-height: none;
+    min-height: 540px;
+    width: 100%;
   }
 
   .xm-hub-main--ambient {
@@ -2072,7 +2341,20 @@ h2 {
   }
 
   .xm-hub-hotspots {
-    display: none;
+    display: block;
+  }
+
+  .xm-hub-hotspot {
+    min-width: 76px;
+    padding: 7px 8px;
+  }
+
+  .xm-hub-hotspot strong {
+    font-size: 12px;
+  }
+
+  .xm-hub-hotspot span {
+    font-size: 10px;
   }
 
   .xm-adventure-map {

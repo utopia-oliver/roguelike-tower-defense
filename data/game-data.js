@@ -3345,7 +3345,7 @@ window.GAME_DATA.chapters = {
     chapterId: "chapter_1",
     name: "第一章·妖门初启",
     subtitle: "妖门裂隙初现，山门大阵初醒。",
-    description: "玄门山外，夜半云裂。外山禁地涌出紫黑妖气，护山大阵外环出现裂纹。你临危受命，成为新任执阵弟子，率领宗门众人守住山门。",
+    description: "玄门山外，夜半云裂。外山禁地涌出紫黑妖气，护山大阵外环出现裂纹。你临危继位，成为玄门新任宗主，统御宗门众人守住山门。",
     theme: "山门初危，护阵初醒",
     nodes: [
       {
@@ -3353,7 +3353,7 @@ window.GAME_DATA.chapters = {
         displayId: "1-1",
         name: "山门警钟",
         type: "tutorial_battle",
-        description: "山门钟声九响，妖气自外山涌来。你第一次接管护山阵眼，率陆青崖守住第一道防线。",
+        description: "山门钟声九响，妖气自外山涌来。你以新任宗主之名重启护山阵眼，率陆青崖守住第一道防线。",
         storyText: "山门钟声穿过云海，惊醒了整座玄门。外山方向，紫黑妖气如潮涌来。执事只留下一句话：守住阵眼，莫让妖物踏入山门。",
         enemyPreview: ["赤鬃獠"],
         rewardPreview: ["灵石", "角色经验"],

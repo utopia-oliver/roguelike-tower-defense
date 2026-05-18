@@ -4838,7 +4838,7 @@ titleLoginBackButton?.addEventListener("click", closeTitleLogin);
 titleLoginModal?.addEventListener("click", (event) => {
   if (event.target === titleLoginModal) closeTitleLogin();
 });
-hubAdventureButton.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
+hubAdventureButton?.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
 mainHubView.addEventListener("click", handleHubNavClick);
 hubRealmButton?.addEventListener("click", () => openSettings("界域系統暫未開放。"));
 hubNoticeButton?.addEventListener("click", openTitleNotice);
