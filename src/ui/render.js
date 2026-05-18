@@ -76,8 +76,8 @@
     root.innerHTML = `
       <span class="xm-resource-label">道行 Lv. ${safeText(playerProfile.playerLevel || 1)}</span>
       <span class="xm-resource-label">靈石 <strong class="xm-resource-value">${safeText(playerProfile.spiritStones || 0)}</strong></span>
-      <span class="xm-resource-label">最高妖潮 <strong class="xm-resource-value">${safeText(playerProfile.highestWave || 0)}</strong></span>
-      <span class="xm-resource-label">當前章節：${safeText(summary.complete ? "第一章已平定" : summary.node ? `${summary.node.displayId} ${summary.node.name}` : "妖門初啟")}</span>
+      <span class="xm-resource-label">當前章節：${safeText(summary.complete ? "第一章已平定" : summary.chapter?.name || "第一章·妖門初啟")}</span>
+      <span class="xm-resource-label">當前界域：青冥一界</span>
     `;
   }
 
@@ -85,12 +85,17 @@
     const summary = currentChapterSummary({ DATA, playerProfile, helpers });
     renderResourceBar({ root: elements.hubResourceBar, playerProfile, DATA, helpers });
     if (elements.hubMainTitle) {
-      elements.hubMainTitle.textContent = summary.complete ? "第一章已平定" : summary.chapter?.name || "第一章·妖门初启";
+      elements.hubMainTitle.textContent = summary.complete ? "第一章已平定" : summary.chapter?.name || "第一章·妖門初啟";
+    }
+    if (elements.hubNodeTitle) {
+      elements.hubNodeTitle.textContent = summary.complete
+        ? "新的裂隙正在外山深处蔓延"
+        : `当前节点：${summary.node ? `${summary.node.displayId} ${summary.node.name}` : "1-1 山门警钟"}`;
     }
     if (elements.hubMainDescription) {
       elements.hubMainDescription.textContent = summary.complete
-        ? "新的裂隙正在外山深处蔓延……"
-        : `当前节点：${summary.node ? `${summary.node.displayId} ${summary.node.name}` : "1-1 山门警钟"}。${summary.chapter?.subtitle || "妖门裂隙初现，山门大阵初醒。"}`;
+        ? "第一章妖潮已暂平。新的裂隙正在外山深处蔓延，宗门仍需整备。"
+        : "妖門裂隙初現，護山大陣外環失衡。請前往山門外環查明妖潮源頭。";
     }
   }
 

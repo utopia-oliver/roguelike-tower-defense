@@ -32,8 +32,11 @@ const titleLoginModal = document.querySelector("#titleLoginModal");
 const titleLoginContinueButton = document.querySelector("#titleLoginContinueButton");
 const titleLoginBackButton = document.querySelector("#titleLoginBackButton");
 const hubResourceBar = document.querySelector("#hubResourceBar");
+const hubRealmButton = document.querySelector("#hubRealmButton");
+const hubNoticeButton = document.querySelector("#hubNoticeButton");
 const hubSettingsButton = document.querySelector("#hubSettingsButton");
 const hubAdventureButton = document.querySelector("#hubAdventureButton");
+const hubNodeTitle = document.querySelector("#hubNodeTitle");
 const hubBottomNav = document.querySelector("#hubBottomNav");
 const featurePageTitle = document.querySelector("#featurePageTitle");
 const featurePageSubtitle = document.querySelector("#featurePageSubtitle");
@@ -2815,6 +2818,7 @@ function renderMainHub() {
   renderSystemMainHub({
     elements: {
       hubMainTitle: document.querySelector("#hubMainTitle"),
+      hubNodeTitle,
       hubMainDescription: document.querySelector("#hubMainDescription"),
       hubResourceBar,
     },
@@ -2825,6 +2829,12 @@ function renderMainHub() {
       getChapterNode,
       getCurrentChapterNodeId,
     },
+  });
+}
+
+function syncHubNavActive() {
+  document.querySelectorAll("[data-hub-page]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.hubPage === state.appState);
   });
 }
 
@@ -2940,6 +2950,7 @@ function updateUi() {
   renderLobby();
   renderMainHub();
   renderFeaturePage();
+  syncHubNavActive();
   renderSystemHud({
     elements: {
       waveText,
@@ -4825,6 +4836,8 @@ titleLoginModal?.addEventListener("click", (event) => {
   if (event.target === titleLoginModal) closeTitleLogin();
 });
 hubAdventureButton.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
+hubRealmButton?.addEventListener("click", () => openSettings("界域系統暫未開放。"));
+hubNoticeButton?.addEventListener("click", openTitleNotice);
 hubSettingsButton.addEventListener("click", () => openSettings());
 hubBottomNav.addEventListener("click", handleHubNavClick);
 featureBottomNav.addEventListener("click", handleHubNavClick);
