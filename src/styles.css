@@ -108,7 +108,7 @@ button:disabled {
 
 .xm-hub {
   background:
-    linear-gradient(180deg, rgba(0, 10, 8, 0.08), rgba(0, 8, 6, 0.34)),
+    linear-gradient(180deg, rgba(0, 10, 8, 0.04), rgba(0, 8, 6, 0.22)),
     url("../assets/images/bg/main-hub-sect-v1.webp"),
     radial-gradient(circle at 50% 80%, rgba(109, 226, 190, 0.14), transparent 20rem),
     radial-gradient(circle at 84% 12%, rgba(110, 49, 95, 0.12), transparent 24rem),
@@ -144,9 +144,9 @@ button:disabled {
 
 .xm-title-bg {
   background:
-    radial-gradient(circle at 50% 38%, rgba(241, 217, 154, 0.12), transparent 28rem),
-    linear-gradient(180deg, rgba(0, 10, 8, 0.45), rgba(0, 8, 7, 0.68)),
-    radial-gradient(ellipse at center, transparent 38%, rgba(0, 0, 0, 0.58) 100%),
+    radial-gradient(circle at 50% 38%, rgba(241, 217, 154, 0.16), transparent 30rem),
+    linear-gradient(180deg, rgba(0, 10, 8, 0.24), rgba(0, 8, 7, 0.46)),
+    radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.38) 100%),
     url("../assets/images/bg/title-gate-v1.webp"),
     radial-gradient(circle at 18% 0%, rgba(76, 154, 121, 0.24), transparent 34rem),
     radial-gradient(circle at 80% 14%, rgba(110, 49, 95, 0.22), transparent 26rem),
@@ -157,30 +157,52 @@ button:disabled {
 }
 
 .xm-hub-bg {
-  opacity: 0.46;
+  opacity: 0.58;
 }
 
 .xm-title-bg::before,
 .xm-hub-bg::before {
-  animation: xmMist 18s ease-in-out infinite alternate;
+  animation: xmFogDrift 30s ease-in-out infinite alternate;
   background:
-    radial-gradient(ellipse at 24% 62%, rgba(220, 235, 214, 0.1), transparent 22rem),
-    radial-gradient(ellipse at 72% 48%, rgba(109, 226, 190, 0.08), transparent 20rem);
+    radial-gradient(ellipse at 24% 62%, rgba(220, 235, 214, 0.16), transparent 24rem),
+    radial-gradient(ellipse at 72% 48%, rgba(109, 226, 190, 0.12), transparent 22rem);
   content: "";
   inset: -12%;
   position: absolute;
 }
 
 .xm-hub-bg::before {
+  animation-duration: 38s;
   background:
-    radial-gradient(ellipse at 28% 44%, rgba(220, 235, 214, 0.1), transparent 22rem),
-    radial-gradient(ellipse at 70% 56%, rgba(109, 226, 190, 0.09), transparent 20rem),
-    linear-gradient(180deg, rgba(189, 208, 198, 0.04), transparent 56%);
+    radial-gradient(ellipse at 28% 44%, rgba(220, 235, 214, 0.16), transparent 24rem),
+    radial-gradient(ellipse at 70% 56%, rgba(109, 226, 190, 0.13), transparent 22rem),
+    linear-gradient(180deg, rgba(189, 208, 198, 0.06), transparent 56%);
+}
+
+.xm-hub-bg::after {
+  animation: xmSpiritFloat 10s ease-in-out infinite;
+  background:
+    radial-gradient(circle at 14% 82%, rgba(177, 246, 216, 0.42) 0 2px, transparent 3px),
+    radial-gradient(circle at 27% 68%, rgba(241, 217, 154, 0.3) 0 1px, transparent 3px),
+    radial-gradient(circle at 39% 78%, rgba(177, 246, 216, 0.36) 0 2px, transparent 4px),
+    radial-gradient(circle at 52% 64%, rgba(241, 217, 154, 0.28) 0 1px, transparent 3px),
+    radial-gradient(circle at 64% 76%, rgba(177, 246, 216, 0.38) 0 2px, transparent 4px),
+    radial-gradient(circle at 76% 66%, rgba(241, 217, 154, 0.3) 0 1px, transparent 3px),
+    radial-gradient(circle at 88% 82%, rgba(177, 246, 216, 0.36) 0 2px, transparent 4px);
+  bottom: -10%;
+  content: "";
+  height: 46%;
+  left: 0;
+  opacity: 0.76;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
 }
 
 .xm-title-bg::after,
 .xm-demon-gate {
-  background: radial-gradient(ellipse at center, rgba(110, 49, 95, 0.52), rgba(110, 49, 95, 0.08) 35%, transparent 70%);
+  animation: xmRiftPulse 4.8s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at center, rgba(148, 58, 126, 0.64), rgba(110, 49, 95, 0.16) 38%, transparent 72%);
   filter: blur(2px);
   height: 44%;
   position: absolute;
@@ -202,7 +224,7 @@ button:disabled {
 }
 
 .xm-hub-clouds {
-  animation: xmMist 24s ease-in-out infinite alternate;
+  animation: xmFogDrift 56s ease-in-out infinite alternate;
   background:
     radial-gradient(ellipse at 22% 44%, rgba(244, 239, 223, 0.12), transparent 30rem),
     radial-gradient(ellipse at 78% 36%, rgba(220, 235, 214, 0.09), transparent 26rem);
@@ -334,13 +356,14 @@ button:disabled {
 }
 
 .xm-title-rift {
+  animation: xmRiftPulse 4.6s ease-in-out infinite alternate;
   background:
     radial-gradient(ellipse at center, rgba(148, 58, 126, 0.68), rgba(91, 36, 82, 0.16) 38%, transparent 70%),
     linear-gradient(160deg, transparent 32%, rgba(244, 198, 255, 0.36) 48%, transparent 61%);
   border-radius: 50%;
   filter: blur(2px);
   height: 42%;
-  opacity: 0.62;
+  opacity: 0.74;
   position: absolute;
   right: 11%;
   top: 15%;
@@ -349,13 +372,13 @@ button:disabled {
 }
 
 .xm-title-array {
-  animation: xmArrayPulse 4.8s ease-in-out infinite alternate;
-  border: 1px solid rgba(109, 226, 190, 0.24);
+  animation: xmArrayPulse 3.8s ease-in-out infinite alternate;
+  border: 1px solid rgba(109, 226, 190, 0.34);
   border-radius: 50%;
   bottom: -92px;
   box-shadow:
-    0 0 42px rgba(109, 226, 190, 0.14),
-    inset 0 0 34px rgba(216, 172, 82, 0.08);
+    0 0 54px rgba(109, 226, 190, 0.22),
+    inset 0 0 42px rgba(216, 172, 82, 0.12);
   height: 280px;
   left: 50%;
   position: absolute;
@@ -390,8 +413,8 @@ button:disabled {
 }
 
 .xm-title-fog {
-  animation: xmMist 20s ease-in-out infinite alternate;
-  background: radial-gradient(ellipse at center, rgba(244, 239, 223, 0.11), transparent 72%);
+  animation: xmFogDrift 24s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at center, rgba(244, 239, 223, 0.17), transparent 72%);
   height: 22%;
   position: absolute;
   width: 48%;
@@ -403,7 +426,7 @@ button:disabled {
 }
 
 .xm-title-fog--two {
-  animation-duration: 26s;
+  animation-duration: 30s;
   bottom: 18%;
   right: 4%;
 }
@@ -499,8 +522,8 @@ button:disabled {
 
 .xm-title-login-panel {
   background:
-    linear-gradient(135deg, rgba(255, 248, 231, 0.08), transparent 42%),
-    rgba(4, 12, 10, 0.78);
+    linear-gradient(135deg, rgba(255, 248, 231, 0.1), transparent 42%),
+    rgba(4, 12, 10, 0.58);
   border: 1px solid rgba(216, 172, 82, 0.42);
   border-radius: 8px;
   box-shadow:
@@ -571,6 +594,10 @@ button:disabled {
   z-index: 2;
 }
 
+.xm-hub .xm-topbar {
+  justify-content: space-between;
+}
+
 .xm-hub-top-actions {
   display: flex;
   flex-wrap: wrap;
@@ -600,16 +627,102 @@ button:disabled {
 
 .xm-hub-main {
   background:
-    linear-gradient(135deg, rgba(255, 248, 231, 0.06), transparent 46%),
-    rgba(7, 16, 13, 0.66);
-  border: 1px solid rgba(216, 172, 82, 0.34);
+    linear-gradient(135deg, rgba(255, 248, 231, 0.08), transparent 46%),
+    rgba(7, 16, 13, 0.26);
+  border: 1px solid rgba(216, 172, 82, 0.2);
   border-radius: 8px;
-  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.25), inset 0 0 34px rgba(109, 226, 190, 0.05);
-  max-width: 540px;
-  padding: 28px;
+  box-shadow: 0 16px 52px rgba(0, 0, 0, 0.16), inset 0 0 28px rgba(109, 226, 190, 0.04);
+  max-width: 360px;
+  padding: 16px;
   position: relative;
   text-align: center;
   z-index: 2;
+}
+
+.xm-hub-main--ambient {
+  bottom: 104px;
+  left: 28px;
+  position: absolute;
+  text-align: left;
+}
+
+.xm-hub-main--ambient h1 {
+  font-size: 25px;
+}
+
+.xm-hub-main--ambient p {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.xm-hub-main--ambient .primary {
+  min-height: 36px;
+  padding: 8px 12px;
+}
+
+.xm-hub-hotspots {
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 2;
+}
+
+.xm-hub-hotspot {
+  background: rgba(5, 15, 12, 0.34);
+  border: 1px solid rgba(216, 172, 82, 0.26);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.16), inset 0 0 18px rgba(109, 226, 190, 0.04);
+  color: #fff7db;
+  display: grid;
+  gap: 2px;
+  min-width: 96px;
+  padding: 8px 10px;
+  pointer-events: auto;
+  position: absolute;
+  text-align: center;
+}
+
+.xm-hub-hotspot strong {
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.xm-hub-hotspot span {
+  color: #d6cbb8;
+  font-family: var(--font-accent);
+  font-size: 12px;
+}
+
+.xm-hub-hotspot:hover {
+  background: rgba(16, 45, 35, 0.52);
+  border-color: rgba(109, 226, 190, 0.58);
+  box-shadow: 0 0 22px rgba(109, 226, 190, 0.18);
+}
+
+.xm-hub-hotspot--hall {
+  left: 50%;
+  top: 34%;
+  transform: translate(-50%, -50%);
+}
+
+.xm-hub-hotspot--array {
+  left: 50%;
+  top: 68%;
+  transform: translate(-50%, -50%);
+}
+
+.xm-hub-hotspot--forge {
+  right: 22%;
+  top: 47%;
+}
+
+.xm-hub-hotspot--dojo {
+  left: 20%;
+  top: 50%;
+}
+
+.xm-hub-hotspot--archive {
+  right: 16%;
+  top: 30%;
 }
 
 .xm-hub-node-label {
@@ -855,7 +968,7 @@ button:disabled {
 
 .xm-adventure-map {
   background:
-    linear-gradient(180deg, rgba(0, 10, 8, 0.3), rgba(0, 8, 6, 0.78)),
+    linear-gradient(180deg, rgba(0, 10, 8, 0.12), rgba(0, 8, 6, 0.36)),
     url("../assets/images/bg/chapter1-map-v1.webp"),
     radial-gradient(ellipse at 54% 48%, rgba(109, 226, 190, 0.12), transparent 28rem),
     radial-gradient(ellipse at 88% 22%, rgba(110, 49, 95, 0.2), transparent 20rem),
@@ -865,32 +978,44 @@ button:disabled {
   background-size: cover;
   border: 1px solid rgba(216, 172, 82, 0.28);
   border-radius: 8px;
-  display: grid;
-  gap: 14px;
-  grid-template-columns: minmax(190px, 0.8fr) minmax(260px, 1.35fr) minmax(230px, 1fr);
-  min-height: 560px;
+  display: block;
+  min-height: 660px;
   overflow: hidden;
   padding: 14px;
   position: relative;
 }
 
 .xm-adventure-map::before {
+  animation: xmFogDrift 34s ease-in-out infinite alternate;
   background:
-    radial-gradient(ellipse at 50% 42%, rgba(241, 217, 154, 0.08), transparent 28rem),
-    linear-gradient(180deg, rgba(4, 10, 8, 0.12), rgba(4, 10, 8, 0.38)),
-    linear-gradient(90deg, transparent, rgba(216, 172, 82, 0.12), transparent),
-    repeating-linear-gradient(135deg, rgba(109, 226, 190, 0.08) 0 1px, transparent 1px 34px);
+    radial-gradient(ellipse at 50% 42%, rgba(241, 217, 154, 0.12), transparent 30rem),
+    linear-gradient(180deg, rgba(4, 10, 8, 0.04), rgba(4, 10, 8, 0.2)),
+    linear-gradient(90deg, transparent, rgba(216, 172, 82, 0.14), transparent),
+    repeating-linear-gradient(135deg, rgba(109, 226, 190, 0.09) 0 1px, transparent 1px 34px);
   content: "";
   inset: 0;
-  opacity: 0.42;
+  opacity: 0.56;
   pointer-events: none;
   position: absolute;
+}
+
+.xm-adventure-map::after {
+  animation: xmAdventureGlow 6s ease-in-out infinite alternate;
+  background:
+    radial-gradient(ellipse at 88% 18%, rgba(121, 45, 102, 0.46), transparent 22rem),
+    linear-gradient(118deg, transparent 22%, rgba(109, 226, 190, 0.12) 43%, rgba(241, 217, 154, 0.16) 50%, rgba(109, 226, 190, 0.1) 57%, transparent 74%);
+  content: "";
+  inset: 0;
+  opacity: 0.6;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
 }
 
 .xm-chapter-panel,
 .xm-node-route,
 .xm-node-detail {
-  background: rgba(5, 12, 10, 0.84);
+  background: rgba(5, 12, 10, 0.54);
   border: 1px solid rgba(216, 172, 82, 0.24);
   border-radius: 8px;
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.24), inset 0 0 28px rgba(109, 226, 190, 0.04);
@@ -898,9 +1023,62 @@ button:disabled {
   z-index: 1;
 }
 
+.xm-adventure-map-header {
+  align-items: center;
+  background: rgba(5, 12, 10, 0.34);
+  border: 1px solid rgba(216, 172, 82, 0.2);
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  left: 14px;
+  padding: 10px 12px;
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 2;
+}
+
+.xm-adventure-map-header h2,
+.xm-adventure-map-header p {
+  margin: 0;
+}
+
+.xm-adventure-map-header h2 {
+  color: #fff7db;
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
+.xm-adventure-map-header > p {
+  color: #dcebd6;
+  font-family: var(--font-accent);
+  font-size: 13px;
+}
+
 .xm-chapter-panel,
 .xm-node-detail {
   padding: 14px;
+}
+
+.xm-chapter-panel--compact {
+  bottom: 18px;
+  display: grid;
+  gap: 6px;
+  left: 18px;
+  max-width: 340px;
+  position: absolute;
+  z-index: 2;
+}
+
+.xm-chapter-panel--compact strong {
+  color: var(--gold-soft);
+  font-family: var(--font-accent);
+}
+
+.xm-chapter-panel--compact span {
+  color: rgba(220, 235, 214, 0.82);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .xm-chapter-panel h2,
@@ -920,13 +1098,29 @@ button:disabled {
 }
 
 .xm-node-route {
-  align-content: start;
-  background: rgba(5, 12, 10, 0.72);
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: auto;
-  padding: 14px;
+  background: transparent;
+  inset: 0;
+  overflow: visible;
+  padding: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+.xm-node-route::before {
+  animation: xmLineGlimmer 5.2s ease-in-out infinite;
+  background: linear-gradient(110deg, transparent 8%, rgba(109, 226, 190, 0.12), rgba(241, 217, 154, 0.18), rgba(109, 226, 190, 0.12), transparent 88%);
+  background-size: 220% 100%;
+  content: "";
+  height: 2px;
+  left: 12%;
+  opacity: 0.72;
+  pointer-events: none;
+  position: absolute;
+  top: 56%;
+  transform: rotate(-19deg);
+  transform-origin: left center;
+  width: 78%;
 }
 
 .xm-map-node {
@@ -936,9 +1130,16 @@ button:disabled {
   border-color: rgba(109, 226, 190, 0.22);
   display: grid;
   gap: 4px;
-  min-height: 92px;
-  padding: 10px;
-  text-align: left;
+  left: var(--node-x);
+  min-height: 74px;
+  min-width: 94px;
+  overflow: hidden;
+  padding: 8px 10px;
+  pointer-events: auto;
+  position: absolute;
+  text-align: center;
+  top: var(--node-y);
+  transform: translate(-50%, -50%);
 }
 
 .xm-map-node span {
@@ -949,11 +1150,12 @@ button:disabled {
 .xm-map-node strong {
   color: #fff7db;
   font-family: var(--font-accent);
-  font-size: 16px;
+  font-size: 14px;
 }
 
 .xm-map-node small {
   color: #d6cbb8;
+  font-size: 11px;
 }
 
 .xm-map-node--locked {
@@ -964,12 +1166,24 @@ button:disabled {
 
 .xm-map-node--available {
   border-color: rgba(216, 172, 82, 0.72);
-  box-shadow: 0 0 20px rgba(216, 172, 82, 0.12);
+  box-shadow: 0 0 28px rgba(216, 172, 82, 0.2);
 }
 
 .xm-map-node--cleared {
   border-color: rgba(109, 226, 190, 0.58);
-  box-shadow: inset 0 0 24px rgba(109, 226, 190, 0.1);
+  box-shadow: 0 0 20px rgba(109, 226, 190, 0.16), inset 0 0 24px rgba(109, 226, 190, 0.12);
+}
+
+.xm-map-node--available::after,
+.xm-map-node--cleared::after {
+  animation: xmRouteGlimmer 4.8s ease-in-out infinite;
+  background: linear-gradient(110deg, transparent, rgba(241, 217, 154, 0.16), rgba(109, 226, 190, 0.14), transparent);
+  content: "";
+  inset: 0;
+  opacity: 0.18;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-70%);
 }
 
 .xm-map-node--boss {
@@ -979,6 +1193,16 @@ button:disabled {
   border-color: rgba(201, 92, 69, 0.62);
 }
 
+.xm-map-node--boss::before {
+  animation: xmRiftPulse 5.6s ease-in-out infinite alternate;
+  background: radial-gradient(circle at center, rgba(148, 58, 126, 0.26), transparent 64%);
+  content: "";
+  inset: -28%;
+  opacity: 0.45;
+  pointer-events: none;
+  position: absolute;
+}
+
 .xm-map-node--selected {
   outline: 2px solid rgba(241, 217, 154, 0.82);
   outline-offset: 2px;
@@ -986,9 +1210,29 @@ button:disabled {
 
 .xm-node-detail {
   align-content: start;
-  background: rgba(5, 12, 10, 0.88);
+  background: rgba(5, 12, 10, 0.78);
   display: grid;
   gap: 10px;
+}
+
+.xm-node-detail--drawer {
+  bottom: 18px;
+  max-width: 330px;
+  position: absolute;
+  right: 18px;
+  top: 86px;
+  z-index: 3;
+}
+
+.xm-node-detail-close {
+  align-self: start;
+  background: rgba(7, 16, 13, 0.46);
+  border-color: rgba(216, 172, 82, 0.24);
+  color: #f7e6b2;
+  justify-self: end;
+  min-height: 30px;
+  min-width: 30px;
+  padding: 2px 8px;
 }
 
 .xm-node-detail blockquote {
@@ -1040,14 +1284,84 @@ button:disabled {
   }
 }
 
+@keyframes xmFogDrift {
+  from {
+    opacity: 0.42;
+    transform: translate3d(-5%, 0, 0);
+  }
+  to {
+    opacity: 0.72;
+    transform: translate3d(5%, -2.4%, 0);
+  }
+}
+
+@keyframes xmRiftPulse {
+  from {
+    opacity: 0.42;
+    filter: blur(2px);
+  }
+  50% {
+    opacity: 0.82;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 0.52;
+    filter: blur(2px);
+  }
+}
+
 @keyframes xmArrayPulse {
   from {
-    opacity: 0.72;
-    filter: drop-shadow(0 0 10px rgba(109, 226, 190, 0.12));
+    opacity: 0.76;
+    filter: drop-shadow(0 0 14px rgba(109, 226, 190, 0.18));
   }
   to {
     opacity: 0.96;
-    filter: drop-shadow(0 0 24px rgba(109, 226, 190, 0.22));
+    filter: drop-shadow(0 0 30px rgba(109, 226, 190, 0.34));
+  }
+}
+
+@keyframes xmSpiritFloat {
+  from {
+    opacity: 0.2;
+    transform: translate3d(0, 10%, 0);
+  }
+  45% {
+    opacity: 0.7;
+  }
+  to {
+    opacity: 0.26;
+    transform: translate3d(0, -18%, 0);
+  }
+}
+
+@keyframes xmAdventureGlow {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 0.72;
+  }
+}
+
+@keyframes xmRouteGlimmer {
+  from {
+    transform: translateX(-72%);
+  }
+  60% {
+    transform: translateX(72%);
+  }
+  to {
+    transform: translateX(72%);
+  }
+}
+
+@keyframes xmLineGlimmer {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
   }
 }
 
@@ -1747,6 +2061,43 @@ h2 {
   .xm-hub {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .xm-hub-main--ambient {
+    bottom: auto;
+    left: auto;
+    margin: 12px;
+    max-width: none;
+    position: relative;
+  }
+
+  .xm-hub-hotspots {
+    display: none;
+  }
+
+  .xm-adventure-map {
+    min-height: 620px;
+  }
+
+  .xm-adventure-map-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .xm-chapter-panel--compact {
+    display: none;
+  }
+
+  .xm-node-detail--drawer {
+    left: 14px;
+    max-width: none;
+    right: 14px;
+    top: 84px;
+  }
+
+  .xm-map-node {
+    min-width: 78px;
+    padding: 7px;
   }
 
   canvas {

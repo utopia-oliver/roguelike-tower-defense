@@ -833,6 +833,7 @@ function enterMainHub(notice = "") {
 
 function enterHubPage(page, returnState = APP_STATE.MAIN_HUB) {
   if (!HUB_PAGE_STATES.has(page)) return;
+  if (page === APP_STATE.ADVENTURE) state.adventureDetailOpen = false;
   featureReturnState = returnState;
   state.appState = page;
   state.phase = "hub_page";
@@ -912,6 +913,7 @@ function getChapterNodeStatus(chapterId, nodeId) {
 function selectAdventureNode(nodeId, chapterId = "chapter_1") {
   state.selectedAdventureChapterId = chapterId;
   state.selectedAdventureNodeId = nodeId;
+  state.adventureDetailOpen = true;
   renderFeaturePage();
 }
 
@@ -4809,6 +4811,7 @@ canvas.addEventListener("click", (event) => {
 function handleHubNavClick(event) {
   const button = event.target.closest("[data-hub-page]");
   if (!button) return;
+  event.stopPropagation();
   enterHubPage(button.dataset.hubPage);
 }
 
@@ -4836,6 +4839,7 @@ titleLoginModal?.addEventListener("click", (event) => {
   if (event.target === titleLoginModal) closeTitleLogin();
 });
 hubAdventureButton.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
+mainHubView.addEventListener("click", handleHubNavClick);
 hubRealmButton?.addEventListener("click", () => openSettings("界域系統暫未開放。"));
 hubNoticeButton?.addEventListener("click", openTitleNotice);
 hubSettingsButton.addEventListener("click", () => openSettings());
@@ -4854,6 +4858,11 @@ featurePageContent.addEventListener("click", (event) => {
   const action = event.target.closest("[data-page-action]");
   if (action?.dataset.pageAction === "back-main") {
     enterMainHub();
+    return;
+  }
+  if (action?.dataset.pageAction === "close-adventure-detail") {
+    state.adventureDetailOpen = false;
+    renderFeaturePage();
     return;
   }
   if (action?.dataset.pageAction === "start-adventure") {

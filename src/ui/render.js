@@ -280,11 +280,25 @@
     const selectedNode = chapter.nodes.find((node) => node.nodeId === selectedNodeId) || chapter.nodes[0];
     const selectedStatus = helpers.getChapterNodeStatus(chapter.chapterId, selectedNode.nodeId);
     const clearedCount = progress.clearedNodeIds?.length || 0;
-    const nodeButton = (node) => {
+    const detailOpen = Boolean(state.adventureDetailOpen && selectedNode);
+    const nodePositions = [
+      [12, 78],
+      [22, 65],
+      [34, 72],
+      [43, 56],
+      [53, 47],
+      [42, 34],
+      [56, 27],
+      [67, 40],
+      [76, 27],
+      [87, 18],
+    ];
+    const nodeButton = (node, index) => {
       const status = helpers.getChapterNodeStatus(chapter.chapterId, node.nodeId);
-      const isSelected = node.nodeId === selectedNode.nodeId;
+      const isSelected = detailOpen && node.nodeId === selectedNode.nodeId;
+      const [x, y] = nodePositions[index] || [12 + index * 8, 64 - (index % 3) * 8];
       return `
-        <button type="button" class="xm-map-node xm-map-node--${safeText(status)} ${node.boss || node.type === "boss" || node.type === "mini_boss" ? "xm-map-node--boss" : ""} ${isSelected ? "xm-map-node--selected" : ""}" data-adventure-chapter-id="${safeText(chapter.chapterId)}" data-adventure-node-id="${safeText(node.nodeId)}">
+        <button type="button" class="xm-map-node xm-map-node--${safeText(status)} ${node.boss || node.type === "boss" || node.type === "mini_boss" ? "xm-map-node--boss" : ""} ${isSelected ? "xm-map-node--selected" : ""}" style="--node-x: ${x}%; --node-y: ${y}%;" data-adventure-chapter-id="${safeText(chapter.chapterId)}" data-adventure-node-id="${safeText(node.nodeId)}" aria-label="${safeText(`${node.displayId} ${node.name}`)}">
           <span>${safeText(node.displayId)}</span>
           <strong>${safeText(node.name)}</strong>
           <small>${status === "locked" ? "未解锁" : status === "cleared" ? "已通关" : "可挑战"}${node.boss || node.type === "boss" ? " · Boss" : ""}</small>
@@ -295,20 +309,10 @@
     const rewards = (selectedNode.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
     const locked = selectedStatus === "locked";
     const startLabel = selectedStatus === "cleared" ? "再次挑战" : "开始历练";
-    return `
-      <section class="xm-adventure-map">
-        <aside class="xm-chapter-panel">
-          <p class="xm-eyebrow">山门外环历练图</p>
-          <h2>${safeText(chapter.name)}</h2>
-          <h3>${safeText(chapter.subtitle)}</h3>
-          <p>${safeText(chapter.description)}</p>
-          <p>章节进度：${clearedCount} / ${chapter.nodes.length}</p>
-          <p>主题：${safeText(chapter.theme)}</p>
-        </aside>
-        <div class="xm-node-route">
-          ${chapter.nodes.map(nodeButton).join("")}
-        </div>
-        <aside class="xm-node-detail ${locked ? "xm-node-detail--locked" : ""}">
+    const detail = detailOpen
+      ? `
+        <aside class="xm-node-detail xm-node-detail--drawer ${locked ? "xm-node-detail--locked" : ""}">
+          <button type="button" class="xm-node-detail-close" data-page-action="close-adventure-detail" aria-label="关闭节点详情">×</button>
           <p class="xm-eyebrow">${safeText(selectedNode.displayId)} · ${safeText(nodeTypeLabel(selectedNode.type))}${selectedNode.boss || selectedNode.type === "boss" ? " · Boss" : ""}</p>
           <h2>${safeText(selectedNode.name)}</h2>
           <p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p>
@@ -318,6 +322,25 @@
           <button type="button" class="primary" data-page-action="start-adventure" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(locked ? "尚未解锁" : startLabel)}</button>
           <button type="button" class="secondary" data-page-action="back-main">返回宗门</button>
         </aside>
+      `
+      : "";
+    return `
+      <section class="xm-adventure-map">
+        <header class="xm-adventure-map-header">
+          <div>
+            <p class="xm-eyebrow">山门外环历练图</p>
+            <h2>${safeText(chapter.name)}</h2>
+          </div>
+          <p>${safeText(chapter.subtitle)} · 进度 ${clearedCount} / ${chapter.nodes.length}</p>
+        </header>
+        <aside class="xm-chapter-panel xm-chapter-panel--compact">
+          <strong>${safeText(chapter.theme)}</strong>
+          <span>${safeText(chapter.description)}</span>
+        </aside>
+        <div class="xm-node-route">
+          ${chapter.nodes.map(nodeButton).join("")}
+        </div>
+        ${detail}
       </section>
     `;
   }
