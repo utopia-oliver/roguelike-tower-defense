@@ -146,27 +146,30 @@
       <section id="loadoutView" class="meta-view hidden">
         <header class="page-head">
           <div>
-            <h1>战前配置</h1>
-            <p>选择 1 个阵法、最多 3 名角色、最多 1 个法宝。</p>
+            <h1>战前整备</h1>
+            <p>整备门人、法宝与阵法，准备进入本次历练。</p>
           </div>
-          <button id="enterDeployButton" class="primary">进入布阵</button>
+          <div class="page-head-actions">
+            <button id="loadoutBackButton" class="secondary">返回地图</button>
+            <button id="enterDeployButton" class="primary">进入阵法配置</button>
+          </div>
         </header>
         <div class="loadout-grid">
           <article class="panel">
-            <h2>护山大阵</h2>
+            <h2>本次历练</h2>
             <div id="loadoutFormationList" class="choice-list"></div>
           </article>
           <article class="panel">
-            <h2>出战宗门角色</h2>
-            <p class="hint">至少 1 名，最多 3 名。</p>
+            <h2>出战配置</h2>
+            <p class="hint">选择本次出战门人与携带法宝。</p>
             <div id="loadoutRoleList" class="choice-list roles"></div>
           </article>
           <article class="panel">
-            <h2>出战法宝</h2>
+            <h2>当前阵法</h2>
             <div id="loadoutArtifactList" class="choice-list"></div>
           </article>
           <article class="panel">
-            <h2>配置状态</h2>
+            <h2>整备状态</h2>
             <p id="loadoutStatus"></p>
           </article>
         </div>
@@ -186,19 +189,21 @@
             <span class="label xm-resource-label">靈氣</span>
             <strong id="lingqiText">Lv1 · 0 / 40</strong>
           </div>
+          <button id="deployBackButton" class="secondary">返回整备</button>
           <button id="startButton" class="primary">开始战斗</button>
         </header>
 
         <canvas id="gameCanvas" width="540" height="840"></canvas>
+        <section id="deployBoard" class="deploy-board hidden"></section>
 
         <aside class="side-panel">
           <section>
-            <h2>本局护山大阵</h2>
+            <h2>当前阵法</h2>
             <div id="formationList" class="choice-list"></div>
           </section>
           <section>
-            <h2>待部署角色</h2>
-            <div class="hint" id="deployHint">点击角色，再点击最底部护山大阵 / 护山阵眼格部署。</div>
+            <h2>待入阵门人</h2>
+            <div class="hint" id="deployHint">点击门人，再点击五方阵位完成入阵。</div>
             <div id="roleList" class="choice-list roles"></div>
           </section>
           <section>

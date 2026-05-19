@@ -45,6 +45,7 @@ const featureBackButton = document.querySelector("#featureBackButton");
 const featureBottomNav = document.querySelector("#featureBottomNav");
 const goLoadoutButton = document.querySelector("#goLoadoutButton");
 const enterDeployButton = document.querySelector("#enterDeployButton");
+const loadoutBackButton = document.querySelector("#loadoutBackButton");
 const returnLobbyButton = document.querySelector("#returnLobbyButton");
 const settlementAdventureButton = document.querySelector("#settlementAdventureButton");
 const settlementCodexButton = document.querySelector("#settlementCodexButton");
@@ -74,10 +75,12 @@ const waveText = document.querySelector("#waveText");
 const hpText = document.querySelector("#hpText");
 const lingqiText = document.querySelector("#lingqiText");
 const startButton = document.querySelector("#startButton");
+const deployBackButton = document.querySelector("#deployBackButton");
 const formationList = document.querySelector("#formationList");
 const roleList = document.querySelector("#roleList");
 const artifactList = document.querySelector("#artifactList");
 const deployHint = document.querySelector("#deployHint");
+const deployBoard = document.querySelector("#deployBoard");
 const runStatus = document.querySelector("#runStatus");
 const perkModal = document.querySelector("#perkModal");
 const perkGrid = document.querySelector("#perkGrid");
@@ -931,6 +934,7 @@ function startAdventureNode(nodeId, chapterId = "chapter_1") {
   state.currentChapterId = chapterId;
   state.currentNodeId = node.nodeId;
   state.currentBattleConfigId = node.battleConfigId || "";
+  state.battleMode = node.battleMode || "guard";
   state.lastChallengeChapterId = chapterId;
   state.lastChallengeNodeId = node.nodeId;
   state.lastBattleConfigId = node.battleConfigId || "";
@@ -957,6 +961,7 @@ function markAdventureNodeCleared(chapterId, nodeId) {
 
 function enterLoadout() {
   applyPlayerLevelUnlocks();
+  state.battleMode = state.battleMode || "guard";
   if (!state.loadoutFormationId || !playerMeta.unlockedFormations.includes(state.loadoutFormationId)) {
     state.loadoutFormationId = playerMeta.unlockedFormations[0] || DATA.initial.formation || "";
   }
@@ -969,7 +974,7 @@ function enterLoadout() {
   state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
   state.appState = APP_STATE.LOADOUT;
   state.phase = "loadout";
-  setStatus("选择本局阵法、出战角色和法宝。");
+  setStatus("战前整备：确认本次历练、出战门人、携带法宝与当前阵法。");
   renderLoadout();
   updateUi();
 }
@@ -990,7 +995,7 @@ function enterDeploy() {
     return;
   }
   state.appState = APP_STATE.DEPLOY;
-    state.phase = "deploy";
+  state.phase = "deploy";
   initializeArrayCoreForRun();
   state.selectedFormationId = state.loadoutFormationId;
   const selectedFormation = DATA.formations[state.selectedFormationId];
@@ -1003,7 +1008,7 @@ function enterDeploy() {
     .slice(0, playerMeta.maxDeploySlots);
   state.selectedRoleId = state.availableRoles[0] || "";
   state.deployedRoles = [];
-  setStatus("布阵阶段：只能把已选择角色部署在最底部 5 个护山大阵 / 护山阵眼格。");
+  setStatus("阵法配置：将门人安置于五方阵位；守山模式会映射到原五个防守位置。");
   renderSetupLists();
   updateUi();
 }
@@ -1049,6 +1054,37 @@ function deployRole(col, row) {
   });
 }
 
+function deployFormationSlot(slotIndex) {
+  if (state.appState !== APP_STATE.DEPLOY) return false;
+  const col = Math.max(0, Math.min(grid.columns - 1, Number(slotIndex) || 0));
+  const row = grid.rows - 1;
+  const existing = state.deployedRoles.find((role) => role.col === col && role.row === row);
+  if (!state.selectedRoleId) {
+    if (existing) {
+      state.deployedRoles = state.deployedRoles.filter((role) => role !== existing);
+      setStatus("已移出该阵位门人。");
+      renderSetupLists();
+      updateUi();
+      return true;
+    }
+    setStatus("请先选择一名待入阵门人。");
+    return false;
+  }
+  if (existing?.roleId === state.selectedRoleId) {
+    state.deployedRoles = state.deployedRoles.filter((role) => role !== existing);
+    setStatus("已移出该阵位门人。");
+    renderSetupLists();
+    updateUi();
+    return true;
+  }
+  state.deployedRoles = state.deployedRoles.filter((role) => role.roleId !== state.selectedRoleId && role.col !== col);
+  const result = deployRole(col, row);
+  if (result?.ok) setStatus("门人已入阵。");
+  renderSetupLists();
+  updateUi();
+  return Boolean(result?.ok);
+}
+
 function setStatus(text) {
   state.status = text;
   runStatus.textContent = text;
@@ -1059,8 +1095,8 @@ function startRun() {
     setStatus("请先完成战前配置并进入布阵。");
     return;
   }
-  if (state.deployedRoles.length !== state.availableRoles.length) {
-    setStatus("请先部署所有出战宗门角色，再开始战斗。");
+  if (state.deployedRoles.length < 1) {
+    setStatus("请至少安排 1 名门人入阵，再开阵迎敌。");
     return;
   }
   resetRunStateForNewRun(state, {
@@ -2883,14 +2919,14 @@ function renderLoadout() {
       loadoutReady,
     },
   });
-  loadoutFormationList.querySelectorAll("[data-loadout-formation-id]").forEach((button) => {
+  loadoutView.querySelectorAll("[data-loadout-formation-id]").forEach((button) => {
     button.addEventListener("click", () => {
       state.loadoutFormationId = button.dataset.loadoutFormationId;
       renderLoadout();
       updateUi();
     });
   });
-  loadoutRoleList.querySelectorAll("[data-loadout-role-id]").forEach((button) => {
+  loadoutView.querySelectorAll("[data-loadout-role-id]").forEach((button) => {
     button.addEventListener("click", () => {
       const id = button.dataset.loadoutRoleId;
       const selected = state.loadoutRoleIds.includes(id);
@@ -2905,7 +2941,7 @@ function renderLoadout() {
       updateUi();
     });
   });
-  loadoutArtifactList.querySelectorAll("[data-loadout-artifact-id]").forEach((button) => {
+  loadoutView.querySelectorAll("[data-loadout-artifact-id]").forEach((button) => {
     button.addEventListener("click", () => {
       const id = button.dataset.loadoutArtifactId;
       const selected = state.loadoutArtifactIds.includes(id);
@@ -2929,6 +2965,7 @@ function renderSetupLists() {
       formationList,
       roleList,
       artifactList,
+      deployBoard,
     },
     state,
     DATA,
@@ -2938,6 +2975,11 @@ function renderSetupLists() {
     button.addEventListener("click", () => {
       state.selectedRoleId = button.dataset.setupRoleId;
       renderSetupLists();
+    });
+  });
+  deployBoard?.querySelectorAll("[data-formation-slot-index]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deployFormationSlot(button.dataset.formationSlotIndex);
     });
   });
 }
@@ -2952,6 +2994,9 @@ function updateUi() {
     showView(battleView);
   }
   if (state.appState === APP_STATE.SETTLEMENT) showView(settlementView);
+  battleView?.classList.toggle("is-deploy-config", state.appState === APP_STATE.DEPLOY);
+  deployBoard?.classList.toggle("hidden", state.appState !== APP_STATE.DEPLOY);
+  canvas?.classList.toggle("hidden", state.appState === APP_STATE.DEPLOY);
   renderLobby();
   renderMainHub();
   renderFeaturePage();
@@ -4999,6 +5044,7 @@ settingsModal.addEventListener("click", (event) => {
   if (event.target === settingsModal) closeSettings();
 });
 goLoadoutButton.addEventListener("click", enterLoadout);
+loadoutBackButton?.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
 enterDeployButton.addEventListener("click", enterDeploy);
 startButton.addEventListener("click", startRun);
 returnLobbyButton.addEventListener("click", () => enterMainHub());

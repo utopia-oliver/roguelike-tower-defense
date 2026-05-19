@@ -147,6 +147,7 @@
       loadoutRoleIds: [],
       loadoutArtifactId: "",
       loadoutArtifactIds: [],
+      battleMode: "guard",
       selectedFormationId: "",
       selectedRoleId: "",
       selectedArtifactId: "",
