@@ -2843,7 +2843,7 @@ function syncHubNavActive() {
 
 function renderFeaturePage() {
   if (!HUB_PAGE_STATES.has(state.appState)) return;
-  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS || state.appState === APP_STATE.BAG || state.appState === APP_STATE.GACHA);
+  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS || state.appState === APP_STATE.BAG || state.appState === APP_STATE.GACHA || state.appState === APP_STATE.CODEX);
   featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回啟卷" : "返回宗門";
   renderSystemFeaturePage({
     elements: {
@@ -4945,6 +4945,29 @@ featurePageContent.addEventListener("click", (event) => {
   if (gachaResultClose) {
     state.gachaResult = null;
     renderFeaturePage();
+    return;
+  }
+  const codexCategory = event.target.closest("[data-codex-category]");
+  if (codexCategory) {
+    state.codexCategory = codexCategory.dataset.codexCategory || "妖物";
+    state.selectedCodexEntryId = "";
+    renderFeaturePage();
+    return;
+  }
+  const codexEntry = event.target.closest("[data-codex-entry-id]");
+  if (codexEntry) {
+    state.selectedCodexEntryId = codexEntry.dataset.codexEntryId;
+    renderFeaturePage();
+    return;
+  }
+  const codexLink = event.target.closest("[data-codex-link]");
+  if (codexLink) {
+    const target = codexLink.dataset.codexLink;
+    const id = codexLink.dataset.codexTarget;
+    if (target === "CHARACTERS") state.selectedCharacterId = id || state.selectedCharacterId;
+    if (target === "ARTIFACTS") state.selectedArtifactId = id || state.selectedArtifactId;
+    if (target === "FORMATIONS") state.selectedFormationPageId = id || state.selectedFormationPageId;
+    if (APP_STATE[target]) enterHubPage(APP_STATE[target]);
     return;
   }
   const gacha = event.target.closest("[data-hub-gacha]");

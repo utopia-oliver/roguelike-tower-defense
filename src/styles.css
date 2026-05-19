@@ -2352,6 +2352,118 @@ button:disabled {
   width: 72px;
 }
 
+.xm-codex-page {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 210px minmax(380px, 1fr) 360px;
+  margin-top: 18px;
+  min-height: 560px;
+  position: relative;
+  z-index: 2;
+}
+
+.xm-codex-page__sidebar,
+.xm-codex-page__main,
+.xm-codex-page__detail {
+  min-width: 0;
+}
+
+.xm-codex-page h2 {
+  color: #fff4cf;
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.06em;
+  margin: 0 0 12px;
+}
+
+.xm-codex-category-list,
+.xm-codex-entry-list,
+.xm-codex-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.xm-codex-category {
+  background: rgba(8, 26, 21, 0.58);
+  border: 1px solid rgba(216, 172, 82, 0.17);
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.xm-codex-category:hover:not(:disabled),
+.xm-codex-category--selected {
+  border-color: rgba(201, 92, 69, 0.5);
+  box-shadow: inset 0 0 18px rgba(110, 49, 95, 0.1), 0 0 18px rgba(216, 172, 82, 0.06);
+}
+
+.xm-codex-category strong {
+  color: #fff7db;
+  font-family: var(--font-accent);
+}
+
+.xm-codex-category span {
+  color: #d6cbb8;
+  font-size: 12px;
+}
+
+.xm-codex-entry-list {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.xm-codex-entry {
+  background:
+    linear-gradient(135deg, rgba(201, 92, 69, 0.08), transparent 42%),
+    rgba(8, 26, 21, 0.62);
+  border: 1px solid rgba(216, 172, 82, 0.18);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  min-height: 148px;
+  padding: 10px;
+  text-align: left;
+}
+
+.xm-codex-entry:hover:not(:disabled),
+.xm-codex-entry--selected {
+  border-color: rgba(109, 226, 190, 0.5);
+  box-shadow: inset 0 0 20px rgba(109, 226, 190, 0.08), 0 0 18px rgba(110, 49, 95, 0.08);
+}
+
+.xm-codex-entry--locked {
+  opacity: 0.5;
+}
+
+.xm-codex-entry__icon {
+  align-items: center;
+  aspect-ratio: 1;
+  background:
+    radial-gradient(circle, rgba(241, 217, 154, 0.18), transparent 60%),
+    conic-gradient(from 30deg, rgba(201, 92, 69, 0.18), transparent, rgba(109, 226, 190, 0.12), transparent);
+  border: 1px solid rgba(216, 172, 82, 0.28);
+  border-radius: 9px;
+  color: #fff4cf;
+  display: flex;
+  font-family: var(--font-display);
+  font-size: 22px;
+  justify-content: center;
+  width: 48px;
+}
+
+.xm-codex-entry strong {
+  color: #fff7db;
+  font-family: var(--font-accent);
+}
+
+.xm-codex-entry small,
+.xm-codex-entry em {
+  color: #d6cbb8;
+  font-size: 12px;
+  font-style: normal;
+}
+
 .xm-array-preview {
   align-items: center;
   aspect-ratio: 1;
@@ -3456,6 +3568,10 @@ h2 {
   }
 
   .xm-gacha-page {
+    grid-template-columns: 1fr;
+  }
+
+  .xm-codex-page {
     grid-template-columns: 1fr;
   }
 

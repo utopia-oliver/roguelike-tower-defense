@@ -483,17 +483,90 @@
     `;
   }
 
-  function renderCodexPage({ DATA }) {
-    const section = (title, items) => `<article class="xm-detail-card"><h3>${safeText(title)}</h3><p>${items.slice(0, 16).map(safeText).join("、") || "暂无"}</p></article>`;
-    return subpageShell({
-      className: "xm-subpage--codex",
-      sidebarTitle: "封妖目录",
-      sidebar: ["妖物", "角色", "法宝", "阵法", "剧情线索"].map((name, index) => `<article class="xm-item-card ${index === 0 ? "xm-item-card--selected" : ""}"><strong>${safeText(name)}</strong><span>卷宗</span></article>`).join(""),
-      mainTitle: "镇妖录卷",
-      main: `<div class="xm-card-grid">${section("角色图鉴", valuesOf(DATA.roles).map((item) => item.name))}${section("法宝图鉴", valuesOf(DATA.artifacts).map((item) => item.name))}${section("妖物图鉴", valuesOf(DATA.enemies).map((item) => item.name))}${section("阵法图鉴", valuesOf(DATA.formations).map((item) => item.name))}${section("剧情档案", ["第一章·妖门初启", "妖门既开，山门当守"])}</div>`,
-      detailTitle: "条目详情",
-      detail: "<p>封妖志异，记录妖物、法宝、阵法与旧日线索。后续可在此展开单条目详情。</p>",
-    });
+  function enemyTypeLabel(enemy = {}) {
+    const raw = `${enemy.type || ""} ${enemy.attackMode || ""} ${enemy.trait || ""}`;
+    if (enemy.isBoss || /boss|首领|门将/i.test(raw)) return "首领";
+    if (/elite|妖将|精英/i.test(raw)) return "精英";
+    if (/ranged|arrow|远程/i.test(raw)) return "远程";
+    if (/caster|符|巫|施法/i.test(raw)) return "施法";
+    if (/fast|swift|疾|影/i.test(raw)) return "疾行";
+    if (/armored|tank|甲|魈/i.test(raw)) return "厚甲";
+    if (/breaker|噬阵|破阵|螟/i.test(raw)) return "破阵";
+    if (/poison|瘴|毒/i.test(raw)) return "毒瘴";
+    return "近战";
+  }
+
+  function codexEnemyLore(enemy = {}) {
+    const lores = {
+      enemy_little_yao: "低阶兽妖，常成群冲阵。鬃毛赤红，遇妖气则狂，虽无灵智，却极易受高阶妖物驱使。",
+      redmane_fiend: "低阶兽妖，常成群冲阵。鬃毛赤红，遇妖气则狂，虽无灵智，却极易受高阶妖物驱使。",
+      enemy_swift_wolf: "身形瘦长，行动极快，常绕开正面防线直扑阵眼。若不及时处理，容易造成阵眼压力。",
+      shadow_hound: "身形瘦长，行动极快，常绕开正面防线直扑阵眼。若不及时处理，容易造成阵眼压力。",
+      enemy_armor_beast: "披有妖化骨甲，行动缓慢但极耐击打。适合用持续输出或穿透类攻击压制。",
+      ironhide_xiao: "披有妖化骨甲，行动缓慢但极耐击打。适合用持续输出或穿透类攻击压制。",
+      rending_claw: "爪尖缠有污浊妖气，擅长撕咬阵纹。其出现意味着妖潮已经开始主动破阵。",
+      dark_talisman_shaman: "操使残符与骨铃的妖巫，常在妖群后方施咒，强化其他妖物或干扰护山大阵。",
+      miasma_mirage: "死后可残留毒瘴，污染战场。若处理不当，会持续压迫阵眼附近区域。",
+      array_devouring_moth: "专门啃噬灵纹的破阵妖种。并非天然妖兽，更像是被人为炼化出的破阵之物。",
+      redmane_demon_general: "赤鬃獠群中的妖将，体魄更强，能统御低阶兽妖冲阵。",
+      gloom_arrow_hound: "擅长在黑雾中远程袭击阵眼，不急于近身，常与施咒妖物配合。",
+      bone_talisman_witch: "比幽符巫更危险的妖术施法者，可短暂压制阵纹运行节律。",
+      black_gate_guardian: "妖门裂隙前出现的黑甲妖将。其甲胄上刻有古老门纹，似乎并非普通妖族军卒，而是某种旧封印的守门者。",
+    };
+    return lores[enemy.id] || enemy.note || "此妖物条目尚在补录，后续将随山门外历练逐步完善。";
+  }
+
+  function codexStoryEntries(playerProfile = {}) {
+    const flags = playerProfile.chapterProgress?.chapter_1?.storyFlags || {};
+    const cleared = playerProfile.chapterProgress?.chapter_1?.clearedNodeIds || [];
+    const hasLateProgress = cleared.includes("chapter1_6") || cleared.includes("chapter1_10");
+    return [
+      { id: "old_array_rubbing", name: "旧阵残拓", type: "剧情线索", source: "第一章·旧阵残碑", unlocked: Boolean(flags.old_array_rubbing || hasLateProgress), description: "外山旧碑上的残缺拓文，记载护山大阵最初并非为护宗而建，而是为了镇住某处“门隙”。" },
+      { id: "return_gate_rune", name: "归门妖纹", type: "剧情线索", source: "第一章·妖门初开", unlocked: Boolean(flags.return_gate_rune || cleared.includes("chapter1_10")), description: "黑渊门将死后遗留的古老妖纹。纹形并非杀伐符号，而像是在指向一扇本该归位的旧门。" },
+      { id: "seal_gate_mountain", name: "镇门于山", type: "旧碑残文", source: "旧阵残碑", unlocked: Boolean(flags.old_array_rubbing || hasLateProgress), description: "残碑上仅存的四字，似乎揭示了护山大阵真正的用途。" },
+      { id: "black_gate_mark", name: "黑渊门纹", type: "妖门线索", source: "黑渊门将", unlocked: Boolean(flags.return_gate_rune || cleared.includes("chapter1_10")), description: "黑甲碎片上的门纹，与玄门现有阵法体系并不完全一致。" },
+    ];
+  }
+
+  function codexWorldEntries() {
+    return [
+      { id: "yaomen", name: "妖门", type: "世界秘闻", description: "外山深处裂开的妖气之门，似乎不是单纯入侵通道，而与旧日封印有关。" },
+      { id: "array_core", name: "护山大阵", type: "宗门旧制", description: "玄门赖以镇守山门的核心阵法。其真正用途，或许比护宗更古老。" },
+      { id: "xuanmen_gate", name: "玄门山门", type: "宗门地标", description: "新任宗主接掌的山门所在，前庭安静，外山却妖气翻涌。" },
+      { id: "outer_forbidden", name: "外山禁地", type: "禁地", description: "山门之外的旧禁地，残碑、裂隙与妖潮皆从此处浮现线索。" },
+      { id: "return_gate", name: "归门", type: "旧日秘闻", description: "反复出现在妖纹与残碑中的词，似乎指向一扇本该归位的旧门。" },
+    ].map((item) => ({ ...item, unlocked: true }));
+  }
+
+  function codexEntries(DATA, playerProfile, category) {
+    if (category === "门人") return valuesOf(DATA.roles).map((role) => ({ id: role.id, name: role.name, icon: (role.name || "人").slice(0, 1), type: role.school || "门人", rarity: role.rarity || "-", tag: rolePositionLabel(role), unlocked: (playerProfile.ownedCharacters || []).includes(role.id), raw: role }));
+    if (category === "法宝") return valuesOf(DATA.artifacts).map((artifact) => ({ id: artifact.id, name: artifact.name, icon: artifactIconText(artifact), type: artifactRoleLabel(artifact), rarity: artifact.rarity || "-", tag: "法宝记录", unlocked: (playerProfile.ownedArtifacts || []).includes(artifact.id), raw: artifact }));
+    if (category === "阵法") return valuesOf(DATA.formations).map((formation) => ({ id: formation.id, name: formation.name, icon: "阵", type: formationRoleLabel(formation), rarity: formation.rarity || "-", tag: "护山阵法", unlocked: (playerProfile.unlockedFormations || []).includes(formation.id), raw: formation }));
+    if (category === "剧情线索") return codexStoryEntries(playerProfile).map((item) => ({ ...item, icon: "线", rarity: item.unlocked ? "已收录" : "待收录", tag: item.source, raw: item }));
+    if (category === "世界秘闻") return codexWorldEntries().map((item) => ({ ...item, icon: "闻", rarity: "秘闻", tag: item.type, raw: item }));
+    const chapterOneNames = new Set(["赤鬃獠", "掠影猲", "铁甲魈", "裂爪獠", "幽符巫", "腐瘴蜃", "噬阵螟", "赤鬃妖将", "幽箭猲", "骨符祭巫", "黑渊门将"]);
+    return valuesOf(DATA.enemies).filter((enemy) => chapterOneNames.has(enemy.name)).map((enemy) => ({ id: enemy.id, name: enemy.name, icon: (enemy.name || "妖").slice(0, 1), type: enemyTypeLabel(enemy), rarity: enemy.isBoss ? "首领" : enemy.trait || "妖物", tag: enemy.attackMode === "ranged" ? "远程威胁" : enemy.isBoss ? "Boss" : "山门外妖物", unlocked: true, raw: enemy }));
+  }
+
+  function codexDetail(entry, category) {
+    const item = entry?.raw || {};
+    if (!entry) return "<p>暂无条目。</p>";
+    if (!entry.unlocked) return `<section class="xm-character-detail__section"><h3>尚未收录</h3><p>该条目尚未在镇妖录中完整显现，请继续推进山门外历练。</p></section>`;
+    if (category === "门人") return `<section class="xm-character-detail__section"><h3>门人档案</h3><p><strong>角色名</strong><span>${safeText(item.name)}</span></p><p><strong>品质</strong><span>${safeText(item.rarity || "-")}</span></p><p><strong>身份</strong><span>${safeText(item.rankTitle || item.rank || "宗门门人")}</span></p><p><strong>流派</strong><span>${safeText(item.school || "-")}</span></p><p><strong>定位</strong><span>${safeText(rolePositionLabel(item))}</span></p><p><strong>先天武学</strong><span>${safeText(item.martialArtName || "未载明")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>人物小传</h3><p>${safeText(item.note || item.description || `${item.name || "此门人"}在宗门静修待命，可随宗主出阵守护山门。`)}</p><button type="button" class="secondary" data-codex-link="CHARACTERS" data-codex-target="${safeText(item.id)}">前往洞府</button></section>`;
+    if (category === "法宝") return `<section class="xm-character-detail__section"><h3>法宝记录</h3><p><strong>法宝名</strong><span>${safeText(item.name)}</span></p><p><strong>定位</strong><span>${safeText(artifactRoleLabel(item))}</span></p><p><strong>品质</strong><span>${safeText(item.rarity || "-")}</span></p><p><strong>战斗效果</strong><span>${safeText(artifactEffectText(item))}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>法宝来历</h3><p>${safeText(artifactLore(item))}</p><button type="button" class="secondary" data-codex-link="ARTIFACTS" data-codex-target="${safeText(item.id)}">前往炼器阁</button></section>`;
+    if (category === "阵法") return `<section class="xm-character-detail__section"><h3>阵法卷宗</h3><p><strong>阵法名</strong><span>${safeText(item.name)}</span></p><p><strong>定位</strong><span>${safeText(formationRoleLabel(item))}</span></p><p><strong>触发方式</strong><span>${safeText(formationTriggerLabel(item.triggerType))}</span></p><p><strong>阵法效果</strong><span>${safeText(formationEffectText(item))}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>阵法来历</h3><p>${safeText(formationLore(item))}</p><button type="button" class="secondary" data-codex-link="FORMATIONS" data-codex-target="${safeText(item.id)}">前往阵枢殿</button></section>`;
+    if (category === "剧情线索" || category === "世界秘闻") return `<section class="xm-character-detail__section"><h3>${safeText(entry.name)}</h3><p><strong>类型</strong><span>${safeText(item.type || entry.type)}</span></p><p><strong>来源</strong><span>${safeText(item.source || "镇妖录")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>线索说明</h3><p>${safeText(item.description || entry.description)}</p><button type="button" class="secondary" data-codex-link="ADVENTURE">前往山门外</button></section>`;
+    return `<section class="xm-character-detail__section"><h3>妖物图鉴</h3><p><strong>妖物名称</strong><span>${safeText(item.name)}</span></p><p><strong>妖物类型</strong><span>${safeText(enemyTypeLabel(item))}</span></p><p><strong>威胁等级</strong><span>${safeText(item.isBoss ? "首领" : item.trait || "普通")}</span></p><p><strong>出现场景</strong><span>第一章·妖门初启</span></p><p><strong>攻击方式</strong><span>${safeText(item.attackMode === "ranged" ? "远程" : item.attackMode === "caster" ? "施法" : "近战")}</span></p><p><strong>特性</strong><span>${safeText(item.trait || item.note || "妖潮单位")}</span></p><p><strong>克制建议</strong><span>${safeText(item.isBoss ? "优先使用高爆发与持续压制。" : item.type === "fast" ? "尽早点杀，避免快速压迫阵眼。" : item.type === "armored" ? "使用持续输出或穿透攻击。" : "稳定输出即可压制。")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>妖物志</h3><p>${safeText(codexEnemyLore(item))}</p></section>`;
+  }
+
+  function renderCodexPage({ DATA, playerProfile, state }) {
+    const categories = ["妖物", "门人", "法宝", "阵法", "剧情线索", "世界秘闻"];
+    const activeCategory = state.codexCategory || "妖物";
+    const entries = codexEntries(DATA, playerProfile, activeCategory);
+    const selected = entries.find((entry) => entry.id === state.selectedCodexEntryId) || entries[0];
+    if (state && selected?.id) state.selectedCodexEntryId = selected.id;
+    const listTitle = { 妖物: "妖物名录", 门人: "门人档案", 法宝: "法宝记录", 阵法: "阵法卷宗", 剧情线索: "旧事线索", 世界秘闻: "山海秘闻" }[activeCategory] || "卷宗条目";
+    return `<section class="xm-codex-page"><aside class="xm-codex-page__sidebar xm-inner-panel"><h2>卷宗分类</h2><div class="xm-codex-category-list">${categories.map((category) => `<button type="button" class="xm-codex-category ${category === activeCategory ? "xm-codex-category--selected" : ""}" data-codex-category="${safeText(category)}"><strong>${safeText(category)}</strong><span>卷宗</span></button>`).join("")}</div></aside><section class="xm-codex-page__main xm-inner-panel"><h2>${safeText(listTitle)}</h2><div class="xm-codex-entry-list">${entries.map((entry) => `<button type="button" class="xm-codex-entry ${entry.id === selected?.id ? "xm-codex-entry--selected" : ""} ${entry.unlocked ? "" : "xm-codex-entry--locked"}" data-codex-entry-id="${safeText(entry.id)}"><span class="xm-codex-entry__icon">${safeText(entry.unlocked ? entry.icon : "？")}</span><strong>${safeText(entry.unlocked ? entry.name : "？？？")}</strong><small>${safeText(entry.type || entry.tag || "-")} · ${safeText(entry.rarity || "-")}</small><em>${safeText(entry.unlocked ? entry.tag || "已收录" : "尚未收录")}</em></button>`).join("")}</div></section><aside class="xm-codex-page__detail xm-inner-panel"><h2>卷宗详情</h2><div class="xm-codex-detail">${codexDetail(selected, activeCategory)}</div></aside></section>`;
   }
 
   function characterAttackTypeLabel(value) {
@@ -920,7 +993,7 @@
       FORMATIONS: () => renderFormationsPage({ DATA, playerProfile, state }),
       BAG: () => renderBagPage({ state }),
       GACHA: () => renderGachaPage({ DATA, playerProfile, state }),
-      CODEX: () => renderCodexPage({ DATA }),
+      CODEX: () => renderCodexPage({ DATA, playerProfile, state }),
       ADVENTURE: () => renderAdventurePage({ DATA, playerProfile, state, helpers }),
     };
     elements.featurePageContent.innerHTML = (renderers[page] || renderers.CHARACTERS)();
