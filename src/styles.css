@@ -1200,6 +1200,30 @@ button:disabled {
   min-height: min(620px, calc(100vh - 210px));
 }
 
+.xm-character-page {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 220px minmax(360px, 1fr) 320px;
+  margin-top: 18px;
+  min-height: 560px;
+  position: relative;
+  z-index: 2;
+}
+
+.xm-character-page__sidebar,
+.xm-character-page__center,
+.xm-character-page__detail {
+  min-width: 0;
+}
+
+.xm-character-page h2 {
+  color: #fff4cf;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  margin: 0 0 12px;
+}
+
 .xm-inner-panel {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 34%),
@@ -1292,6 +1316,251 @@ button:disabled {
 
 .xm-subpage-hero--gacha {
   min-height: 190px;
+}
+
+.xm-character-list-item {
+  align-items: center;
+  background: rgba(12, 34, 27, 0.62);
+  border: 1px solid rgba(216, 172, 82, 0.2);
+  border-radius: 8px;
+  color: #f4efdf;
+  cursor: pointer;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 42px 1fr auto;
+  min-height: 58px;
+  padding: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.xm-character-list-item:hover {
+  border-color: rgba(109, 226, 190, 0.44);
+  background: rgba(16, 48, 38, 0.7);
+}
+
+.xm-character-list-item--selected {
+  border-color: rgba(109, 226, 190, 0.76);
+  box-shadow: inset 0 0 18px rgba(109, 226, 190, 0.1), 0 0 16px rgba(109, 226, 190, 0.08);
+}
+
+.xm-character-list-item--locked {
+  opacity: 0.54;
+}
+
+.xm-character-list-item__avatar {
+  align-items: center;
+  aspect-ratio: 1;
+  background:
+    radial-gradient(circle, rgba(109, 226, 190, 0.15), transparent 62%),
+    rgba(7, 20, 16, 0.86);
+  border: 1px solid rgba(216, 172, 82, 0.28);
+  border-radius: 8px;
+  color: #fff4cf;
+  display: flex;
+  font-family: var(--font-display);
+  justify-content: center;
+}
+
+.xm-character-list-item__body {
+  display: grid;
+  gap: 3px;
+}
+
+.xm-character-list-item__body small,
+.xm-character-list-item em {
+  color: #d6cbb8;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.xm-character-stage {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  min-height: 100%;
+  text-align: center;
+}
+
+.xm-character-stage__portrait {
+  align-items: center;
+  aspect-ratio: 3 / 4;
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(241, 217, 154, 0.2), transparent 38%),
+    radial-gradient(ellipse at 50% 70%, rgba(109, 226, 190, 0.14), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+    rgba(7, 20, 16, 0.64);
+  border: 1px solid rgba(216, 172, 82, 0.32);
+  border-radius: 14px 14px 9px 9px;
+  box-shadow: inset 0 0 48px rgba(109, 226, 190, 0.06);
+  display: flex;
+  justify-content: center;
+  max-height: 390px;
+  min-height: 260px;
+  position: relative;
+  width: min(72%, 280px);
+}
+
+.xm-character-stage__portrait::before {
+  background:
+    radial-gradient(ellipse at 50% 28%, rgba(244, 239, 223, 0.62), transparent 14%),
+    linear-gradient(180deg, rgba(244, 239, 223, 0.24), rgba(109, 226, 190, 0.09));
+  border-radius: 48% 48% 18% 18%;
+  bottom: 14%;
+  content: "";
+  left: 25%;
+  position: absolute;
+  right: 25%;
+  top: 18%;
+}
+
+.xm-character-stage__portrait span {
+  color: rgba(7, 20, 16, 0.72);
+  font-family: var(--font-display);
+  font-size: 72px;
+  position: relative;
+  z-index: 1;
+}
+
+.xm-character-stage__name {
+  color: #fff4cf;
+  font-family: var(--font-display);
+  font-size: 30px;
+  letter-spacing: 0.08em;
+}
+
+.xm-character-stage__meta {
+  color: #d6cbb8;
+  font-family: var(--font-accent);
+}
+
+.xm-character-stage__role {
+  border: 1px solid rgba(109, 226, 190, 0.34);
+  border-radius: 999px;
+  color: #dffaf0;
+  padding: 6px 12px;
+}
+
+.xm-character-stage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.xm-character-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.xm-character-detail__section {
+  border-bottom: 1px solid rgba(216, 172, 82, 0.14);
+  display: grid;
+  gap: 7px;
+  padding-bottom: 10px;
+}
+
+.xm-character-detail__section h3 {
+  color: #fff4cf;
+  font-family: var(--font-accent);
+  font-size: 15px;
+  margin: 0;
+}
+
+.xm-character-detail__section p {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.xm-character-detail__section strong {
+  color: #d6cbb8;
+  flex: 0 0 auto;
+  font-weight: 500;
+}
+
+.xm-character-detail__section span {
+  color: #f4efdf;
+  text-align: right;
+}
+
+.xm-character-detail__bio p,
+.xm-character-detail__skill p {
+  display: grid;
+  justify-content: stretch;
+}
+
+.xm-character-detail__bio span,
+.xm-character-detail__skill span {
+  text-align: left;
+}
+
+.xm-character-detail--formal {
+  gap: 14px;
+}
+
+.xm-character-stars {
+  color: #f1d99a;
+  letter-spacing: 0.08em;
+}
+
+.xm-character-skill-card {
+  align-items: center;
+  background:
+    radial-gradient(circle at 18% 50%, rgba(109, 226, 190, 0.16), transparent 40%),
+    rgba(10, 30, 24, 0.72);
+  border: 1px solid rgba(216, 172, 82, 0.24);
+  border-radius: 9px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 58px 1fr;
+  padding: 12px;
+}
+
+.xm-character-skill-icon {
+  align-items: center;
+  aspect-ratio: 1;
+  background:
+    radial-gradient(circle, rgba(244, 239, 223, 0.22), transparent 58%),
+    linear-gradient(145deg, rgba(109, 226, 190, 0.18), rgba(216, 172, 82, 0.1));
+  border: 1px solid rgba(216, 172, 82, 0.42);
+  border-radius: 12px;
+  color: #fff4cf;
+  display: flex;
+  font-family: var(--font-display);
+  font-size: 24px;
+  justify-content: center;
+  box-shadow: inset 0 0 22px rgba(109, 226, 190, 0.1);
+}
+
+.xm-character-skill-body {
+  display: grid;
+  gap: 4px;
+}
+
+.xm-character-skill-body strong {
+  color: #fff4cf;
+  font-family: var(--font-accent);
+  font-size: 16px;
+}
+
+.xm-character-skill-body em {
+  color: #8fdcc5;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.xm-character-skill-body p {
+  color: #d6cbb8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.xm-character-detail__bio button {
+  justify-self: start;
+  margin-top: 4px;
 }
 
 .xm-inventory-grid {
@@ -2450,6 +2719,11 @@ h2 {
   }
 
   .xm-subpage-body {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .xm-character-page {
     grid-template-columns: 1fr;
     min-height: auto;
   }

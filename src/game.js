@@ -2842,6 +2842,7 @@ function syncHubNavActive() {
 
 function renderFeaturePage() {
   if (!HUB_PAGE_STATES.has(state.appState)) return;
+  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS);
   featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回啟卷" : "返回宗門";
   renderSystemFeaturePage({
     elements: {
@@ -2857,6 +2858,7 @@ function renderFeaturePage() {
       getChapterNodeStatus,
       getCurrentChapterNodeId,
       getCharacterLevel,
+      getCharacterBaseFinalDamage,
     },
   });
 }
@@ -4867,6 +4869,18 @@ featurePageContent.addEventListener("click", (event) => {
   }
   if (action?.dataset.pageAction === "start-adventure") {
     startAdventureNode(action.dataset.nodeId || state.selectedAdventureNodeId || getCurrentChapterNodeId("chapter_1"), action.dataset.chapterId || "chapter_1");
+    return;
+  }
+  const characterSelect = event.target.closest("[data-character-select-id]");
+  if (characterSelect) {
+    state.selectedCharacterId = characterSelect.dataset.characterSelectId;
+    renderFeaturePage();
+    return;
+  }
+  const characterBio = event.target.closest("[data-character-bio-id]");
+  if (characterBio) {
+    const role = DATA.roles?.[characterBio.dataset.characterBioId] || DATA.characters?.[characterBio.dataset.characterBioId];
+    openSettings(`${role?.name || "门人"} · 人物传记\n\n人物传记系统暂未开放。\n后续将加入：角色个人剧情、宗门任务、羁绊事件与大成武学相关剧情。`);
     return;
   }
   const gacha = event.target.closest("[data-hub-gacha]");
