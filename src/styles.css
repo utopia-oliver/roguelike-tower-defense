@@ -709,7 +709,9 @@ button:disabled {
   --hub-particles-w: 160%;
   --hub-particles-x: 50%;
   --hub-particles-y: 48%;
-  background: none;
+  -webkit-tap-highlight-color: transparent;
+  appearance: none;
+  background: transparent;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -724,6 +726,31 @@ button:disabled {
   text-align: center;
   transform: translate(-50%, -50%);
   transition: opacity 0.2s ease, filter 0.18s ease, transform 0.18s ease;
+}
+
+.xm-hub-hotspot,
+.xm-hub-hotspot:hover,
+.xm-hub-hotspot:focus,
+.xm-hub-hotspot:focus-visible,
+.xm-hub-hotspot:active {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  filter: none;
+  outline: none;
+}
+
+.xm-hub-scene-frame .xm-hub-hotspot,
+.xm-hub-scene-frame .xm-hub-hotspot:hover,
+.xm-hub-scene-frame .xm-hub-hotspot:focus,
+.xm-hub-scene-frame .xm-hub-hotspot:focus-visible,
+.xm-hub-scene-frame .xm-hub-hotspot:active,
+.xm-hub-scene-frame .xm-hub-hotspot:hover:not(:disabled) {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  filter: none;
+  outline: none;
 }
 
 .xm-hub-hotspot::before,
@@ -791,7 +818,6 @@ button:disabled {
 .xm-hub-hotspot:hover,
 .xm-hub-hotspot:focus-visible {
   cursor: pointer;
-  outline: none;
 }
 
 .xm-hub-hotspot:hover::before,
