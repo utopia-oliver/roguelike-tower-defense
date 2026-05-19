@@ -427,16 +427,60 @@
     `;
   }
 
-  function renderGachaPage({ playerProfile }) {
-    return subpageShell({
-      className: "xm-subpage--gacha",
-      sidebarTitle: "祈召门类",
-      sidebar: `<article class="xm-item-card xm-item-card--selected"><strong>门人祈召</strong><span>当前开放</span></article><article class="xm-item-card xm-card--disabled"><strong>法宝祈召</strong><span>筹备中</span></article>`,
-      mainTitle: "祈灵台",
-      main: `<div class="xm-subpage-hero xm-subpage-hero--gacha"><span>祈</span></div><p>当前灵石：${safeText(playerProfile.spiritStones || 0)}</p><div class="xm-card-grid"><article class="xm-detail-card"><h3>角色抽取</h3><p>消耗灵石抽取宗门角色，概率与返还沿用当前规则。</p><button type="button" class="primary" data-hub-gacha="single">单抽</button></article><article class="xm-detail-card xm-card--disabled"><h3>法宝抽取</h3><p>暂未开放。</p><button type="button" class="secondary" disabled>十连暂未开放</button></article></div>`,
-      detailTitle: "卡池说明",
-      detail: "<p>焚香祈灵，感召门人与法宝机缘。概率说明沿用当前抽取规则，后续补充正式卡池公告。</p>",
-    });
+  function gachaPoolPreview(DATA, poolId) {
+    if (poolId === "artifact") return valuesOf(DATA.artifacts).slice(0, 4).map((item) => item.name);
+    return valuesOf(DATA.roles).filter((role) => role.unlockType === "gacha").slice(0, 4).map((item) => item.name);
+  }
+
+  function renderGachaResult(result) {
+    if (!result) return "";
+    if (!result.ok) {
+      return `<section class="xm-gacha-result"><h3>祈召结果</h3><p>${safeText(result.reason === "not_enough_spirit_stones" ? "靈石不足，无法祈召。" : "祈召未能完成。")}</p><button type="button" class="secondary" data-gacha-result-close>确认</button></section>`;
+    }
+    const character = result.character || {};
+    const duplicateText = result.isNew ? "新门人已入宗门名册。" : `重复获得，已按现有规则返还资源。`;
+    return `<section class="xm-gacha-result"><h3>祈召结果</h3><div class="xm-gacha-result__seal">${safeText(character.name?.slice(0, 1) || "灵")}</div><p><strong>${safeText(character.name || "未知门人")}</strong></p><p>类型：门人 · 品质：${safeText(character.rarity || "-")}</p><p>${safeText(duplicateText)}</p><div class="xm-related-actions"><button type="button" class="secondary" data-gacha-result-close>确认</button><button type="button" class="primary" data-bag-link="CHARACTERS">前往洞府</button></div></section>`;
+  }
+
+  function renderGachaPage({ DATA, playerProfile, state }) {
+    const pools = [
+      { id: "character", name: "门人祈召", desc: "感召宗门门人 / 角色", open: true },
+      { id: "artifact", name: "法宝祈召", desc: "感召法宝与器灵", open: false },
+      { id: "mixed", name: "混元祈召", desc: "角色与法宝混合池，后续开放", open: false },
+      { id: "formation", name: "阵法祈召", desc: "护山阵法相关，后续开放", open: false },
+    ];
+    const currentPool = pools.find((pool) => pool.id === state.gachaPoolId) || pools[0];
+    if (state && state.gachaPoolId !== currentPool.id) state.gachaPoolId = currentPool.id;
+    const cost = window.XM.Constants?.GACHA_COST || 0;
+    const preview = gachaPoolPreview(DATA, currentPool.id);
+    return `
+      <section class="xm-gacha-page">
+        <aside class="xm-gacha-page__sidebar xm-inner-panel">
+          <h2>祈召法坛</h2>
+          <div class="xm-gacha-pool-list">
+            ${pools.map((pool) => `<button type="button" class="xm-gacha-pool ${pool.id === currentPool.id ? "xm-gacha-pool--selected" : ""} ${pool.open ? "" : "xm-gacha-pool--locked"}" data-gacha-pool="${safeText(pool.id)}"><strong>${safeText(pool.name)}</strong><span>${safeText(pool.open ? pool.desc : `${pool.desc} · 暂未开放`)}</span></button>`).join("")}
+          </div>
+        </aside>
+        <section class="xm-gacha-page__main xm-inner-panel">
+          <h2>灵契法坛</h2>
+          <div class="xm-gacha-altar"><span>祈</span><i></i></div>
+          <h3>${safeText(currentPool.name)}</h3>
+          <p>${safeText(currentPool.id === "character" ? "焚香问灵，可感召宗门门人加入山门。" : currentPool.id === "artifact" ? "以灵石启坛，可感召法宝、器灵与镇妖旧物。" : currentPool.desc)}</p>
+          <div class="xm-gacha-preview">${preview.map((name) => `<span>${safeText(name)}</span>`).join("") || "<span>卡池预览筹备中</span>"}</div>
+          ${renderGachaResult(state.gachaResult)}
+        </section>
+        <aside class="xm-gacha-page__detail xm-inner-panel">
+          <h2>祈灵卷宗</h2>
+          <div class="xm-gacha-detail">
+            <section class="xm-character-detail__section"><h3>当前资源</h3><p><strong>靈石</strong><span>${safeText(playerProfile.spiritStones || 0)}</span></p><p><strong>祈灵符</strong><span>0 · 暂未开放</span></p><p><strong>单次祈召</strong><span>${safeText(cost)} 靈石</span></p><p><strong>十连祈召</strong><span>暂未开放</span></p></section>
+            <section class="xm-character-detail__section"><h3>卡池说明</h3><p>${safeText(currentPool.id === "character" ? "焚香问灵，可感召宗门门人加入山门。" : currentPool.id === "artifact" ? "法宝祈召界面预留中，实际法宝祈召后续开放。" : "该卡池后续开放。")}</p></section>
+            <section class="xm-character-detail__section"><h3>祈召概率</h3><p>SR：常见 · SSR：稀有 · UR：极稀有</p><p class="xm-artifact-muted">当前概率沿用现有抽取逻辑，后续将接入正式卡池公告。</p></section>
+            <section class="xm-character-detail__section"><h3>祈灵记录</h3><p>今日祈召：0 次</p><p>保底系统：暂未开放</p><p>最近获得：${safeText(state.gachaResult?.character?.name || "暂无记录")}</p></section>
+            <section class="xm-character-detail__section"><h3>祈召</h3><div class="xm-artifact-stage__actions"><button type="button" class="primary" data-hub-gacha="single" ${currentPool.open ? "" : "disabled"}>单次祈召</button><button type="button" class="secondary" disabled title="十连祈召暂未开放。">十连祈召</button></div></section>
+          </div>
+        </aside>
+      </section>
+    `;
   }
 
   function renderCodexPage({ DATA }) {
@@ -875,7 +919,7 @@
       ARTIFACTS: () => renderArtifactsPageV2({ DATA, playerProfile, state }),
       FORMATIONS: () => renderFormationsPage({ DATA, playerProfile, state }),
       BAG: () => renderBagPage({ state }),
-      GACHA: () => renderGachaPage({ playerProfile }),
+      GACHA: () => renderGachaPage({ DATA, playerProfile, state }),
       CODEX: () => renderCodexPage({ DATA }),
       ADVENTURE: () => renderAdventurePage({ DATA, playerProfile, state, helpers }),
     };

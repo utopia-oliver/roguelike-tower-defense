@@ -599,7 +599,7 @@ function performGacha() {
     if (result.reason === "not_enough_spirit_stones") {
       setStatus(`灵石不足，抽卡需要 ${GACHA_COST} 灵石。`);
     }
-    return;
+    return result;
   }
   syncPlayerMetaAliases();
   renderLobby();
@@ -609,6 +609,7 @@ function performGacha() {
       ? `抽卡获得 ${result.character.rarity} ${result.character.name}。`
       : `抽到重复角色 ${result.character.rarity} ${result.character.name}，返还 ${DUPLICATE_GACHA_REFUND} 灵石。`,
   );
+  return result;
 }
 
 function baseArrayCoreMaxHp() {
@@ -2842,7 +2843,7 @@ function syncHubNavActive() {
 
 function renderFeaturePage() {
   if (!HUB_PAGE_STATES.has(state.appState)) return;
-  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS || state.appState === APP_STATE.BAG);
+  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS || state.appState === APP_STATE.BAG || state.appState === APP_STATE.GACHA);
   featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回啟卷" : "返回宗門";
   renderSystemFeaturePage({
     elements: {
@@ -4933,9 +4934,23 @@ featurePageContent.addEventListener("click", (event) => {
     if (APP_STATE[target]) enterHubPage(APP_STATE[target]);
     return;
   }
+  const gachaPool = event.target.closest("[data-gacha-pool]");
+  if (gachaPool) {
+    state.gachaPoolId = gachaPool.dataset.gachaPool || "character";
+    state.gachaResult = null;
+    renderFeaturePage();
+    return;
+  }
+  const gachaResultClose = event.target.closest("[data-gacha-result-close]");
+  if (gachaResultClose) {
+    state.gachaResult = null;
+    renderFeaturePage();
+    return;
+  }
   const gacha = event.target.closest("[data-hub-gacha]");
   if (gacha) {
-    performGacha();
+    const result = performGacha();
+    state.gachaResult = result || null;
     renderFeaturePage();
     return;
   }
