@@ -249,19 +249,126 @@
     });
   }
 
+  function formationRoleLabel(formation = {}) {
+    const raw = `${formation.role || ""} ${formation.effectType || ""} ${formation.description || ""}`;
+    if (/heal|回复|回元|护心/i.test(raw)) return "阵眼护持";
+    if (/slow|迟|冰/i.test(raw)) return "迟滞妖潮";
+    if (/burn|火|焚/i.test(raw)) return "范围灼烧";
+    if (/chain|雷|精英|高血/i.test(raw)) return "精英压制";
+    if (/damage|镇妖|伤害|压制/i.test(raw)) return "通用压制";
+    return formation.role || "护山大阵";
+  }
+
+  function formationTriggerLabel(value) {
+    return {
+      interval: "周期触发",
+      cooldown: "周期触发",
+      on_damage: "阵眼受击触发",
+      near_core: "妖物靠近触发",
+      low_hp: "阵眼低血触发",
+    }[value] || "特殊触发";
+  }
+
+  function formationStageLabel(level = 1) {
+    const value = Number(level) || 1;
+    if (value >= 7) return "大阵圆满";
+    if (value >= 5) return "通玄";
+    if (value >= 3) return "稳固";
+    return "初启";
+  }
+
+  function formationEffectText(formation = {}) {
+    const effects = {
+      taiyi_zhenyao_array: "周期性激活镇妖阵纹，对靠近阵眼的妖物造成压制与伤害。",
+      qinglian_huiyuan_array: "以青莲灵纹护持阵眼，定时回复护山阵眼生命，低血时护持更强。",
+      xuanbing_chiyao_array: "凝结玄冰阵纹，迟滞妖潮推进速度，并造成少量冰霜伤害。",
+      lihuo_fenyao_array: "引动离火阵纹，对妖物密集区域造成范围伤害与短暂灼烧。",
+      leigang_zhuxie_array: "召落雷罡打击高血量妖物，并向附近目标跳跃传导。",
+    };
+    return effects[formation.id] || formation.effectText || formation.description || "阵纹流转，镇守五方。";
+  }
+
+  function formationLore(formation = {}) {
+    const lores = {
+      taiyi_zhenyao_array: "玄门旧传镇妖阵式之一，阵纹沉稳，善于压制靠近山门的妖物，是护山大阵最基础也最可靠的阵法。",
+      qinglian_huiyuan_array: "以青莲灵纹护持阵眼，适合阵眼承压较高时使用。青莲纹开时，阵眼灵光会短暂回稳。",
+      xuanbing_chiyao_array: "以寒纹封锁妖气流动，擅长迟滞妖潮推进，使护山大阵获得更多喘息余地。",
+      lihuo_fenyao_array: "引离火入阵，专克妖邪污秽，适合清理密集妖潮。阵纹燃起时，山门前会泛出赤金火意。",
+      leigang_zhuxie_array: "以雷罡刻入阵盘，专打妖气厚重之物。雷纹落处，常能逼退精英妖物的冲阵之势。",
+    };
+    return lores[formation.id] || "此阵法来历尚未完整录入，后续将随宗门旧卷与阵枢殿修复逐步解锁。";
+  }
+
+  function renderFormationCoreStatus({ coreHp = 0, coreMaxHp = 0, formation = {} }) {
+    const ratio = coreMaxHp ? Math.max(0, Math.min(1, coreHp / coreMaxHp)) : 0;
+    const bonusText = formation.passiveCoreDamageReduction
+      ? `阵眼减伤 ${Math.round(Number(formation.passiveCoreDamageReduction) * 100)}%`
+      : formation.spiritQiGainMultiplier
+        ? `灵气流转效率 ×${formation.spiritQiGainMultiplier}`
+        : "当前阵法加成随战斗配置生效";
+    return `<section class="xm-formation-core"><h3>阵眼状态</h3><div class="xm-core-meter"><span style="--core-ratio: ${ratio};"></span></div><p><strong>护山阵眼</strong><span>${safeText(coreHp)} / ${safeText(coreMaxHp)}</span></p><p><strong>当前加成</strong><span>${safeText(bonusText)}</span></p><p><strong>修复状态</strong><span>阵纹修复系统暂未开放</span></p><div class="xm-core-points"><span>东</span><span>西</span><span>南</span><span>北</span><span>中</span></div></section>`;
+  }
+
+  function renderFormationCultivation(formation = {}, level = 1) {
+    return `<section class="xm-formation-cultivation"><h3>阵法养成</h3><div class="xm-artifact-info-grid"><p><strong>当前等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>当前阶段</strong><span>${safeText(formationStageLabel(level))}</span></p><p><strong>阵纹状态</strong><span>待修复</span></p></div><div class="xm-artifact-materials"><strong>升级所需材料</strong><ul><li>阵纹残片 × 20</li><li>妖核 × 30</li><li>靈石 × 500</li></ul></div><div class="xm-artifact-materials"><strong>材料来源</strong><ul><li>山门外历练</li><li>Boss / 精英妖物掉落</li><li>库藏殿查看材料</li><li>万宝阁兑换</li></ul></div><p class="xm-artifact-muted">材料系统暂未完全开放，当前仅作阵法局外养成预留。</p><div class="xm-artifact-stage__actions"><button type="button" class="secondary" disabled title="材料系统暂未完全开放。">升级阵法</button><button type="button" class="secondary" disabled title="阵纹修复系统暂未开放。">修复阵纹</button><button type="button" class="secondary" disabled title="阵眼加固系统后续开放。">阵眼加固</button></div></section>`;
+  }
+
   function renderFormationsPage({ DATA, playerProfile, state }) {
     const formations = valuesOf(DATA.formations);
     const unlocked = new Set(playerProfile.unlockedFormations || []);
-    const currentFormation = formations.find((formation) => state.loadoutFormationId === formation.id) || formations[0] || {};
-    return subpageShell({
-      className: "xm-subpage--formations",
-      sidebarTitle: "阵法目录",
-      sidebar: formations.map((formation) => `<article class="xm-item-card ${state.loadoutFormationId === formation.id ? "xm-item-card--selected" : ""} ${unlocked.has(formation.id) ? "" : "xm-card--disabled"}"><strong>${safeText(formation.name)}</strong><span>${safeText(formation.role || formation.rarity || "护山大阵")}</span></article>`).join(""),
-      mainTitle: "阵枢图",
-      main: `<div class="xm-array-preview"><span>阵</span></div><p>护山大阵与阵眼为同一区域；阵法局外升级暂未开放。</p><div class="xm-card-grid">${formations.map((formation) => `<button type="button" class="xm-detail-card xm-detail-button ${state.loadoutFormationId === formation.id ? "xm-card--selected" : ""} ${unlocked.has(formation.id) ? "" : "xm-card--disabled"}" data-hub-formation-id="${safeText(formation.id)}"><small>${safeText(formation.role || formation.rarity || "护山大阵")}</small><strong>${safeText(formation.name)}</strong><span>${safeText(formation.effectText || formation.description || "")}</span></button>`).join("")}</div>`,
-      detailTitle: "阵纹注解",
-      detail: `<p><strong>当前阵法</strong> ${safeText(currentFormation.name || "-")}</p><p>${safeText(currentFormation.effectText || currentFormation.description || "阵纹流转，镇守五方。")}</p><p><strong>当前选择</strong> ${safeText(state.loadoutFormationId || "未选择")}</p>`,
-    });
+    if (!formations.length) {
+      return `<section class="xm-formation-page"><aside class="xm-formation-page__sidebar xm-inner-panel"><h2>阵法名录</h2><p>暂无阵法数据。</p></aside><section class="xm-formation-page__center xm-inner-panel"><h2>护山阵盘</h2><p>暂无可展示阵法。</p></section><aside class="xm-formation-page__detail xm-inner-panel"><h2>阵法卷宗</h2><p>阵法数据尚未载入。</p></aside></section>`;
+    }
+    const selectedId = state.selectedFormationPageId || state.loadoutFormationId || state.selectedFormationId;
+    const current = formations.find((formation) => formation.id === selectedId)
+      || formations.find((formation) => unlocked.has(formation.id))
+      || formations[0];
+    if (state && current?.id && state.selectedFormationPageId !== current.id) state.selectedFormationPageId = current.id;
+    const isUnlocked = unlocked.has(current.id);
+    const isSelected = state.loadoutFormationId === current.id || state.selectedFormationId === current.id;
+    const level = playerProfile.formationLevels?.[current.id] || 1;
+    const phase = formationStageLabel(level);
+    const coreHp = state.arrayCoreHp ?? state.baseHp ?? DATA.config?.arrayCore?.currentHp ?? DATA.config?.baseHp ?? 0;
+    const coreMaxHp = state.arrayCoreMaxHp ?? DATA.config?.arrayCore?.maxHp ?? DATA.config?.baseHp ?? 0;
+    return `
+      <section class="xm-formation-page">
+        <aside class="xm-formation-page__sidebar xm-inner-panel">
+          <h2>阵法名录</h2>
+          <div class="xm-scroll-list xm-formation-list">
+            ${formations.map((formation) => {
+              const itemUnlocked = unlocked.has(formation.id);
+              const itemSelected = formation.id === current.id;
+              const itemCurrent = state.loadoutFormationId === formation.id || state.selectedFormationId === formation.id;
+              return `<button type="button" class="xm-formation-list-item ${itemSelected ? "xm-formation-list-item--selected" : ""} ${itemUnlocked ? "" : "xm-formation-list-item--locked"}" data-formation-select-id="${safeText(formation.id)}"><span class="xm-formation-list-item__icon">阵</span><span class="xm-formation-list-item__body"><strong>${safeText(formation.name || formation.id)}</strong><small>${safeText(formationRoleLabel(formation))}</small></span><em>${safeText(itemCurrent ? "当前" : itemUnlocked ? "已解锁" : "未解锁")}</em></button>`;
+            }).join("")}
+          </div>
+        </aside>
+        <section class="xm-formation-page__center xm-inner-panel">
+          <h2>护山阵盘</h2>
+          <div class="xm-formation-stage ${isUnlocked ? "" : "xm-formation-stage--locked"}">
+            <div class="xm-array-preview xm-array-preview--large"><span>阵</span><i class="xm-array-eye xm-array-eye--east"></i><i class="xm-array-eye xm-array-eye--west"></i><i class="xm-array-eye xm-array-eye--south"></i><i class="xm-array-eye xm-array-eye--north"></i><i class="xm-array-eye xm-array-eye--center"></i></div>
+            <div class="xm-formation-stage__name">${safeText(current.name || "护山大阵")}</div>
+            <div class="xm-formation-stage__meta">${safeText(formationRoleLabel(current))} · Lv.${safeText(level)} · ${safeText(phase)}</div>
+            <div class="xm-formation-stage__meta">阵眼：${safeText(coreHp)} / ${safeText(coreMaxHp)} · ${safeText(isSelected ? "当前选择" : "未选择")}</div>
+            <div class="xm-artifact-stage__actions">
+              ${isUnlocked ? `<button type="button" class="primary" data-hub-formation-id="${safeText(current.id)}">${isSelected ? "已设为当前阵法" : "设为当前阵法"}</button>` : `<button type="button" class="secondary" disabled>尚未解锁</button>`}
+              <button type="button" class="secondary" disabled title="材料系统暂未完全开放。">升级阵法</button>
+              <button type="button" class="secondary" disabled title="阵纹修复系统暂未开放。">修复阵纹</button>
+            </div>
+          </div>
+        </section>
+        <aside class="xm-formation-page__detail xm-inner-panel">
+          <h2>阵法卷宗</h2>
+          <div class="xm-formation-detail">
+            <section class="xm-character-detail__section"><h3>阵法信息</h3><p><strong>阵法名</strong><span>${safeText(current.name || "-")}</span></p><p><strong>定位</strong><span>${safeText(formationRoleLabel(current))}</span></p><p><strong>等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>状态</strong><span>${safeText(`${isUnlocked ? "已解锁" : "未解锁"} · ${isSelected ? "当前选择" : "未选择"}`)}</span></p><p><strong>触发方式</strong><span>${safeText(formationTriggerLabel(current.triggerType))}</span></p><p><strong>冷却 / 间隔</strong><span>${safeText(current.triggerInterval || current.cooldown ? `${current.triggerInterval || current.cooldown}秒` : "-")}</span></p></section>
+            <section class="xm-character-detail__section"><h3>阵法效果</h3><p>${safeText(formationEffectText(current))}</p></section>
+            ${renderFormationCoreStatus({ coreHp, coreMaxHp, formation: current })}
+            ${renderFormationCultivation(current, level)}
+            <section class="xm-character-detail__section xm-character-detail__bio"><h3>阵法来历</h3><p>${safeText(formationLore(current))}</p></section>
+          </div>
+        </aside>
+      </section>
+    `;
   }
 
   function renderBagPage() {
