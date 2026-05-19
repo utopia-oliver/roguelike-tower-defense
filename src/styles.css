@@ -2808,6 +2808,313 @@ button:disabled {
   padding: 5px 8px;
 }
 
+.xm-adventure-map {
+  background:
+    radial-gradient(ellipse at 88% 18%, rgba(121, 45, 102, 0.2), transparent 22rem),
+    linear-gradient(135deg, rgba(12, 31, 26, 0.88), rgba(4, 10, 8, 0.96));
+  border: 0;
+  border-radius: 0;
+  display: grid;
+  justify-items: center;
+  min-height: 0;
+  overflow: visible;
+  padding: 0;
+}
+
+.xm-adventure-map-frame {
+  aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(ellipse at 84% 18%, rgba(80, 26, 72, 0.24), transparent 24rem),
+    radial-gradient(ellipse at 52% 58%, rgba(109, 226, 190, 0.08), transparent 30rem),
+    linear-gradient(180deg, rgba(0, 10, 8, 0.06), rgba(0, 8, 6, 0.16)),
+    url("../assets/images/bg/chapter1-map-v1.webp"),
+    linear-gradient(135deg, rgba(16, 42, 35, 0.9), rgba(6, 13, 11, 0.98));
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  border: 1px solid rgba(216, 172, 82, 0.28);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34), inset 0 0 70px rgba(0, 8, 6, 0.12);
+  max-height: calc(100vh - 170px);
+  min-height: 520px;
+  overflow: hidden;
+  position: relative;
+  width: min(100%, 1280px);
+}
+
+.xm-adventure-map-frame::before {
+  background:
+    radial-gradient(ellipse at center, transparent 36%, rgba(0, 8, 6, 0.18) 100%),
+    linear-gradient(180deg, rgba(0, 8, 6, 0.04), rgba(0, 8, 6, 0.2));
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.xm-adventure-map-frame::after {
+  animation: xmAdventureGlow 7s ease-in-out infinite alternate;
+  background: radial-gradient(ellipse at 89% 18%, rgba(148, 58, 126, 0.34), transparent 18rem);
+  content: "";
+  inset: 0;
+  opacity: 0.56;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.xm-adventure-map::before,
+.xm-adventure-map::after {
+  content: none;
+}
+
+.xm-adventure-map-header {
+  background: linear-gradient(135deg, rgba(5, 18, 14, 0.48), rgba(5, 12, 10, 0.24));
+  border-color: rgba(216, 172, 82, 0.2);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.16);
+  left: 16px;
+  right: auto;
+  top: 14px;
+  width: min(420px, calc(100% - 32px));
+}
+
+.xm-chapter-panel--compact {
+  background: rgba(5, 14, 11, 0.36);
+  border-color: rgba(216, 172, 82, 0.18);
+  bottom: 16px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+  left: 16px;
+  max-width: 310px;
+}
+
+.xm-map-route-svg {
+  height: 100%;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  width: 100%;
+  z-index: 1;
+}
+
+.xm-map-route-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-width: 0.28;
+  vector-effect: non-scaling-stroke;
+}
+
+.xm-map-route-line--locked {
+  opacity: 0.38;
+  stroke: rgba(196, 204, 188, 0.38);
+  stroke-dasharray: 1.4 1.4;
+}
+
+.xm-map-route-line--open {
+  opacity: 0.76;
+  stroke: rgba(109, 226, 190, 0.72);
+}
+
+.xm-map-route-line--current {
+  animation: xmMapPathPulse 2.8s ease-in-out infinite;
+  stroke: rgba(241, 217, 154, 0.86);
+  stroke-width: 0.38;
+}
+
+.xm-node-route {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.xm-node-route::before {
+  content: none;
+}
+
+.xm-map-node {
+  align-items: center;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  cursor: pointer;
+  display: grid;
+  height: 46px;
+  justify-items: center;
+  left: var(--node-x);
+  min-height: 0;
+  min-width: 0;
+  overflow: visible;
+  padding: 0;
+  pointer-events: auto;
+  position: absolute;
+  text-align: center;
+  top: var(--node-y);
+  transform: translate(-50%, -50%);
+  width: 46px;
+  z-index: 2;
+}
+
+.xm-map-node::before {
+  background:
+    radial-gradient(circle, rgba(255, 247, 219, 0.92) 0 18%, rgba(109, 226, 190, 0.7) 19% 38%, rgba(11, 36, 29, 0.72) 39% 58%, transparent 60%),
+    radial-gradient(circle, rgba(109, 226, 190, 0.3), transparent 66%);
+  border-radius: inherit;
+  box-shadow: 0 0 18px rgba(109, 226, 190, 0.28);
+  content: "";
+  inset: 4px;
+  position: absolute;
+  transition: opacity 160ms ease, transform 160ms ease, filter 160ms ease;
+  z-index: -1;
+}
+
+.xm-map-node span {
+  color: #10241e;
+  font-family: var(--font-accent);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.xm-map-node strong,
+.xm-map-node small {
+  background: rgba(5, 14, 11, 0.72);
+  border: 1px solid rgba(216, 172, 82, 0.28);
+  border-radius: 999px;
+  color: #fff7db;
+  font-family: var(--font-accent);
+  left: 50%;
+  opacity: 0;
+  padding: 4px 8px;
+  pointer-events: none;
+  position: absolute;
+  top: 48px;
+  transform: translateX(-50%) translateY(-4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+  white-space: nowrap;
+}
+
+.xm-map-node small {
+  display: none;
+}
+
+.xm-map-node:hover strong,
+.xm-map-node:focus-visible strong,
+.xm-map-node--selected strong {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.xm-map-node--locked {
+  filter: grayscale(0.6);
+  opacity: 0.58;
+}
+
+.xm-map-node--locked::before {
+  background:
+    radial-gradient(circle, rgba(190, 196, 184, 0.62) 0 20%, rgba(64, 72, 68, 0.72) 22% 54%, transparent 58%),
+    radial-gradient(circle, rgba(200, 204, 192, 0.16), transparent 66%);
+  box-shadow: none;
+}
+
+.xm-map-node--available::before {
+  animation: xmMapNodePulse 2.6s ease-in-out infinite;
+  box-shadow: 0 0 26px rgba(216, 172, 82, 0.44), 0 0 38px rgba(109, 226, 190, 0.16);
+}
+
+.xm-map-node--available::after,
+.xm-map-node--cleared::after {
+  content: none;
+}
+
+.xm-map-node--cleared::before {
+  box-shadow: 0 0 20px rgba(109, 226, 190, 0.3);
+  filter: saturate(1.08);
+}
+
+.xm-map-node--boss::before {
+  background:
+    radial-gradient(circle, rgba(255, 236, 204, 0.9) 0 16%, rgba(201, 92, 69, 0.78) 18% 38%, rgba(42, 14, 35, 0.88) 40% 62%, transparent 64%),
+    radial-gradient(circle, rgba(148, 58, 126, 0.42), transparent 72%);
+  box-shadow: 0 0 30px rgba(201, 92, 69, 0.34), 0 0 46px rgba(148, 58, 126, 0.24);
+}
+
+.xm-map-node--boss::after {
+  animation: xmRiftPulse 4.8s ease-in-out infinite alternate;
+  background: radial-gradient(circle, rgba(148, 58, 126, 0.26), transparent 68%);
+  border-radius: 999px;
+  content: "";
+  inset: -18px;
+  opacity: 0.5;
+  pointer-events: none;
+  position: absolute;
+  z-index: -2;
+}
+
+.xm-map-node--selected {
+  outline: none;
+}
+
+.xm-map-node--selected::before,
+.xm-map-node:hover::before,
+.xm-map-node:focus-visible::before {
+  filter: brightness(1.16);
+  transform: scale(1.12);
+}
+
+.xm-node-detail {
+  align-content: start;
+  background: rgba(5, 12, 10, 0.76);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(216, 172, 82, 0.34);
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32), inset 0 0 34px rgba(109, 226, 190, 0.05);
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+
+.xm-node-detail--drawer {
+  bottom: 18px;
+  max-width: none;
+  position: absolute;
+  right: 18px;
+  top: 18px;
+  width: min(360px, 28%);
+  z-index: 4;
+}
+
+.xm-node-detail-close {
+  border-radius: 999px;
+}
+
+@keyframes xmMapNodePulse {
+  0%, 100% {
+    transform: scale(0.96);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes xmMapPathPulse {
+  0%, 100% {
+    opacity: 0.44;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
 .xm-settings-actions {
   display: flex;
   gap: 10px;
@@ -3704,7 +4011,14 @@ h2 {
   }
 
   .xm-adventure-map {
-    min-height: 620px;
+    min-height: 0;
+  }
+
+  .xm-adventure-map-frame {
+    aspect-ratio: auto;
+    max-height: none;
+    min-height: 560px;
+    width: 100%;
   }
 
   .xm-adventure-map-header {
@@ -3717,15 +4031,24 @@ h2 {
   }
 
   .xm-node-detail--drawer {
+    bottom: 14px;
     left: 14px;
     max-width: none;
     right: 14px;
-    top: 84px;
+    top: auto;
+    width: auto;
   }
 
   .xm-map-node {
-    min-width: 78px;
-    padding: 7px;
+    height: 38px;
+    min-width: 0;
+    padding: 0;
+    width: 38px;
+  }
+
+  .xm-map-node strong {
+    font-size: 12px;
+    top: 40px;
   }
 
   canvas {

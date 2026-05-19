@@ -968,19 +968,32 @@
     const selectedStatus = helpers.getChapterNodeStatus(chapter.chapterId, selectedNode.nodeId);
     const clearedCount = progress.clearedNodeIds?.length || 0;
     const detailOpen = Boolean(state.adventureDetailOpen && selectedNode);
-    const nodePositions = [[12, 78], [22, 65], [34, 72], [43, 56], [53, 47], [42, 34], [56, 27], [67, 40], [76, 27], [87, 18]];
+    const nodePositions = [[18, 72], [27, 64], [36, 57], [45, 50], [53, 43], [60, 36], [67, 30], [74, 25], [82, 22], [89, 18]];
+    const statusLabel = (status) => ({ locked: "未解锁", cleared: "已通关", available: "可挑战" }[status] || "未知");
+    const routePoints = chapter.nodes.map((node, index) => {
+      const [x, y] = nodePositions[index] || [18 + index * 7, 72 - index * 6];
+      const status = helpers.getChapterNodeStatus(chapter.chapterId, node.nodeId);
+      return { x, y, status };
+    });
+    const routeSegments = routePoints.slice(0, -1).map((point, index) => {
+      const next = routePoints[index + 1];
+      const active = point.status === "cleared" && (next.status === "cleared" || next.status === "available");
+      const current = point.status === "cleared" && next.status === "available";
+      return `<line class="xm-map-route-line ${active ? "xm-map-route-line--open" : "xm-map-route-line--locked"} ${current ? "xm-map-route-line--current" : ""}" x1="${point.x}" y1="${point.y}" x2="${next.x}" y2="${next.y}" />`;
+    }).join("");
     const nodeButton = (node, index) => {
       const status = helpers.getChapterNodeStatus(chapter.chapterId, node.nodeId);
       const isSelected = detailOpen && node.nodeId === selectedNode.nodeId;
-      const [x, y] = nodePositions[index] || [12 + index * 8, 64 - (index % 3) * 8];
-      return `<button type="button" class="xm-map-node xm-map-node--${safeText(status)} ${node.boss || node.type === "boss" || node.type === "mini_boss" ? "xm-map-node--boss" : ""} ${isSelected ? "xm-map-node--selected" : ""}" style="--node-x: ${x}%; --node-y: ${y}%;" data-adventure-chapter-id="${safeText(chapter.chapterId)}" data-adventure-node-id="${safeText(node.nodeId)}" aria-label="${safeText(`${node.displayId} ${node.name}`)}"><span>${safeText(node.displayId)}</span><strong>${safeText(node.name)}</strong><small>${status === "locked" ? "未解锁" : status === "cleared" ? "已通关" : "可挑战"}${node.boss || node.type === "boss" ? " · Boss" : ""}</small></button>`;
+      const [x, y] = nodePositions[index] || [18 + index * 7, 72 - index * 6];
+      const boss = node.boss || node.type === "boss" || node.type === "mini_boss";
+      return `<button type="button" class="xm-map-node xm-map-node--${safeText(status)} ${boss ? "xm-map-node--boss" : ""} ${isSelected ? "xm-map-node--selected" : ""}" style="--node-x: ${x}%; --node-y: ${y}%;" data-adventure-chapter-id="${safeText(chapter.chapterId)}" data-adventure-node-id="${safeText(node.nodeId)}" aria-label="${safeText(`${node.displayId} ${node.name}`)}" title="${safeText(`${node.displayId} ${node.name}`)}"><span>${safeText(node.displayId)}</span><strong>${safeText(node.name)}</strong><small>${safeText(statusLabel(status))}${boss ? " · Boss" : ""}</small></button>`;
     };
     const enemies = (selectedNode.enemyPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
     const rewards = (selectedNode.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
     const locked = selectedStatus === "locked";
     const startLabel = selectedStatus === "cleared" ? "再次挑战" : "开始历练";
-    const detail = detailOpen ? `<aside class="xm-node-detail xm-node-detail--drawer ${locked ? "xm-node-detail--locked" : ""}"><button type="button" class="xm-node-detail-close" data-page-action="close-adventure-detail" aria-label="关闭节点详情">×</button><p class="xm-eyebrow">${safeText(selectedNode.displayId)} · ${safeText(nodeTypeLabel(selectedNode.type))}${selectedNode.boss || selectedNode.type === "boss" ? " · Boss" : ""}</p><h2>${safeText(selectedNode.name)}</h2><p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p><blockquote>${safeText(selectedNode.storyText || selectedNode.description)}</blockquote><div class="xm-preview-row"><strong>敌人预览</strong><div>${enemies || "<span>未知妖物</span>"}</div></div><div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards || "<span>灵石</span>"}</div></div><button type="button" class="primary" data-page-action="start-adventure" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(locked ? "尚未解锁" : startLabel)}</button><button type="button" class="secondary" data-page-action="back-main">返回宗门</button></aside>` : "";
-    return `<section class="xm-adventure-map"><header class="xm-adventure-map-header"><div><p class="xm-eyebrow">山门外环历练图</p><h2>${safeText(chapter.name)}</h2></div><p>${safeText(chapter.subtitle)} · 进度 ${clearedCount} / ${chapter.nodes.length}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}</section>`;
+    const detail = detailOpen ? `<aside class="xm-node-detail xm-node-detail--drawer ${locked ? "xm-node-detail--locked" : ""}"><button type="button" class="xm-node-detail-close" data-page-action="close-adventure-detail" aria-label="关闭节点详情">×</button><p class="xm-eyebrow">${safeText(selectedNode.displayId)} · ${safeText(nodeTypeLabel(selectedNode.type))}${selectedNode.boss || selectedNode.type === "boss" ? " · Boss" : ""}</p><h2>${safeText(selectedNode.name)}</h2><p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p><blockquote>${safeText(selectedNode.storyText || selectedNode.description)}</blockquote><div class="xm-preview-row"><strong>节点状态</strong><div><span>${safeText(statusLabel(selectedStatus))}</span></div></div><div class="xm-preview-row"><strong>敌人预览</strong><div>${enemies || "<span>未知妖物</span>"}</div></div><div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards || "<span>灵石</span>"}</div></div><button type="button" class="primary" data-page-action="start-adventure" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(locked ? "请先完成前置节点" : startLabel)}</button><button type="button" class="secondary" data-page-action="back-main">返回宗门</button></aside>` : "";
+    return `<section class="xm-adventure-map"><div class="xm-adventure-map-frame"><header class="xm-adventure-map-header"><div><p class="xm-eyebrow">山门外</p><h2>${safeText(chapter.name)}</h2></div><p>${safeText(chapter.subtitle)} · 进度 ${clearedCount} / ${chapter.nodes.length}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><svg class="xm-map-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${routeSegments}</svg><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}</div></section>`;
   }
 
   function renderFeaturePage({ elements, page, DATA, playerProfile, state, helpers }) {

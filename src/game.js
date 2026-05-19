@@ -2843,7 +2843,7 @@ function syncHubNavActive() {
 
 function renderFeaturePage() {
   if (!HUB_PAGE_STATES.has(state.appState)) return;
-  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS || state.appState === APP_STATE.BAG || state.appState === APP_STATE.GACHA || state.appState === APP_STATE.CODEX);
+  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS || state.appState === APP_STATE.BAG || state.appState === APP_STATE.GACHA || state.appState === APP_STATE.CODEX || state.appState === APP_STATE.ADVENTURE);
   featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回啟卷" : "返回宗門";
   renderSystemFeaturePage({
     elements: {
