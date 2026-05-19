@@ -1696,6 +1696,8 @@ button:disabled {
 }
 
 .xm-artifact-evolution,
+.xm-artifact-cultivation,
+.xm-artifact-branches,
 .xm-artifact-bonds {
   border-bottom: 1px solid rgba(216, 172, 82, 0.14);
   display: grid;
@@ -1704,6 +1706,8 @@ button:disabled {
 }
 
 .xm-artifact-evolution h3,
+.xm-artifact-cultivation h3,
+.xm-artifact-branches h3,
 .xm-artifact-bonds h3 {
   color: #fff4cf;
   font-family: var(--font-accent);
@@ -1720,6 +1724,7 @@ button:disabled {
 }
 
 .xm-artifact-evolution li,
+.xm-artifact-branch,
 .xm-artifact-bond {
   background: rgba(10, 30, 24, 0.52);
   border: 1px solid rgba(216, 172, 82, 0.16);
@@ -1730,11 +1735,19 @@ button:disabled {
 }
 
 .xm-artifact-evolution strong,
+.xm-artifact-branch strong,
 .xm-artifact-bond strong {
   color: #fff4cf;
 }
 
 .xm-artifact-evolution span,
+.xm-artifact-info-grid span,
+.xm-artifact-materials li,
+.xm-artifact-note,
+.xm-artifact-muted,
+.xm-artifact-branch span,
+.xm-artifact-branch p,
+.xm-artifact-branch em,
 .xm-artifact-bond span,
 .xm-artifact-bond p,
 .xm-artifact-bond em {
@@ -1742,6 +1755,78 @@ button:disabled {
   font-size: 12px;
   font-style: normal;
   margin: 0;
+}
+
+.xm-artifact-info-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.xm-artifact-info-grid p {
+  background: rgba(8, 26, 21, 0.46);
+  border: 1px solid rgba(216, 172, 82, 0.13);
+  border-radius: 8px;
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 8px;
+}
+
+.xm-artifact-info-grid strong,
+.xm-artifact-materials strong {
+  color: #fff4cf;
+  font-family: var(--font-accent);
+  font-size: 12px;
+}
+
+.xm-artifact-materials {
+  background: rgba(8, 26, 21, 0.38);
+  border: 1px solid rgba(216, 172, 82, 0.12);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+}
+
+.xm-artifact-materials ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.xm-artifact-materials li {
+  background: rgba(216, 172, 82, 0.08);
+  border: 1px solid rgba(216, 172, 82, 0.12);
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+.xm-artifact-branch-list {
+  display: grid;
+  gap: 8px;
+}
+
+.xm-artifact-branch header {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.xm-artifact-branch em {
+  background: rgba(109, 226, 190, 0.08);
+  border: 1px solid rgba(109, 226, 190, 0.18);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.xm-artifact-branch div {
+  display: grid;
+  gap: 3px;
 }
 
 .xm-artifact-bond--active {

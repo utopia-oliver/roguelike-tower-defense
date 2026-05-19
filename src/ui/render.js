@@ -103,7 +103,7 @@
   function classifyPage(page) {
     const config = {
       CHARACTERS: ["洞府", "查看、培养与管理宗门门人和已拥有角色。"],
-      ARTIFACTS: ["炼器阁", "随行法器、基础效果与羁绊线索。"],
+      ARTIFACTS: ["炼器阁", "法宝祭炼、器灵养成、羁绊共鸣。"],
       FORMATIONS: ["阵枢殿", "护山大阵核心中枢，影响整局战斗节奏。"],
       BAG: ["库藏殿", "材料、消耗、特殊与任务物品。"],
       GACHA: ["祈灵台", "以灵石祈召宗门角色，后续扩展法宝祈召。"],
@@ -549,6 +549,73 @@
     }).join("");
   }
 
+  function artifactRankLabel(level = 1) {
+    const value = Number(level) || 1;
+    if (value >= 7) return "大成";
+    if (value >= 5) return "通玄";
+    if (value >= 3) return "小成";
+    return "初醒";
+  }
+
+  function artifactRouteLabel(artifact = {}) {
+    return artifact.evolutionRouteName || artifact.selectedEvolutionRoute || "未定";
+  }
+
+  function artifactMaterialPlan(artifact = {}, level = 1) {
+    const textById = {
+      qingming_sword_box: ["青冥剑魄 × 3", "妖核 × 20", "靈石 × 500"],
+      lihuo_gourd: ["离火砂 × 3", "妖核 × 20", "靈石 × 500"],
+      xuanbing_mirror: ["玄冰玉屑 × 3", "妖核 × 20", "靈石 × 500"],
+      zhenmo_bell: ["镇魔铜铃片 × 3", "妖核 × 24", "靈石 × 600"],
+      leiwen_seal: ["雷纹残印 × 3", "妖核 × 24", "靈石 × 600"],
+      wandu_orb: ["百毒灵材 × 3", "妖核 × 24", "靈石 × 600"],
+      shanhe_seal: ["山河石髓 × 3", "妖核 × 28", "靈石 × 700"],
+      guiyuan_banner: ["归元幡纱 × 3", "妖核 × 28", "靈石 × 700"],
+      zhanyao_blades: ["照妖镜片 × 3", "妖核 × 28", "靈石 × 700"],
+    };
+    return {
+      materials: textById[artifact.id] || ["法宝精粹 × 3", "妖核 × 20", "靈石 × 500"],
+      sources: ["山门外历练", "Boss / 精英妖物掉落", "章节首通奖励", "万宝阁兑换"],
+      note: level >= 7 ? "该法宝已达当前预览上限，后续开放重修路线。" : "材料系统暂未完全开放，当前仅作养成预览。",
+    };
+  }
+
+  function artifactEvolutionBranches(artifact = {}) {
+    const byId = {
+      qingming_sword_box: [
+        { name: "青冥剑阵", type: "常规大成", description: "飞剑数量提升，形成持续剑阵。", requirements: ["法宝 Lv.7", "青冥剑魄 × 8", "妖核 × 60"], materials: ["青冥剑魄 × 8", "妖核 × 60"], status: "暂未开放" },
+        { name: "万剑归宗", type: "输出大成", description: "周期性释放大量飞剑，造成爆发伤害。", requirements: ["法宝 Lv.7", "青冥剑魄 × 10", "剑魄精粹 × 2"], materials: ["青冥剑魄 × 10", "剑魄精粹 × 2"], status: "暂未开放" },
+        { name: "破阵飞剑", type: "专精大成", description: "提升穿透能力，并优先攻击高威胁妖物。", requirements: ["法宝 Lv.7", "破阵残纹 × 5", "妖核 × 80"], materials: ["破阵残纹 × 5", "妖核 × 80"], status: "暂未开放" },
+        { name: "青冥剑灵", type: "羁绊大成", description: "剑匣化生剑灵，可与剑修门人产生额外共鸣。", requirements: ["法宝 Lv.7", "器灵残识 × 1", "青冥剑魄 × 12"], materials: ["器灵残识 × 1", "青冥剑魄 × 12"], status: "暂未开放" },
+      ],
+      lihuo_gourd: [
+        { name: "离火焚妖", type: "常规大成", description: "离火范围扩大，持续灼烧妖群。", requirements: ["法宝 Lv.7", "离火砂 × 8", "妖核 × 60"], materials: ["离火砂 × 8", "妖核 × 60"], status: "暂未开放" },
+        { name: "九转火葫", type: "输出大成", description: "周期性喷吐爆裂离火，压制密集妖潮。", requirements: ["法宝 Lv.7", "离火砂 × 10", "火脉精粹 × 2"], materials: ["离火砂 × 10", "火脉精粹 × 2"], status: "暂未开放" },
+        { name: "剑火交鸣", type: "羁绊大成", description: "与飞剑类法宝共鸣，使剑气附带离火灼烧。", requirements: ["法宝 Lv.7", "青冥剑匣已拥有", "离火砂 × 12"], materials: ["离火砂 × 12", "妖核 × 80"], status: "暂未开放" },
+      ],
+      xuanbing_mirror: [
+        { name: "玄冰镜阵", type: "控制大成", description: "镜光扩散，显著迟滞妖物推进。", requirements: ["法宝 Lv.7", "玄冰玉屑 × 8", "妖核 × 60"], materials: ["玄冰玉屑 × 8", "妖核 × 60"], status: "暂未开放" },
+        { name: "冰雷裂阵", type: "羁绊大成", description: "被冰霜迟滞的妖物更容易受到雷击连锁。", requirements: ["法宝 Lv.7", "雷纹法印已拥有", "玄冰玉屑 × 12"], materials: ["玄冰玉屑 × 12", "雷纹残印 × 4"], status: "暂未开放" },
+      ],
+    };
+    const generic = [
+      { name: `${artifact.name || "法宝"}真形`, type: "常规大成", description: "强化基础效果，使法宝在战斗中更稳定触发。", requirements: ["法宝 Lv.7", "法宝精粹 × 8", "妖核 × 60"], materials: ["法宝精粹 × 8", "妖核 × 60"], status: "暂未开放" },
+      { name: "器灵显化", type: "专精大成", description: "器灵短暂显化，获得更明确的专精效果。", requirements: ["法宝 Lv.7", "器灵残识 × 1", "法宝精粹 × 10"], materials: ["器灵残识 × 1", "法宝精粹 × 10"], status: "暂未开放" },
+      { name: "共鸣归一", type: "羁绊大成", description: "增强与其他法宝的共鸣，预留组合攻击方向。", requirements: ["法宝 Lv.7", "任意两件法宝已拥有", "妖核 × 80"], materials: ["妖核 × 80", "共鸣玉砂 × 4"], status: "暂未开放" },
+    ];
+    return artifact.evolutionBranches || byId[artifact.id] || generic;
+  }
+
+  function renderArtifactCultivation(artifact = {}, level = 1) {
+    const rank = artifactRankLabel(level);
+    const plan = artifactMaterialPlan(artifact, level);
+    return `<section class="xm-artifact-cultivation"><h3>器灵养成</h3><p class="xm-artifact-note">局外永久成长仅在炼器阁进行；战斗中的机缘三选一只影响本局临时强化。</p><div class="xm-artifact-info-grid"><p><strong>当前等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>当前品阶</strong><span>${safeText(rank)}</span></p><p><strong>当前路线</strong><span>${safeText(artifactRouteLabel(artifact))}</span></p></div><div class="xm-artifact-materials"><strong>升级所需材料</strong><ul>${plan.materials.map((item) => `<li>${safeText(item)}</li>`).join("")}</ul></div><div class="xm-artifact-materials"><strong>材料来源</strong><ul>${plan.sources.map((item) => `<li>${safeText(item)}</li>`).join("")}</ul></div><p class="xm-artifact-muted">${safeText(plan.note)}</p><div class="xm-artifact-stage__actions"><button type="button" class="secondary" disabled title="材料系统暂未完全开放。">升级法宝</button><button type="button" class="secondary" disabled title="材料系统暂未完全开放。">进阶法宝</button><button type="button" class="secondary" disabled title="多路线大成系统后续开放。">选择大成路线</button><button type="button" class="secondary" disabled title="重修路线后续开放。">重修路线</button></div></section>`;
+  }
+
+  function renderArtifactBranches(artifact = {}) {
+    return `<section class="xm-artifact-branches"><h3>大成路线</h3><p class="xm-artifact-note">大成方向属于局外永久选择，后续在炼器阁中消耗材料解锁，不会进入战斗中的三选一。</p><div class="xm-artifact-branch-list">${artifactEvolutionBranches(artifact).map((branch) => `<article class="xm-artifact-branch"><header><strong>${safeText(branch.name)}</strong><em>${safeText(branch.type)}</em></header><p>${safeText(branch.description)}</p><div><span>解锁条件：${safeText((branch.requirements || []).join("、"))}</span><span>所需材料：${safeText((branch.materials || []).join("、"))}</span><span>状态：${safeText(branch.status || "暂未开放")}</span></div></article>`).join("")}</div></section>`;
+  }
+
   function renderArtifactsPageV2({ DATA, playerProfile, state }) {
     const artifacts = valuesOf(DATA.artifacts);
     const ownedIds = Array.isArray(playerProfile?.ownedArtifacts) ? playerProfile.ownedArtifacts : [];
@@ -565,6 +632,8 @@
     const owned = ownedSet.has(current.id);
     const carried = selectedIds.includes(current.id);
     const level = playerProfile?.artifactLevels?.[current.id] || 1;
+    const rank = artifactRankLabel(level);
+    const route = artifactRouteLabel(current);
 
     return `
       <section class="xm-artifact-page">
@@ -584,10 +653,13 @@
             <div class="xm-artifact-stage__sigil"><span>${safeText(artifactIconText(current))}</span></div>
             <div class="xm-artifact-stage__name">${safeText(current.name || "法宝")}</div>
             <div class="xm-artifact-stage__meta">${safeText(current.rarity || "-")} · ${safeText(artifactRoleLabel(current))}</div>
-            <div class="xm-artifact-stage__level">Lv.${safeText(level)} · ${safeText(carried ? "本局携带" : "未携带")}</div>
+            <div class="xm-artifact-stage__level">Lv.${safeText(level)} · ${safeText(rank)} · ${safeText(carried ? "本局携带" : "未携带")}</div>
+            <div class="xm-artifact-stage__level">当前路线：${safeText(route)}</div>
             <div class="xm-artifact-stage__actions">
               ${owned ? `<button type="button" class="primary" data-artifact-toggle-id="${safeText(current.id)}">${carried ? "卸下法宝" : "携带法宝"}</button>` : `<button type="button" class="secondary" disabled>尚未拥有</button>`}
-              <button type="button" class="secondary" disabled title="法宝局外升级系统暂未开放。">升级法宝</button>
+              <button type="button" class="secondary" disabled title="材料系统暂未完全开放。">升级法宝</button>
+              <button type="button" class="secondary" disabled title="材料系统暂未完全开放。">进阶法宝</button>
+              <button type="button" class="secondary" disabled title="多路线大成系统后续开放。">选择大成路线</button>
               <button type="button" class="secondary" disabled>查看羁绊</button>
             </div>
           </div>
@@ -595,9 +667,10 @@
         <aside class="xm-artifact-page__detail xm-inner-panel">
           <h2>法宝卷宗</h2>
           <div class="xm-artifact-detail">
-            <section class="xm-character-detail__section"><h3>法宝信息</h3><p><strong>名称</strong><span>${safeText(current.name || "-")}</span></p><p><strong>品质</strong><span>${safeText(current.rarity || "-")}</span></p><p><strong>定位</strong><span>${safeText(artifactRoleLabel(current))}</span></p><p><strong>等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>状态</strong><span>${safeText(`${owned ? "已拥有" : "未拥有"} · ${carried ? "本局携带" : "未携带"}`)}</span></p><p><strong>冷却</strong><span>${safeText(current.cooldown ? `${current.cooldown}秒` : "-")}</span></p><p><strong>目标</strong><span>${safeText(artifactTargetLabel(current.targetRule))}</span></p></section>
-            <section class="xm-character-detail__section"><h3>战斗效果</h3><p>${safeText(artifactEffectText(current))}</p></section>
-            <section class="xm-artifact-evolution"><h3>器灵进化</h3><ol><li><strong>Lv1 初醒</strong><span>基础法宝效果开启。</span></li><li><strong>Lv3 小成</strong><span>${safeText(current.minorEvolution || "获得一次特性强化。")}</span></li><li><strong>Lv6 圆满</strong><span>基础效果进一步提升。</span></li><li><strong>Lv7 大成</strong><span>${safeText(current.majorEvolution || "器灵显化，获得大成效果。")}</span></li></ol></section>
+            <section class="xm-character-detail__section"><h3>法宝信息</h3><p><strong>名称</strong><span>${safeText(current.name || "-")}</span></p><p><strong>品质</strong><span>${safeText(current.rarity || "-")}</span></p><p><strong>定位</strong><span>${safeText(artifactRoleLabel(current))}</span></p><p><strong>等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>品阶</strong><span>${safeText(rank)}</span></p><p><strong>当前路线</strong><span>${safeText(route)}</span></p><p><strong>状态</strong><span>${safeText(`${owned ? "已拥有" : "未拥有"} · ${carried ? "本局携带" : "未携带"}`)}</span></p><p><strong>冷却</strong><span>${safeText(current.cooldown ? `${current.cooldown}秒` : "-")}</span></p><p><strong>目标</strong><span>${safeText(artifactTargetLabel(current.targetRule))}</span></p></section>
+            <section class="xm-character-detail__section"><h3>战斗效果</h3><p>${safeText(artifactEffectText(current))}</p><p class="xm-artifact-muted">此处展示进入战斗后的自动生效效果；本局机缘强化仍在战斗中通过三选一临时获得。</p></section>
+            ${renderArtifactCultivation(current, level)}
+            ${renderArtifactBranches(current)}
             <section class="xm-artifact-bonds"><h3>法宝羁绊</h3>${artifactBondRows(current, ownedIds, selectedIds, DATA)}</section>
             <section class="xm-character-detail__section xm-character-detail__bio"><h3>法宝来历</h3><p>${safeText(artifactLore(current))}</p></section>
           </div>
