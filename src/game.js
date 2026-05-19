@@ -2842,7 +2842,7 @@ function syncHubNavActive() {
 
 function renderFeaturePage() {
   if (!HUB_PAGE_STATES.has(state.appState)) return;
-  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS);
+  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS);
   featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回啟卷" : "返回宗門";
   renderSystemFeaturePage({
     elements: {
@@ -4881,6 +4881,27 @@ featurePageContent.addEventListener("click", (event) => {
   if (characterBio) {
     const role = DATA.roles?.[characterBio.dataset.characterBioId] || DATA.characters?.[characterBio.dataset.characterBioId];
     openSettings(`${role?.name || "门人"} · 人物传记\n\n人物传记系统暂未开放。\n后续将加入：角色个人剧情、宗门任务、羁绊事件与大成武学相关剧情。`);
+    return;
+  }
+  const artifactSelect = event.target.closest("[data-artifact-select-id]");
+  if (artifactSelect) {
+    state.selectedArtifactId = artifactSelect.dataset.artifactSelectId;
+    renderFeaturePage();
+    return;
+  }
+  const artifactToggle = event.target.closest("[data-artifact-toggle-id]");
+  if (artifactToggle) {
+    const artifactId = artifactToggle.dataset.artifactToggleId;
+    state.loadoutArtifactIds = Array.isArray(state.loadoutArtifactIds) ? state.loadoutArtifactIds : [];
+    if (state.loadoutArtifactIds.includes(artifactId)) {
+      state.loadoutArtifactIds = state.loadoutArtifactIds.filter((id) => id !== artifactId);
+    } else if (state.loadoutArtifactIds.length < playerMeta.maxArtifactSlots) {
+      state.loadoutArtifactIds.push(artifactId);
+    } else {
+      setStatus(`当前最多可携带 ${playerMeta.maxArtifactSlots} 件法宝。`);
+    }
+    state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
+    renderFeaturePage();
     return;
   }
   const gacha = event.target.closest("[data-hub-gacha]");

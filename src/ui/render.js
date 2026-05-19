@@ -456,6 +456,156 @@
     `;
   }
 
+  function artifactIconText(artifact = {}) {
+    const text = `${artifact.id || ""} ${artifact.name || ""} ${artifact.role || ""} ${artifact.type || ""}`;
+    if (/lihuo|火/i.test(text)) return "火";
+    if (/xuanbing|冰/i.test(text)) return "冰";
+    if (/zhenmo|镇|bell/i.test(text)) return "镇";
+    if (/lei|雷/i.test(text)) return "雷";
+    if (/wandu|毒/i.test(text)) return "毒";
+    if (/shanhe|山/i.test(text)) return "山";
+    if (/guiyuan|幡|banner/i.test(text)) return "幡";
+    if (/jian|鉴|mirror/i.test(text)) return "鉴";
+    if (/bag|袋/i.test(text)) return "袋";
+    return "剑";
+  }
+
+  function artifactRoleLabel(artifact = {}) {
+    const raw = `${artifact.role || ""} ${artifact.type || ""} ${artifact.projectileType || ""}`;
+    if (/chain|雷/i.test(raw)) return "连锁雷击";
+    if (/poison|毒/i.test(raw)) return "持续毒伤";
+    if (/frost|slow|冰/i.test(raw)) return "冰霜控制";
+    if (/debuff|bell|镇/i.test(raw)) return "削弱压制";
+    if (/support|heal|幡|归元/i.test(raw)) return "辅助增益";
+    if (/area|crush|火|山/i.test(raw)) return "范围伤害";
+    if (/projectile|sword|blade|剑/i.test(raw)) return "弹道输出";
+    return "特殊法宝";
+  }
+
+  function artifactTargetLabel(value) {
+    return {
+      nearest: "最近妖物",
+      front: "前方妖物",
+      random: "随机妖物",
+      random_enemies: "随机妖物",
+      boss: "精英 / Boss",
+      area: "范围区域",
+      densest_cluster: "妖物密集区域",
+      nearest_to_core: "阵眼前方妖物",
+      highest_hp_or_nearest: "高血量或最近妖物",
+      multiple_nearest: "多个近处妖物",
+      array_core: "护山阵眼",
+    }[value] || "战场目标";
+  }
+
+  function artifactEffectText(artifact = {}) {
+    const effects = {
+      qingming_sword_box: "释放剑匣飞剑，对前方妖物造成多段剑气伤害。",
+      lihuo_gourd: "喷吐离火，对范围内妖物造成爆发伤害。",
+      xuanbing_mirror: "凝出玄冰镜光，迟滞妖物并造成冰霜伤害。",
+      zhenmo_bell: "铃音镇魂，使妖物短暂虚弱，降低其推进威胁。",
+      leiwen_seal: "召下雷纹法印，对多个目标造成连锁雷击。",
+      wandu_orb: "释放毒雾，使妖物持续受到毒伤。",
+      shanhe_seal: "重压地脉，对范围妖物造成控制与伤害。",
+      guiyuan_banner: "牵引灵气，辅助本局法宝或阵眼续航。",
+      zhanyao_blades: "分化斩妖飞刃，向多个妖物发起散射打击。",
+    };
+    return effects[artifact.id] || artifact.description || artifact.attackText || "该法宝效果尚未完整录入。";
+  }
+
+  function artifactLore(artifact = {}) {
+    const lores = {
+      qingming_sword_box: "玄门旧库中封存的剑匣，内藏数道青冥剑气。传闻此匣曾随前代长老镇守山门外环。",
+      lihuo_gourd: "以离火砂炼成的赤纹葫芦，可吞吐炽焰。遇妖气越盛，葫中火意越烈。",
+      xuanbing_mirror: "镜面如寒潭凝玉，可映出妖物气机。催动时寒光成阵，迟滞妖潮。",
+      zhenmo_bell: "古铜小铃，铃音不高，却能震散妖气。玄门弟子常以此铃镇守夜阵。",
+      leiwen_seal: "印上刻有细密雷纹，落印时如天雷入地，最擅破开密集妖群。",
+      wandu_orb: "由百毒灵材炼成，珠光幽暗。毒雾散开时，能慢慢蚕食妖物血气。",
+      shanhe_seal: "沉重如岳的古印，压下时似山势倾覆。常用于镇压冲阵巨妖。",
+      guiyuan_banner: "幡面残旧，却能牵引散落灵气，令法宝之间产生微妙共鸣。",
+      zhanyao_blades: "由斩妖残刃重炼而成，刃光分化如雨，适合清理散乱妖群。",
+    };
+    return lores[artifact.id] || "此法宝来历尚未完整录入，后续将随宗门旧库与炼器剧情逐步解锁。";
+  }
+
+  function artifactBondRows(artifact = {}, ownedIds = [], selectedIds = [], DATA = {}) {
+    const all = [
+      { name: "剑火交鸣", ids: ["qingming_sword_box", "lihuo_gourd"], effect: "飞剑附带离火灼烧。" },
+      { name: "冰雷裂阵", ids: ["xuanbing_mirror", "leiwen_seal"], effect: "被冰霜迟滞的妖物更容易受到雷击连锁。" },
+      { name: "镇妖封识", ids: ["zhenmo_bell", "zhanyao_blades"], effect: "削弱精英与 Boss 的特殊抗性。" },
+      { name: "毒雾困山", ids: ["wandu_orb", "shanhe_seal"], effect: "被山河印压制的妖物持续受到毒伤。" },
+      { name: "归元纳器", ids: ["guiyuan_banner"], effect: "提升本局法宝触发效率。", extra: "任意两件法宝" },
+    ];
+    const related = all.filter((bond) => bond.ids.includes(artifact.id) || (artifact.id && bond.name === "归元纳器"));
+    const rows = related.length ? related : all.slice(0, 3);
+    return rows.map((bond) => {
+      const active = bond.ids.every((id) => selectedIds.includes(id)) && selectedIds.length >= bond.ids.length;
+      const owned = bond.ids.every((id) => ownedIds.includes(id));
+      const need = [
+        ...bond.ids.map((id) => DATA.artifacts?.[id]?.name || id),
+        bond.extra,
+      ].filter(Boolean).join(" + ");
+      return `<article class="xm-artifact-bond ${active ? "xm-artifact-bond--active" : ""}"><strong>${safeText(bond.name)}</strong><span>所需：${safeText(need)}</span><p>${safeText(bond.effect)}</p><em>${active ? "已激活" : owned ? "已拥有条件，需本局携带" : "未激活"}</em></article>`;
+    }).join("");
+  }
+
+  function renderArtifactsPageV2({ DATA, playerProfile, state }) {
+    const artifacts = valuesOf(DATA.artifacts);
+    const ownedIds = Array.isArray(playerProfile?.ownedArtifacts) ? playerProfile.ownedArtifacts : [];
+    const ownedSet = new Set(ownedIds);
+    if (!artifacts.length) {
+      return `<section class="xm-artifact-page"><aside class="xm-artifact-page__sidebar xm-inner-panel"><h2>法宝名录</h2><p>暂无法宝数据。</p></aside><section class="xm-artifact-page__center xm-inner-panel"><h2>器灵祭台</h2><p>暂无可展示法宝。</p></section><aside class="xm-artifact-page__detail xm-inner-panel"><h2>法宝卷宗</h2><p>法宝数据尚未载入。</p></aside></section>`;
+    }
+    const selectedIds = Array.isArray(state?.loadoutArtifactIds) ? state.loadoutArtifactIds : [];
+    const preferred = artifacts.find((item) => ownedSet.has(item.id) && /qingming|sword_box/i.test(item.id))
+      || artifacts.find((item) => ownedSet.has(item.id))
+      || artifacts[0];
+    const current = artifacts.find((item) => item.id === state?.selectedArtifactId) || preferred;
+    if (state && current?.id && state.selectedArtifactId !== current.id) state.selectedArtifactId = current.id;
+    const owned = ownedSet.has(current.id);
+    const carried = selectedIds.includes(current.id);
+    const level = playerProfile?.artifactLevels?.[current.id] || 1;
+
+    return `
+      <section class="xm-artifact-page">
+        <aside class="xm-artifact-page__sidebar xm-inner-panel">
+          <h2>法宝名录</h2>
+          <div class="xm-scroll-list xm-artifact-list">
+            ${artifacts.map((artifact) => {
+              const isOwned = ownedSet.has(artifact.id);
+              const selected = artifact.id === current.id;
+              return `<button type="button" class="xm-artifact-list-item ${selected ? "xm-artifact-list-item--selected" : ""} ${isOwned ? "" : "xm-artifact-list-item--locked"}" data-artifact-select-id="${safeText(artifact.id)}"><span class="xm-artifact-list-item__icon">${safeText(artifactIconText(artifact))}</span><span class="xm-artifact-list-item__body"><strong>${safeText(artifact.name || artifact.id)}</strong><small>${safeText(artifact.rarity || "-")} · ${safeText(artifactRoleLabel(artifact))}</small></span><em>${safeText(isOwned ? "已拥有" : "未拥有")}</em></button>`;
+            }).join("")}
+          </div>
+        </aside>
+        <section class="xm-artifact-page__center xm-inner-panel">
+          <h2>器灵祭台</h2>
+          <div class="xm-artifact-stage ${owned ? "" : "xm-artifact-stage--locked"}">
+            <div class="xm-artifact-stage__sigil"><span>${safeText(artifactIconText(current))}</span></div>
+            <div class="xm-artifact-stage__name">${safeText(current.name || "法宝")}</div>
+            <div class="xm-artifact-stage__meta">${safeText(current.rarity || "-")} · ${safeText(artifactRoleLabel(current))}</div>
+            <div class="xm-artifact-stage__level">Lv.${safeText(level)} · ${safeText(carried ? "本局携带" : "未携带")}</div>
+            <div class="xm-artifact-stage__actions">
+              ${owned ? `<button type="button" class="primary" data-artifact-toggle-id="${safeText(current.id)}">${carried ? "卸下法宝" : "携带法宝"}</button>` : `<button type="button" class="secondary" disabled>尚未拥有</button>`}
+              <button type="button" class="secondary" disabled title="法宝局外升级系统暂未开放。">升级法宝</button>
+              <button type="button" class="secondary" disabled>查看羁绊</button>
+            </div>
+          </div>
+        </section>
+        <aside class="xm-artifact-page__detail xm-inner-panel">
+          <h2>法宝卷宗</h2>
+          <div class="xm-artifact-detail">
+            <section class="xm-character-detail__section"><h3>法宝信息</h3><p><strong>名称</strong><span>${safeText(current.name || "-")}</span></p><p><strong>品质</strong><span>${safeText(current.rarity || "-")}</span></p><p><strong>定位</strong><span>${safeText(artifactRoleLabel(current))}</span></p><p><strong>等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>状态</strong><span>${safeText(`${owned ? "已拥有" : "未拥有"} · ${carried ? "本局携带" : "未携带"}`)}</span></p><p><strong>冷却</strong><span>${safeText(current.cooldown ? `${current.cooldown}秒` : "-")}</span></p><p><strong>目标</strong><span>${safeText(artifactTargetLabel(current.targetRule))}</span></p></section>
+            <section class="xm-character-detail__section"><h3>战斗效果</h3><p>${safeText(artifactEffectText(current))}</p></section>
+            <section class="xm-artifact-evolution"><h3>器灵进化</h3><ol><li><strong>Lv1 初醒</strong><span>基础法宝效果开启。</span></li><li><strong>Lv3 小成</strong><span>${safeText(current.minorEvolution || "获得一次特性强化。")}</span></li><li><strong>Lv6 圆满</strong><span>基础效果进一步提升。</span></li><li><strong>Lv7 大成</strong><span>${safeText(current.majorEvolution || "器灵显化，获得大成效果。")}</span></li></ol></section>
+            <section class="xm-artifact-bonds"><h3>法宝羁绊</h3>${artifactBondRows(current, ownedIds, selectedIds, DATA)}</section>
+            <section class="xm-character-detail__section xm-character-detail__bio"><h3>法宝来历</h3><p>${safeText(artifactLore(current))}</p></section>
+          </div>
+        </aside>
+      </section>
+    `;
+  }
+
   function nodeTypeLabel(type) {
     return {
       tutorial_battle: "教学战斗",
@@ -499,7 +649,7 @@
     elements.featurePageSubtitle.textContent = subtitle;
     const renderers = {
       CHARACTERS: () => renderCharactersPageV2({ DATA, playerProfile, state, helpers }),
-      ARTIFACTS: () => renderArtifactsPage({ DATA, playerProfile }),
+      ARTIFACTS: () => renderArtifactsPageV2({ DATA, playerProfile, state }),
       FORMATIONS: () => renderFormationsPage({ DATA, playerProfile, state }),
       BAG: () => renderBagPage(),
       GACHA: () => renderGachaPage({ playerProfile }),
