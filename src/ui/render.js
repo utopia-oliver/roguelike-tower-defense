@@ -371,17 +371,60 @@
     `;
   }
 
-  function renderBagPage() {
-    const categories = ["材料", "消耗", "特殊", "任务"];
-    return subpageShell({
-      className: "xm-subpage--bag",
-      sidebarTitle: "库藏分类",
-      sidebar: categories.map((name, index) => `<article class="xm-item-card ${index === 0 ? "xm-item-card--selected" : ""}"><strong>${safeText(name)}</strong><span>待整理</span></article>`).join(""),
-      mainTitle: "宗门宝库",
-      main: `<div class="xm-inventory-grid">${Array.from({ length: 16 }, (_, index) => `<span>${index + 1}</span>`).join("")}</div>`,
-      detailTitle: "物资说明",
-      detail: "<p>库藏系统暂未开放，后续用于存放妖核、阵纹残片、法宝材料等。</p>",
-    });
+  function getMaterialCatalogPreview() {
+    return [
+      { id: "monster_core", name: "妖核", icon: "核", category: "妖核", rarity: "普通", quantity: 0, key: false, sources: ["妖物掉落", "山门外历练", "精英妖物掉落"], uses: ["法宝升级", "阵法升级", "部分角色突破"], systems: ["炼器阁", "阵枢殿"], description: "妖物体内凝结的妖气核心，虽浊气未散，却可经炼化后作为宗门修复与祭炼材料。" },
+      { id: "array_fragment", name: "阵纹残片", icon: "纹", category: "阵纹", rarity: "普通", quantity: 0, key: false, sources: ["破阵妖物", "外阵遗迹", "山门外历练"], uses: ["护山大阵升级", "阵眼修复", "阵纹修补"], systems: ["阵枢殿", "山门外"], description: "从破损阵纹中剥离出的残片，仍残留微弱灵光，可用于修补护山大阵。" },
+      { id: "qingming_sword_soul", name: "青冥剑魄", icon: "剑", category: "法宝素材", rarity: "稀有", quantity: 0, key: false, sources: ["剑系节点", "精英掉落", "章节首通奖励"], uses: ["青冥剑匣进阶", "青冥剑匣大成路线"], systems: ["炼器阁", "山门外"], description: "蕴含青冥剑意的碎魄，是祭炼青冥剑匣的重要材料。" },
+      { id: "lihuo_sand", name: "离火砂", icon: "火", category: "法宝素材", rarity: "稀有", quantity: 0, key: false, sources: ["火系妖物", "万宝阁兑换，后续开放"], uses: ["离火葫芦进阶", "火系法宝强化"], systems: ["炼器阁"], description: "赤红如砂，遇妖气则温热，可催发离火法宝的真焰。" },
+      { id: "xuanbing_jade", name: "玄冰玉髓", icon: "冰", category: "法宝素材", rarity: "稀有", quantity: 0, key: false, sources: ["寒气节点", "Boss 掉落"], uses: ["玄冰玉镜进阶", "冰系法宝强化"], systems: ["炼器阁"], description: "寒玉深处凝成的冰髓，可用于强化冰系法宝与阵纹。" },
+      { id: "artifact_spirit_remnant", name: "器灵残识", icon: "灵", category: "法宝素材", rarity: "珍稀", quantity: 0, key: true, sources: ["Boss 掉落", "章节奖励"], uses: ["法宝大成路线解锁"], systems: ["炼器阁", "山门外"], description: "法宝器灵破碎后残留的一缕灵识，是开启大成路线的关键材料。" },
+      { id: "break_array_rune", name: "破阵残纹", icon: "阵", category: "阵纹", rarity: "稀有", quantity: 0, key: false, sources: ["噬阵螟", "破阵精英"], uses: ["阵法升级", "破阵飞剑路线"], systems: ["阵枢殿", "炼器阁"], description: "被妖气污染过的阵纹残片，处理后可用于研究破阵与反制之法。" },
+      { id: "spirit_stone", name: "靈石", icon: "石", category: "消耗品", rarity: "普通", quantity: 0, key: false, sources: ["历练结算", "章节奖励"], uses: ["抽取", "角色培养", "法宝与阵法养成"], systems: ["祈灵台", "炼器阁", "阵枢殿"], description: "宗门日常修行与祭炼所需的基础灵材，经过净化后可用于多种局外养成。" },
+      { id: "return_gate_rune", name: "归门妖纹", icon: "纹", category: "剧情物品", rarity: "剧情", quantity: 0, key: true, sources: ["第一章 Boss", "剧情奖励"], uses: ["主线线索", "镇妖录记录"], systems: ["镇妖录", "山门外"], description: "黑渊门将遗留的古老妖纹，上有“归门”之意，似乎指向护山大阵背后的旧秘。" },
+    ];
+  }
+
+  function renderBagPage({ state }) {
+    const categories = ["全部", "妖核", "阵纹", "法宝素材", "角色素材", "消耗品", "剧情物品"];
+    const items = getMaterialCatalogPreview();
+    const activeCategory = state.bagCategory || "全部";
+    const filtered = activeCategory === "全部" ? items : items.filter((item) => item.category === activeCategory);
+    const selected = filtered.find((item) => item.id === state.selectedMaterialId)
+      || items.find((item) => item.id === state.selectedMaterialId)
+      || filtered[0]
+      || items[0];
+    if (state && selected?.id) state.selectedMaterialId = selected.id;
+    const owned = Number(selected.quantity) > 0;
+    return `
+      <section class="xm-bag-page">
+        <aside class="xm-bag-page__sidebar xm-inner-panel">
+          <h2>物资分类</h2>
+          <div class="xm-bag-category-list">
+            ${categories.map((category) => {
+              const count = category === "全部" ? items.length : items.filter((item) => item.category === category).length;
+              return `<button type="button" class="xm-bag-category ${activeCategory === category ? "xm-bag-category--selected" : ""}" data-bag-category="${safeText(category)}"><strong>${safeText(category)}</strong><span>${count} 项</span></button>`;
+            }).join("")}
+          </div>
+        </aside>
+        <section class="xm-bag-page__main xm-inner-panel">
+          <h2>库藏清单</h2>
+          <div class="xm-material-grid">
+            ${filtered.map((item) => `<button type="button" class="xm-material-card ${item.id === selected.id ? "xm-material-card--selected" : ""} ${item.quantity > 0 ? "" : "xm-material-card--locked"} xm-material-card--${safeText(item.rarity)}" data-material-id="${safeText(item.id)}"><span class="xm-material-card__icon">${safeText(item.icon)}</span><strong>${safeText(item.name)}</strong><small>${safeText(item.rarity)} · ${safeText(item.category)}</small><em>× ${safeText(item.quantity)}</em></button>`).join("")}
+          </div>
+        </section>
+        <aside class="xm-bag-page__detail xm-inner-panel">
+          <h2>物资卷宗</h2>
+          <div class="xm-material-detail">
+            <section class="xm-character-detail__section"><h3>物品信息</h3><p><strong>物品名称</strong><span>${safeText(selected.name)}</span></p><p><strong>分类</strong><span>${safeText(selected.category)}</span></p><p><strong>品质</strong><span>${safeText(selected.rarity)}</span></p><p><strong>当前数量</strong><span>${safeText(selected.quantity)}</span></p><p><strong>获得状态</strong><span>${safeText(owned ? "已获得" : "未获得，可预览")}</span></p><p><strong>关键材料</strong><span>${safeText(selected.key ? "是" : "否")}</span></p></section>
+            <section class="xm-character-detail__section"><h3>获取来源</h3><p>${selected.sources.map(safeText).join("、")}</p></section>
+            <section class="xm-character-detail__section"><h3>主要用途</h3><p>${selected.uses.map(safeText).join("、")}</p></section>
+            <section class="xm-character-detail__section"><h3>相关系统</h3><div class="xm-related-actions"><button type="button" class="secondary" data-bag-link="ARTIFACTS">前往炼器阁</button><button type="button" class="secondary" data-bag-link="FORMATIONS">前往阵枢殿</button><button type="button" class="secondary" data-bag-link="ADVENTURE">前往山门外</button><button type="button" class="secondary" data-bag-link="WANBAO">前往万宝阁</button></div></section>
+            <section class="xm-character-detail__section xm-character-detail__bio"><h3>物品说明</h3><p>${safeText(selected.description)}</p></section>
+          </div>
+        </aside>
+      </section>
+    `;
   }
 
   function renderGachaPage({ playerProfile }) {
@@ -831,7 +874,7 @@
       CHARACTERS: () => renderCharactersPageV2({ DATA, playerProfile, state, helpers }),
       ARTIFACTS: () => renderArtifactsPageV2({ DATA, playerProfile, state }),
       FORMATIONS: () => renderFormationsPage({ DATA, playerProfile, state }),
-      BAG: () => renderBagPage(),
+      BAG: () => renderBagPage({ state }),
       GACHA: () => renderGachaPage({ playerProfile }),
       CODEX: () => renderCodexPage({ DATA }),
       ADVENTURE: () => renderAdventurePage({ DATA, playerProfile, state, helpers }),

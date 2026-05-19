@@ -2842,7 +2842,7 @@ function syncHubNavActive() {
 
 function renderFeaturePage() {
   if (!HUB_PAGE_STATES.has(state.appState)) return;
-  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS);
+  featureBottomNav?.classList.toggle("hidden", state.appState === APP_STATE.CHARACTERS || state.appState === APP_STATE.ARTIFACTS || state.appState === APP_STATE.FORMATIONS || state.appState === APP_STATE.BAG);
   featureBackButton.textContent = featureReturnState === APP_STATE.TITLE ? "返回啟卷" : "返回宗門";
   renderSystemFeaturePage({
     elements: {
@@ -4908,6 +4908,29 @@ featurePageContent.addEventListener("click", (event) => {
   if (formationSelect) {
     state.selectedFormationPageId = formationSelect.dataset.formationSelectId;
     renderFeaturePage();
+    return;
+  }
+  const bagCategory = event.target.closest("[data-bag-category]");
+  if (bagCategory) {
+    state.bagCategory = bagCategory.dataset.bagCategory || "全部";
+    state.selectedMaterialId = "";
+    renderFeaturePage();
+    return;
+  }
+  const materialSelect = event.target.closest("[data-material-id]");
+  if (materialSelect) {
+    state.selectedMaterialId = materialSelect.dataset.materialId;
+    renderFeaturePage();
+    return;
+  }
+  const bagLink = event.target.closest("[data-bag-link]");
+  if (bagLink) {
+    const target = bagLink.dataset.bagLink;
+    if (target === "WANBAO") {
+      openSettings("万宝阁系统暂未开放，后续用于购买与兑换进阶材料。");
+      return;
+    }
+    if (APP_STATE[target]) enterHubPage(APP_STATE[target]);
     return;
   }
   const gacha = event.target.closest("[data-hub-gacha]");
