@@ -1030,12 +1030,55 @@ function cellCenter(col, row) {
   return getSystemCellCenter({ grid, col, row });
 }
 
+function getFormationBattleSlotLayout(formationId = state.selectedFormationId) {
+  const defaultLayout = [
+    { x: 0.5, y: 0.84 },
+    { x: 0.34, y: 0.88 },
+    { x: 0.5, y: 0.9 },
+    { x: 0.66, y: 0.88 },
+    { x: 0.5, y: 0.94 },
+  ];
+  const layouts = {
+    qinglian_huiyuan_array: [
+      { x: 0.5, y: 0.86 },
+      { x: 0.38, y: 0.9 },
+      { x: 0.5, y: 0.93 },
+      { x: 0.62, y: 0.9 },
+      { x: 0.5, y: 0.96 },
+    ],
+    xuanbing_chiyao_array: [
+      { x: 0.5, y: 0.84 },
+      { x: 0.28, y: 0.88 },
+      { x: 0.5, y: 0.91 },
+      { x: 0.72, y: 0.88 },
+      { x: 0.5, y: 0.95 },
+    ],
+    lihuo_fenyao_array: [
+      { x: 0.5, y: 0.82 },
+      { x: 0.35, y: 0.87 },
+      { x: 0.5, y: 0.89 },
+      { x: 0.65, y: 0.87 },
+      { x: 0.5, y: 0.94 },
+    ],
+  };
+  return layouts[formationId] || defaultLayout;
+}
+
+function applyFormationBattleSlotPosition(role, slotIndex = role?.col || 0) {
+  if (!role) return role;
+  const slot = getFormationBattleSlotLayout()[slotIndex] || getFormationBattleSlotLayout()[0];
+  role.x = Math.max(grid.cellW * 0.5, Math.min(canvas.width - grid.cellW * 0.5, canvas.width * slot.x));
+  role.y = Math.max(grid.cellH * 0.5, Math.min(canvas.height - grid.cellH * 0.5, canvas.height * slot.y));
+  role.formationSlotId = `slot_${slotIndex + 1}`;
+  return role;
+}
+
 function roleAt(col, row) {
   return getSystemRoleAt({ state, col, row });
 }
 
 function deployRole(col, row) {
-  return deploySystemRole({
+  const result = deploySystemRole({
     state,
     DATA,
     playerProfile: playerMeta,
@@ -1052,6 +1095,8 @@ function deployRole(col, row) {
       updateUi,
     },
   });
+  if (result?.role) applyFormationBattleSlotPosition(result.role, col);
+  return result;
 }
 
 function deployFormationSlot(slotIndex) {
@@ -1099,6 +1144,7 @@ function startRun() {
     setStatus("请至少安排 1 名门人入阵，再开阵迎敌。");
     return;
   }
+  state.deployedRoles.forEach((role) => applyFormationBattleSlotPosition(role, role.col || 0));
   resetRunStateForNewRun(state, {
     phase: "combat",
     running: true,
@@ -2997,6 +3043,7 @@ function updateUi() {
   battleView?.classList.toggle("is-deploy-config", state.appState === APP_STATE.DEPLOY);
   deployBoard?.classList.toggle("hidden", state.appState !== APP_STATE.DEPLOY);
   canvas?.classList.toggle("hidden", state.appState === APP_STATE.DEPLOY);
+  deployBackButton?.classList.toggle("hidden", state.appState !== APP_STATE.DEPLOY);
   renderLobby();
   renderMainHub();
   renderFeaturePage();
@@ -5046,6 +5093,13 @@ settingsModal.addEventListener("click", (event) => {
 goLoadoutButton.addEventListener("click", enterLoadout);
 loadoutBackButton?.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
 enterDeployButton.addEventListener("click", enterDeploy);
+deployBackButton?.addEventListener("click", () => {
+  state.appState = APP_STATE.LOADOUT;
+  state.phase = "loadout";
+  setStatus("已返回战前整备，当前门人、法宝与阵法选择已保留。");
+  renderLoadout();
+  updateUi();
+});
 startButton.addEventListener("click", startRun);
 returnLobbyButton.addEventListener("click", () => enterMainHub());
 settlementAdventureButton.addEventListener("click", () => {

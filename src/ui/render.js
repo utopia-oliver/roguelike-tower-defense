@@ -1119,10 +1119,12 @@
   function renderHud({ elements, state, DATA, nextLevelRequirement }) {
     const player = state.player || { level: 1, spiritQi: 0 };
     const requiredSpiritQi = nextLevelRequirement();
+    const currentHp = Number.isFinite(state.baseHp) ? state.baseHp : Number.isFinite(state.arrayCoreHp) ? state.arrayCoreHp : 180;
+    const maxHp = Number.isFinite(state.baseMaxHp) ? state.baseMaxHp : Number.isFinite(state.arrayCoreMaxHp) ? state.arrayCoreMaxHp : Math.max(currentHp, 180);
     elements.waveText.textContent = `妖潮\n第 ${state.wave} 波`;
-    elements.hpText.textContent = `护山阵眼\n${Math.max(0, Math.ceil(state.baseHp))} / ${state.baseMaxHp}`;
+    elements.hpText.textContent = `护山阵眼\n${Math.max(0, Math.ceil(currentHp))} / ${Math.max(1, Math.ceil(maxHp))}`;
     elements.lingqiText.textContent = `灵气 Lv.${player.level}\n${Math.floor(player.spiritQi)} / ${requiredSpiritQi}`;
-    elements.hpText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (state.baseHp / state.baseMaxHp) * 100))}%`);
+    elements.hpText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (currentHp / Math.max(1, maxHp)) * 100))}%`);
     elements.lingqiText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (player.spiritQi / requiredSpiritQi) * 100))}%`);
     const formationName = DATA.formations[state.selectedFormationId]?.name || "";
     const artifactNames = (state.selectedArtifactIds || []).map((id) => DATA.artifacts[id]?.name || id).filter(Boolean);
@@ -1193,7 +1195,12 @@
     const selectedFormation = DATA.formations[state.loadoutFormationId] || DATA.formations[playerProfile.unlockedFormations?.[0]] || {};
     const enemies = (node?.enemyPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("") || "<span>未知妖物</span>";
     const rewards = (node?.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("") || "<span>灵石</span>";
-    const slotPreview = xmFormationSlotEffects(selectedFormation.id).map((slot) => `<li><strong>${safeText(slot.name)}</strong><span>${safeText(slot.bonus)}</span></li>`).join("");
+    const slotPreview = xmFormationSlotEffects(selectedFormation.id).map((slot, index) => `
+      <span class="xm-slot-mini xm-slot-mini--${index + 1}">
+        <strong>${safeText(slot.name)}</strong>
+        <small>${safeText(slot.bonus)}</small>
+      </span>
+    `).join("");
 
     elements.loadoutFormationList.innerHTML = `
       <article class="xm-loadout-brief">
@@ -1327,10 +1334,12 @@
   function renderHud({ elements, state, DATA, nextLevelRequirement }) {
     const player = state.player || { level: 1, spiritQi: 0 };
     const requiredSpiritQi = nextLevelRequirement();
+    const currentHp = Number.isFinite(state.baseHp) ? state.baseHp : Number.isFinite(state.arrayCoreHp) ? state.arrayCoreHp : 180;
+    const maxHp = Number.isFinite(state.baseMaxHp) ? state.baseMaxHp : Number.isFinite(state.arrayCoreMaxHp) ? state.arrayCoreMaxHp : Math.max(currentHp, 180);
     elements.waveText.textContent = `妖潮\n第 ${state.wave} 波`;
-    elements.hpText.textContent = `护山阵眼\n${Math.max(0, Math.ceil(state.baseHp))} / ${state.baseMaxHp}`;
+    elements.hpText.textContent = `护山阵眼\n${Math.max(0, Math.ceil(currentHp))} / ${Math.max(1, Math.ceil(maxHp))}`;
     elements.lingqiText.textContent = `灵气 Lv.${player.level}\n${Math.floor(player.spiritQi)} / ${requiredSpiritQi}`;
-    elements.hpText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (state.baseHp / state.baseMaxHp) * 100))}%`);
+    elements.hpText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (currentHp / Math.max(1, maxHp)) * 100))}%`);
     elements.lingqiText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (player.spiritQi / requiredSpiritQi) * 100))}%`);
     const formationName = DATA.formations[state.selectedFormationId]?.name || "";
     const artifactNames = (state.selectedArtifactIds || []).map((id) => DATA.artifacts[id]?.name || id).filter(Boolean);
@@ -1349,10 +1358,98 @@
       : "迎敌中门人会自动攻击，不能中途调整阵位。";
   }
 
+  function renderLoadoutV2({ elements, state, playerProfile, DATA, helpers }) {
+    const { chapter, node } = xmCurrentAdventureNode(DATA, state);
+    const mode = state.battleMode || node?.battleMode || "guard";
+    const selectedFormation = DATA.formations[state.loadoutFormationId] || DATA.formations[playerProfile.unlockedFormations?.[0]] || {};
+    const enemies = (node?.enemyPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("") || "<span>未知妖物</span>";
+    const rewards = (node?.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("") || "<span>靈石</span>";
+    const slotPreview = xmFormationSlotEffects(selectedFormation.id).map((slot, index) => `
+      <span class="xm-slot-mini xm-slot-mini--${index + 1}">
+        <strong>${safeText(slot.name)}</strong>
+        <small>${safeText(slot.bonus)}</small>
+      </span>
+    `).join("");
+
+    elements.loadoutFormationList.innerHTML = `
+      <article class="xm-loadout-brief">
+        <p class="xm-eyebrow">${safeText(chapter?.name || "山门外历练")}</p>
+        <h3>${safeText(node ? `${node.displayId} ${node.name}` : "未选择节点")}</h3>
+        <p>${safeText(node?.description || "山门外妖气渐盛，需先完成战前整备。")}</p>
+        <div class="xm-loadout-tags"><span>${safeText(xmBattleModeLabel(mode))}</span></div>
+        <div class="xm-preview-row"><strong>妖物预览</strong><div>${enemies}</div></div>
+        <div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards}</div></div>
+      </article>
+    `;
+
+    const roleItems = (playerProfile.ownedCharacters || []).map((id) => {
+      const role = DATA.roles[id];
+      if (!role) return "";
+      const selected = state.loadoutRoleIds.includes(id);
+      const glyph = (role.name || "门").slice(0, 1);
+      return `<button type="button" class="choice choice--role xm-loadout-card ${selected ? "selected" : ""}" data-loadout-role-id="${safeText(id)}">
+        <span class="xm-loadout-icon">${safeText(glyph)}</span>
+        <strong>${safeText(role.name)}${selected ? " · 已出战" : ""}</strong>
+        <small>Lv${helpers.getCharacterLevel(id)} · ${safeText(role.rarity)} · ${safeText(role.role || role.school || "门人")}</small>
+      </button>`;
+    }).join("");
+    const artifactSlots = Math.max(1, playerProfile.maxArtifactSlots || 1);
+    const selectedArtifactIds = Array.isArray(state.loadoutArtifactIds) ? state.loadoutArtifactIds : state.loadoutArtifactId ? [state.loadoutArtifactId] : [];
+    const artifactItems = (playerProfile.ownedArtifacts || []).map((id) => {
+      const artifact = DATA.artifacts[id];
+      if (!artifact) return "";
+      const selected = selectedArtifactIds.includes(id);
+      const glyph = (artifact.name || "器").slice(0, 1);
+      return `<button type="button" class="choice choice--artifact xm-loadout-card ${selected ? "selected" : ""}" data-loadout-artifact-id="${safeText(id)}">
+        <span class="xm-loadout-icon xm-loadout-icon--artifact">${safeText(glyph)}</span>
+        <strong>${safeText(artifact.name)}${selected ? " · 已携带" : ""}</strong>
+        <small>${safeText(artifact.role || "法宝")}</small>
+      </button>`;
+    }).join("");
+    elements.loadoutRoleList.innerHTML = `
+      <section class="xm-loadout-section"><h3>出战门人 <small>${state.loadoutRoleIds.length}/${playerProfile.maxDeploySlots}</small></h3><div class="xm-loadout-stack xm-loadout-icon-grid">${roleItems || "<p>暂无可出战门人。</p>"}</div></section>
+      <section class="xm-loadout-section"><h3>携带法宝 <small>${selectedArtifactIds.length}/${artifactSlots}</small></h3><div class="xm-loadout-stack xm-loadout-icon-grid">${artifactItems || "<p>暂无可携带法宝。</p>"}</div></section>
+    `;
+
+    const formationButtons = (playerProfile.unlockedFormations || []).map((id) => {
+      const formation = DATA.formations[id];
+      if (!formation) return "";
+      const glyph = (formation.name || "阵").slice(0, 1);
+      return `<button type="button" class="choice choice--formation xm-loadout-card xm-loadout-card--formation ${state.loadoutFormationId === id ? "selected" : ""}" data-loadout-formation-id="${safeText(id)}">
+        <span class="xm-loadout-icon xm-loadout-icon--formation">${safeText(glyph)}</span>
+        <strong>${safeText(formation.name)}</strong>
+        <small>${safeText(formation.role || formation.rarity || "护山阵法")}</small>
+      </button>`;
+    }).join("");
+    const activeBonds = helpers.getActiveArtifactBonds ? helpers.getActiveArtifactBonds(selectedArtifactIds) : [];
+    elements.loadoutArtifactList.innerHTML = `
+      <article class="xm-loadout-formation">
+        <h3>${safeText(selectedFormation.name || "未选择阵法")}</h3>
+        <p>${safeText(selectedFormation.effectText || selectedFormation.description || "选择阵法后，将在下一步布置五方阵位。")}</p>
+        <div class="xm-loadout-stack xm-loadout-icon-grid xm-loadout-formation-grid">${formationButtons}</div>
+        <h4>五方阵位预览</h4>
+        <div class="xm-slot-mini-disc" aria-label="五方阵位预览">
+          <em>阵核</em>
+          ${slotPreview}
+        </div>
+        <p class="hint">${activeBonds.length ? `法宝羁绊：${activeBonds.map((bond) => safeText(bond.name)).join("、")}` : "阵位加成当前仅作展示，后续接入战斗数值系统。"}</p>
+      </article>
+    `;
+
+    const roleText = `${state.loadoutRoleIds.length}/${playerProfile.maxDeploySlots}`;
+    const artifactText = `${selectedArtifactIds.length}/${artifactSlots}`;
+    const nextSlot = helpers.getNextDeploySlotUnlock();
+    elements.loadoutStatus.textContent = helpers.loadoutReady()
+      ? `整备完成：${xmBattleModeLabel(mode)}，${roleText} 名门人，法宝 ${artifactText}。下一步进入阵法配置。`
+      : `整备未完成：需要 1 个阵法、至少 1 名门人；法宝可不携带。当前出战位：${roleText}，法宝位：${artifactText}。`;
+    if (nextSlot) elements.loadoutStatus.textContent += ` ${nextSlot.level} 级解锁第 ${nextSlot.deploySlots} 个出战位。`;
+    elements.enterDeployButton.disabled = !helpers.loadoutReady();
+  }
+
   Object.assign(window.XM.Render, {
     renderHud,
     renderFeaturePage,
-    renderLoadout,
+    renderLoadout: renderLoadoutV2,
     renderLobby,
     renderMainHub,
     renderPerkChoiceCard,
