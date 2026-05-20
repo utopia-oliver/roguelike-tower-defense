@@ -1446,8 +1446,47 @@
     elements.enterDeployButton.disabled = !helpers.loadoutReady();
   }
 
+  function renderHudBattleV2({ elements, state, DATA, nextLevelRequirement }) {
+    const player = state.player || { level: 1, spiritQi: 0 };
+    const requiredSpiritQi = nextLevelRequirement();
+    const currentHp = Number.isFinite(state.baseHp) ? state.baseHp : Number.isFinite(state.arrayCoreHp) ? state.arrayCoreHp : 180;
+    const maxHp = Number.isFinite(state.baseMaxHp) ? state.baseMaxHp : Number.isFinite(state.arrayCoreMaxHp) ? state.arrayCoreMaxHp : Math.max(currentHp, 180);
+    const { chapter, node } = xmCurrentAdventureNode(DATA, state);
+    const totalWaves = Array.isArray(DATA.waves) ? DATA.waves.length : state.highestWave || state.wave || 1;
+    const modeText = xmBattleModeLabel(state.battleMode || node?.battleMode || "guard");
+    const nodeText = node ? `${node.displayId} ${node.name}` : chapter?.name || "山门守势";
+
+    elements.waveText.textContent = `${modeText}\n妖潮 ${state.wave} / ${totalWaves}`;
+    elements.hpText.textContent = `护山大阵\n阵眼韧性 ${Math.max(0, Math.ceil(currentHp))} / ${Math.max(1, Math.ceil(maxHp))}`;
+    elements.lingqiText.textContent = `灵气 Lv.${player.level}\n${Math.floor(player.spiritQi)} / ${requiredSpiritQi}`;
+    elements.hpText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (currentHp / Math.max(1, maxHp)) * 100))}%`);
+    elements.lingqiText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (player.spiritQi / requiredSpiritQi) * 100))}%`);
+
+    const formation = DATA.formations[state.selectedFormationId];
+    const formationName = formation?.name || "未选择阵法";
+    const formationEffect = formation?.effectText || formation?.description || "阵法效果运行中。";
+    const artifactNames = (state.selectedArtifactIds || []).map((id) => DATA.artifacts[id]?.name || id).filter(Boolean);
+    const roleNames = (state.deployedRoles || []).map((role) => DATA.roles[role.roleId]?.name || role.roleId).filter(Boolean);
+    const activeBonds = window.XM.Artifacts?.getActiveArtifactBonds ? window.XM.Artifacts.getActiveArtifactBonds(state.selectedArtifactIds || []) : [];
+    const statusLines = [
+      `<b>当前节点</b>：${safeText(nodeText)}`,
+      `<b>本局阵法</b>：${safeText(formationName)}`,
+      `<span>${safeText(formationEffect)}</span>`,
+      `<b>本局法宝</b>：${artifactNames.length ? artifactNames.map(safeText).join("、") : "未携带"}`,
+      `<b>入阵门人</b>：${roleNames.length ? roleNames.map(safeText).join("、") : "未入阵"}`,
+      activeBonds.length ? `<b>法宝羁绊</b>：${activeBonds.map((bond) => safeText(bond.name)).join("、")}` : "",
+      `<b>状态</b>：${safeText(state.status || "妖潮逼近，护山大阵稳定运行。")}`,
+    ].filter(Boolean);
+    elements.runStatus.innerHTML = statusLines.join("<br>");
+    elements.startButton.textContent = state.appState === elements.deployState ? "开阵迎敌" : "迎敌中";
+    elements.startButton.disabled = state.appState !== elements.deployState || state.deployedRoles.length < 1;
+    elements.deployHint.textContent = state.appState === elements.deployState
+      ? `已入阵 ${state.deployedRoles.length}/${state.availableRoles.length}。点击门人后选择五方阵位；同一门人不可重复入阵。`
+      : "迎敌中门人会自动攻击，不能中途调整阵位。";
+  }
+
   Object.assign(window.XM.Render, {
-    renderHud,
+    renderHud: renderHudBattleV2,
     renderFeaturePage,
     renderLoadout: renderLoadoutV2,
     renderLobby,
