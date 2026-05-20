@@ -1447,6 +1447,13 @@
   }
 
   function renderLoadoutV3({ elements, state, playerProfile, DATA, helpers }) {
+    const legacyRoot = elements.loadoutFormationList?.closest(".loadout-grid");
+    if (legacyRoot) {
+      legacyRoot.classList.add("xm-loadout-page");
+      legacyRoot.querySelectorAll(":scope > .panel").forEach((panel) => {
+        panel.classList.add("xm-loadout-shell-slot");
+      });
+    }
     const { chapter, node } = xmCurrentAdventureNode(DATA, state);
     const mode = state.battleMode || node?.battleMode || "guard";
     const tab = state.loadoutTab || "characters";
