@@ -1454,6 +1454,9 @@
         panel.classList.add("xm-loadout-shell-slot");
       });
     }
+    elements.loadoutFormationList?.classList.add("xm-loadout-stage-summary");
+    elements.loadoutRoleList?.classList.add("xm-loadout-shell");
+    elements.loadoutArtifactList?.classList.add("xm-loadout-footer");
     const { chapter, node } = xmCurrentAdventureNode(DATA, state);
     const mode = state.battleMode || node?.battleMode || "guard";
     const tab = state.loadoutTab || "characters";
@@ -1603,8 +1606,8 @@
 
     const panel = tab === "artifacts" ? artifactPanel : tab === "formation" ? formationPanel : characterPanel;
     elements.loadoutRoleList.innerHTML = `
-      <nav class="xm-loadout-tabs">${tabs}</nav>
-      ${panel}
+      <nav class="xm-loadout-tabs xm-loadout-side-tabs">${tabs}</nav>
+      <main class="xm-loadout-main-panel">${panel}</main>
     `;
 
     const activeBonds = helpers.getActiveArtifactBonds ? helpers.getActiveArtifactBonds(selectedArtifactIds) : [];

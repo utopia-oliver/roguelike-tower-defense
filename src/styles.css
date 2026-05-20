@@ -3498,8 +3498,8 @@ button:disabled {
 #loadoutView .xm-loadout-page {
   margin-left: auto;
   margin-right: auto;
-  max-width: 1280px;
-  width: min(1280px, calc(100vw - 48px));
+  max-width: 1380px;
+  width: min(1380px, calc(100vw - 48px));
 }
 
 #loadoutView .loadout-grid,
@@ -3619,14 +3619,65 @@ button:disabled {
   min-height: min(620px, calc(100vh - 310px));
 }
 
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 20px;
+  min-width: 0;
+  overflow: visible;
+}
+
+#loadoutRoleList > .xm-loadout-tabs,
+#loadoutRoleList > .xm-loadout-side-tabs {
+  align-content: start;
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  width: 84px;
+}
+
+#loadoutRoleList > .xm-loadout-tabs .xm-loadout-tab,
+#loadoutRoleList > .xm-loadout-side-tabs .xm-loadout-tab {
+  align-items: center;
+  border-radius: 14px;
+  display: flex;
+  justify-content: center;
+  min-height: 72px;
+  padding: 10px 8px;
+  text-align: center;
+  white-space: normal;
+}
+
+#loadoutRoleList > .xm-loadout-tab-panel,
+#loadoutRoleList > .xm-loadout-main-panel {
+  min-width: 0;
+  overflow: visible;
+  width: 100%;
+}
+
+.xm-loadout-main-panel > .xm-loadout-tab-panel {
+  min-width: 0;
+  overflow: visible;
+  width: 100%;
+}
+
 .xm-loadout-tab-panel--characters,
 .xm-loadout-tab-panel--artifacts {
-  grid-template-rows: auto minmax(260px, 1fr) auto;
+  display: grid;
+  grid-template-columns: 240px minmax(320px, 1fr) 300px;
+  min-height: 520px;
+}
+
+.xm-loadout-tab-panel--artifacts {
+  grid-template-columns: 240px minmax(320px, 1fr) 320px;
 }
 
 .xm-loadout-tab-panel--formation {
-  grid-template-rows: auto minmax(430px, 1fr) auto;
+  display: flex;
+  flex-direction: column;
   min-height: min(720px, calc(100vh - 290px));
+  overflow: visible;
 }
 
 .xm-loadout-picker,
@@ -3639,6 +3690,7 @@ button:disabled {
   border: 1px solid rgba(216, 172, 82, 0.18);
   border-radius: 10px;
   padding: 12px;
+  min-width: 0;
 }
 
 .xm-loadout-picker h3,
@@ -3654,7 +3706,7 @@ button:disabled {
   display: grid;
   gap: 9px;
   grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
-  max-height: 280px;
+  max-height: 440px;
   overflow: auto;
   padding-right: 3px;
 }
@@ -3664,6 +3716,7 @@ button:disabled {
   flex-wrap: nowrap;
   gap: 10px;
   max-height: none;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   padding: 0 2px 6px;
@@ -3672,6 +3725,13 @@ button:disabled {
 .xm-loadout-tab-panel--formation .xm-loadout-pick {
   flex: 0 0 150px;
   min-height: 94px;
+}
+
+.xm-loadout-picker,
+.xm-loadout-focus,
+.xm-loadout-summary-card,
+.xm-loadout-formation-board {
+  min-width: 0;
 }
 
 .xm-loadout-pick,
@@ -3715,6 +3775,7 @@ button:disabled {
   justify-items: center;
   text-align: center;
   min-height: 240px;
+  overflow: hidden;
 }
 
 .xm-loadout-focus__portrait {
@@ -3750,11 +3811,6 @@ button:disabled {
   gap: 10px;
 }
 
-.xm-loadout-tab-panel--characters .xm-loadout-summary-card,
-.xm-loadout-tab-panel--artifacts .xm-loadout-summary-card {
-  order: -1;
-}
-
 .xm-loadout-tags {
   align-content: start;
   display: flex;
@@ -3766,7 +3822,7 @@ button:disabled {
   align-items: center;
   display: grid;
   justify-items: center;
-  min-height: 430px;
+  min-height: 520px;
   overflow: visible;
 }
 
@@ -3776,7 +3832,7 @@ button:disabled {
   max-width: 720px;
   min-height: 430px;
   overflow: visible;
-  width: min(82vw, 720px);
+  width: min(100%, 720px);
 }
 
 .xm-formation-disc--loadout .xm-formation-slot {
@@ -3794,6 +3850,7 @@ button:disabled {
   display: flex;
   gap: 8px;
   max-height: none;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
   padding-bottom: 4px;
@@ -4054,7 +4111,7 @@ button:disabled {
   max-width: 720px;
   min-height: 430px;
   overflow: visible;
-  width: min(82vw, 720px);
+  width: min(100%, 720px);
 }
 
 .xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot {
