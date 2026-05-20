@@ -46,6 +46,8 @@ const featureBottomNav = document.querySelector("#featureBottomNav");
 const goLoadoutButton = document.querySelector("#goLoadoutButton");
 const enterDeployButton = document.querySelector("#enterDeployButton");
 const loadoutBackButton = document.querySelector("#loadoutBackButton");
+const loadoutClearFormationButton = document.querySelector("#loadoutClearFormationButton");
+const loadoutRecommendButton = document.querySelector("#loadoutRecommendButton");
 const returnLobbyButton = document.querySelector("#returnLobbyButton");
 const settlementAdventureButton = document.querySelector("#settlementAdventureButton");
 const settlementCodexButton = document.querySelector("#settlementCodexButton");
@@ -692,6 +694,10 @@ function resetGame(targetAppState = APP_STATE.TITLE) {
     loadoutRoleIds: [],
     loadoutArtifactId: "",
     loadoutArtifactIds: [],
+    loadoutTab: "characters",
+    selectedLoadoutCharacterId: "",
+    selectedLoadoutArtifactId: "",
+    selectedDeployCharacterId: "",
     selectedFormationId: "",
     selectedRoleId: "",
     selectedArtifactId: "",
@@ -972,6 +978,19 @@ function enterLoadout() {
     .filter((id) => playerMeta.ownedArtifacts.includes(id))
     .slice(0, playerMeta.maxArtifactSlots);
   state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
+  state.loadoutTab = state.loadoutTab || "characters";
+  state.selectedLoadoutCharacterId = state.selectedLoadoutCharacterId && playerMeta.ownedCharacters.includes(state.selectedLoadoutCharacterId)
+    ? state.selectedLoadoutCharacterId
+    : state.loadoutRoleIds[0] || playerMeta.ownedCharacters[0] || "";
+  state.selectedLoadoutArtifactId = state.selectedLoadoutArtifactId && playerMeta.ownedArtifacts.includes(state.selectedLoadoutArtifactId)
+    ? state.selectedLoadoutArtifactId
+    : state.loadoutArtifactIds[0] || playerMeta.ownedArtifacts[0] || "";
+  state.selectedDeployCharacterId = state.selectedDeployCharacterId && state.loadoutRoleIds.includes(state.selectedDeployCharacterId)
+    ? state.selectedDeployCharacterId
+    : state.loadoutRoleIds[0] || "";
+  state.deployedRoles = (state.deployedRoles || [])
+    .filter((role) => state.loadoutRoleIds.includes(role.roleId))
+    .slice(0, playerMeta.maxDeploySlots);
   state.appState = APP_STATE.LOADOUT;
   state.phase = "loadout";
   setStatus("战前整备：确认本次历练、出战门人、携带法宝与当前阵法。");
@@ -1099,7 +1118,71 @@ function deployRole(col, row) {
   return result;
 }
 
+function createFormationSlotRole(roleId, slotIndex) {
+  const config = DATA.roles[roleId];
+  if (!config) return null;
+  const col = Math.max(0, Math.min(4, Number(slotIndex) || 0));
+  const role = {
+    id: makeId(),
+    roleId: config.id,
+    col,
+    row: grid.rows - 1,
+    x: 0,
+    y: 0,
+    cooldown: 0,
+    attacks: 0,
+    lastTargetId: null,
+    sameTargetStacks: 0,
+    personalDamage: 1,
+    personalSpeed: 1,
+  };
+  return applyFormationBattleSlotPosition(role, col);
+}
+
+function assignLoadoutFormationSlot(slotIndex) {
+  if (state.appState !== APP_STATE.LOADOUT && state.appState !== APP_STATE.DEPLOY) return false;
+  const col = Math.max(0, Math.min(4, Number(slotIndex) || 0));
+  const roleId = state.selectedDeployCharacterId || state.selectedRoleId;
+  const existing = state.deployedRoles.find((role) => role.col === col);
+  if (!roleId) {
+    if (existing) {
+      state.deployedRoles = state.deployedRoles.filter((role) => role !== existing);
+      setStatus("已清空该阵位。");
+      renderLoadout();
+      renderSetupLists();
+      updateUi();
+      return true;
+    }
+    setStatus("请先选择一名待入阵门人。");
+    return false;
+  }
+  if (!state.loadoutRoleIds.includes(roleId)) {
+    setStatus("请先在“门人”分页选择该门人出战。");
+    return false;
+  }
+  if (existing?.roleId === roleId) {
+    state.deployedRoles = state.deployedRoles.filter((role) => role !== existing);
+    setStatus("已将门人移出该阵位。");
+    renderLoadout();
+    renderSetupLists();
+    updateUi();
+    return true;
+  }
+  state.deployedRoles = state.deployedRoles.filter((role) => role.roleId !== roleId && role.col !== col);
+  const role = createFormationSlotRole(roleId, col);
+  if (!role) return false;
+  state.deployedRoles.push(role);
+  state.selectedRoleId = roleId;
+  state.selectedDeployCharacterId = roleId;
+  setStatus(`${DATA.roles[roleId]?.name || roleId} 已入阵。`);
+  renderLoadout();
+  renderSetupLists();
+  updateUi();
+  return true;
+}
+
 function deployFormationSlot(slotIndex) {
+  if (state.appState === APP_STATE.LOADOUT) return assignLoadoutFormationSlot(slotIndex);
   if (state.appState !== APP_STATE.DEPLOY) return false;
   const col = Math.max(0, Math.min(grid.columns - 1, Number(slotIndex) || 0));
   const row = grid.rows - 1;
@@ -1135,8 +1218,44 @@ function setStatus(text) {
   runStatus.textContent = text;
 }
 
+function prepareBattleFromLoadout() {
+  if (!loadoutReady()) {
+    setStatus("战前整备未完成：需要 1 个阵法、至少 1 名门人；法宝可以不携带。");
+    renderLoadout();
+    return false;
+  }
+  initializeArrayCoreForRun();
+  state.selectedFormationId = state.loadoutFormationId;
+  const selectedFormation = DATA.formations[state.selectedFormationId];
+  state.formationCoreDamageReduction = Number(selectedFormation?.passiveCoreDamageReduction) || 0;
+  state.formationSpiritQiGainMultiplier = Number(selectedFormation?.spiritQiGainMultiplier) || 1;
+  state.selectedArtifactIds = [...(state.loadoutArtifactIds || [])];
+  state.selectedArtifactId = state.selectedArtifactIds[0] || "";
+  state.availableRoles = state.loadoutRoleIds
+    .filter((id) => playerMeta.ownedCharacters.includes(id))
+    .slice(0, playerMeta.maxDeploySlots);
+  state.selectedRoleId = state.selectedDeployCharacterId || state.availableRoles[0] || "";
+  state.deployedRoles = (state.deployedRoles || [])
+    .filter((role) => state.availableRoles.includes(role.roleId))
+    .slice(0, playerMeta.maxDeploySlots);
+  state.deployedRoles.forEach((role) => {
+    role.row = grid.rows - 1;
+    applyFormationBattleSlotPosition(role, role.col || 0);
+  });
+  if (!state.deployedRoles.length) {
+    state.loadoutTab = "formation";
+    setStatus("请先在“阵法”分页中将至少一名门人置入阵位。");
+    renderLoadout();
+    return false;
+  }
+  return true;
+}
+
 function startRun() {
-  if (state.appState !== APP_STATE.DEPLOY) {
+  if (state.appState === APP_STATE.LOADOUT && !prepareBattleFromLoadout()) {
+    return;
+  }
+  if (![APP_STATE.LOADOUT, APP_STATE.DEPLOY].includes(state.appState)) {
     setStatus("请先完成战前配置并进入布阵。");
     return;
   }
@@ -3004,6 +3123,68 @@ function renderLoadout() {
     });
   });
 }
+
+loadoutView?.addEventListener("click", (event) => {
+  const tabButton = event.target.closest("[data-loadout-tab]");
+  if (tabButton) {
+    state.loadoutTab = tabButton.dataset.loadoutTab || "characters";
+    renderLoadout();
+    return;
+  }
+  const deployRoleButton = event.target.closest("[data-loadout-deploy-role-id]");
+  if (deployRoleButton) {
+    state.selectedDeployCharacterId = deployRoleButton.dataset.loadoutDeployRoleId;
+    state.selectedRoleId = state.selectedDeployCharacterId;
+    renderLoadout();
+    return;
+  }
+  const slotButton = event.target.closest("[data-loadout-slot-index]");
+  if (slotButton) {
+    assignLoadoutFormationSlot(slotButton.dataset.loadoutSlotIndex);
+    return;
+  }
+  const linkButton = event.target.closest("[data-loadout-link]");
+  if (linkButton) {
+    const target = linkButton.dataset.loadoutLink;
+    if (APP_STATE[target]) enterHubPage(APP_STATE[target], APP_STATE.LOADOUT);
+    return;
+  }
+  const actionButton = event.target.closest("[data-loadout-action]");
+  if (actionButton) {
+    const action = actionButton.dataset.loadoutAction;
+    if (action === "clear-formation") {
+      state.deployedRoles = [];
+      setStatus("已清空当前布阵。");
+      renderLoadout();
+      updateUi();
+      return;
+    }
+    if (action === "recommend-formation") {
+      setStatus("推荐布阵系统暂未开放。");
+      return;
+    }
+    if (action === "start-battle") {
+      startRun();
+    }
+    return;
+  }
+  const roleButton = event.target.closest("[data-loadout-role-id]");
+  if (roleButton) {
+    const roleId = roleButton.dataset.loadoutRoleId;
+    state.selectedLoadoutCharacterId = roleId;
+    state.selectedDeployCharacterId = state.loadoutRoleIds.includes(roleId)
+      ? roleId
+      : state.loadoutRoleIds[0] || "";
+    state.deployedRoles = (state.deployedRoles || []).filter((role) => state.loadoutRoleIds.includes(role.roleId));
+    renderLoadout();
+    return;
+  }
+  const artifactButton = event.target.closest("[data-loadout-artifact-id]");
+  if (artifactButton) {
+    state.selectedLoadoutArtifactId = artifactButton.dataset.loadoutArtifactId;
+    renderLoadout();
+  }
+});
 
 function renderSetupLists() {
   renderSystemSetupLists({
@@ -5092,7 +5273,7 @@ settingsModal.addEventListener("click", (event) => {
 });
 goLoadoutButton.addEventListener("click", enterLoadout);
 loadoutBackButton?.addEventListener("click", () => enterHubPage(APP_STATE.ADVENTURE));
-enterDeployButton.addEventListener("click", enterDeploy);
+enterDeployButton.addEventListener("click", startRun);
 deployBackButton?.addEventListener("click", () => {
   state.appState = APP_STATE.LOADOUT;
   state.phase = "loadout";

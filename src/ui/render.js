@@ -1446,6 +1446,187 @@
     elements.enterDeployButton.disabled = !helpers.loadoutReady();
   }
 
+  function renderLoadoutV3({ elements, state, playerProfile, DATA, helpers }) {
+    const { chapter, node } = xmCurrentAdventureNode(DATA, state);
+    const mode = state.battleMode || node?.battleMode || "guard";
+    const tab = state.loadoutTab || "characters";
+    const selectedArtifactIds = Array.isArray(state.loadoutArtifactIds)
+      ? state.loadoutArtifactIds
+      : state.loadoutArtifactId
+        ? [state.loadoutArtifactId]
+        : [];
+    const artifactSlots = Math.max(1, playerProfile.maxArtifactSlots || 1);
+    const selectedFormation = DATA.formations[state.loadoutFormationId]
+      || DATA.formations[playerProfile.unlockedFormations?.[0]]
+      || {};
+    const deployedRoles = Array.isArray(state.deployedRoles) ? state.deployedRoles : [];
+    const assignedRoleIds = new Set(deployedRoles.map((role) => role.roleId));
+    const selectedCharacterId = state.selectedLoadoutCharacterId || state.loadoutRoleIds?.[0] || playerProfile.ownedCharacters?.[0] || "";
+    const selectedCharacter = DATA.roles[selectedCharacterId] || DATA.roles[playerProfile.ownedCharacters?.[0]] || {};
+    const selectedArtifactId = state.selectedLoadoutArtifactId || selectedArtifactIds[0] || playerProfile.ownedArtifacts?.[0] || "";
+    const selectedArtifact = DATA.artifacts[selectedArtifactId] || DATA.artifacts[playerProfile.ownedArtifacts?.[0]] || {};
+    const slots = xmFormationSlotEffects(selectedFormation.id);
+    const enemies = (node?.enemyPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("") || "<span>未知妖物</span>";
+    const rewards = (node?.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("") || "<span>灵石</span>";
+
+    elements.loadoutFormationList.innerHTML = `
+      <article class="xm-loadout-v3-brief">
+        <div>
+          <p class="xm-eyebrow">${safeText(chapter?.name || "山门外历练")}</p>
+          <h3>${safeText(node ? `${node.displayId} ${node.name}` : "未选择节点")}</h3>
+          <p>${safeText(node?.storyText || node?.description || "山门外妖气渐盛，需先完成战前整备。")}</p>
+        </div>
+        <div class="xm-loadout-v3-meta">
+          <span>${safeText(xmBattleModeLabel(mode))}</span>
+          <span>妖物：${enemies}</span>
+          <span>奖励：${rewards}</span>
+        </div>
+      </article>
+    `;
+
+    const tabs = [
+      ["characters", "门人"],
+      ["artifacts", "法宝"],
+      ["formation", "阵法"],
+    ].map(([id, label]) => `<button type="button" class="xm-loadout-tab ${tab === id ? "xm-loadout-tab--active" : ""}" data-loadout-tab="${id}">${label}</button>`).join("");
+
+    const roleCards = (playerProfile.ownedCharacters || []).map((id) => {
+      const role = DATA.roles[id];
+      if (!role) return "";
+      const selected = state.loadoutRoleIds.includes(id);
+      const focused = selectedCharacterId === id;
+      return `<button type="button" class="xm-loadout-pick ${selected ? "xm-loadout-pick--selected" : ""} ${focused ? "xm-loadout-pick--focused" : ""}" data-loadout-role-id="${safeText(id)}">
+        <span class="xm-loadout-icon">${safeText((role.name || "门").slice(0, 1))}</span>
+        <strong>${safeText(role.name)}</strong>
+        <small>Lv.${safeText(helpers.getCharacterLevel(id))} · ${safeText(role.rarity || "-")} · ${safeText(role.role || role.school || "门人")}</small>
+        <em>${selected ? "已出战" : "待选"}</em>
+      </button>`;
+    }).join("");
+    const chosenRoles = (state.loadoutRoleIds || []).map((id) => DATA.roles[id]?.name || id);
+    const characterPanel = `
+      <section class="xm-loadout-tab-panel xm-loadout-tab-panel--characters">
+        <div class="xm-loadout-picker"><h3>门人名册</h3><div class="xm-loadout-pick-grid">${roleCards || "<p>暂无可出战门人。</p>"}</div></div>
+        <div class="xm-loadout-focus">
+          <div class="xm-loadout-focus__portrait">${safeText((selectedCharacter.name || "门").slice(0, 1))}</div>
+          <h3>${safeText(selectedCharacter.name || "请选择门人")}</h3>
+          <p>${safeText(selectedCharacter.rarity || "-")} · Lv.${safeText(selectedCharacterId ? helpers.getCharacterLevel(selectedCharacterId) : "-")} · ${safeText(selectedCharacter.school || "宗门")}</p>
+          <p>${safeText(selectedCharacter.role || selectedCharacter.designValue || selectedCharacter.description || "选择门人后，可加入本次出战并在阵法分页入阵。")}</p>
+          <div class="xm-loadout-focus__actions">
+            ${selectedCharacterId ? `<button type="button" class="primary" data-loadout-role-id="${safeText(selectedCharacterId)}">${state.loadoutRoleIds.includes(selectedCharacterId) ? "移出出战" : "加入出战"}</button>` : ""}
+            <button type="button" class="secondary" data-loadout-link="CHARACTERS">前往洞府</button>
+          </div>
+        </div>
+        <aside class="xm-loadout-summary-card"><h3>本次出战</h3><p>已选 ${state.loadoutRoleIds.length} / ${playerProfile.maxDeploySlots}</p><div class="xm-loadout-tags">${chosenRoles.length ? chosenRoles.map((name) => `<span>${safeText(name)}</span>`).join("") : "<span>请至少选择一名门人</span>"}</div></aside>
+      </section>
+    `;
+
+    const artifactCards = (playerProfile.ownedArtifacts || []).map((id) => {
+      const artifact = DATA.artifacts[id];
+      if (!artifact) return "";
+      const selected = selectedArtifactIds.includes(id);
+      const focused = selectedArtifactId === id;
+      return `<button type="button" class="xm-loadout-pick ${selected ? "xm-loadout-pick--selected" : ""} ${focused ? "xm-loadout-pick--focused" : ""}" data-loadout-artifact-id="${safeText(id)}">
+        <span class="xm-loadout-icon xm-loadout-icon--artifact">${safeText((artifact.name || "器").slice(0, 1))}</span>
+        <strong>${safeText(artifact.name)}</strong>
+        <small>${safeText(artifact.role || "法宝")}</small>
+        <em>${selected ? "已携带" : "待选"}</em>
+      </button>`;
+    }).join("");
+    const chosenArtifacts = selectedArtifactIds.map((id) => DATA.artifacts[id]?.name || id);
+    const artifactPanel = `
+      <section class="xm-loadout-tab-panel xm-loadout-tab-panel--artifacts">
+        <div class="xm-loadout-picker"><h3>法宝名录</h3><div class="xm-loadout-pick-grid">${artifactCards || "<p>暂无可携带法宝。</p>"}</div></div>
+        <div class="xm-loadout-focus xm-loadout-focus--artifact">
+          <div class="xm-loadout-focus__portrait">${safeText((selectedArtifact.name || "器").slice(0, 1))}</div>
+          <h3>${safeText(selectedArtifact.name || "请选择法宝")}</h3>
+          <p>${safeText(selectedArtifact.role || "法宝")} · ${safeText(selectedArtifact.rarity || "灵器")}</p>
+          <p>${safeText(selectedArtifact.attackText || selectedArtifact.description || "法宝会在战斗中按既有逻辑自动触发。")}</p>
+          <div class="xm-loadout-focus__actions">
+            ${selectedArtifactId ? `<button type="button" class="primary" data-loadout-artifact-id="${safeText(selectedArtifactId)}">${selectedArtifactIds.includes(selectedArtifactId) ? "卸下法宝" : "携带法宝"}</button>` : ""}
+            <button type="button" class="secondary" data-loadout-link="ARTIFACTS">前往炼器阁</button>
+          </div>
+        </div>
+        <aside class="xm-loadout-summary-card"><h3>本局法宝</h3><p>已携带 ${selectedArtifactIds.length} / ${artifactSlots}</p><div class="xm-loadout-tags">${chosenArtifacts.length ? chosenArtifacts.map((name) => `<span>${safeText(name)}</span>`).join("") : "<span>可不携带法宝</span>"}</div></aside>
+      </section>
+    `;
+
+    const formationCards = (playerProfile.unlockedFormations || []).map((id) => {
+      const formation = DATA.formations[id];
+      if (!formation) return "";
+      return `<button type="button" class="xm-loadout-pick ${state.loadoutFormationId === id ? "xm-loadout-pick--selected" : ""}" data-loadout-formation-id="${safeText(id)}">
+        <span class="xm-loadout-icon xm-loadout-icon--formation">${safeText((formation.name || "阵").slice(0, 1))}</span>
+        <strong>${safeText(formation.name)}</strong>
+        <small>${safeText(formation.role || formation.rarity || "护山阵法")}</small>
+      </button>`;
+    }).join("");
+    const slotButtons = slots.map((slot, index) => {
+      const role = deployedRoles.find((item) => item.col === index);
+      const roleConfig = role ? DATA.roles[role.roleId] : null;
+      return `<button type="button" class="xm-formation-slot xm-formation-slot--${index + 1} ${role ? "xm-formation-slot--filled" : ""}" data-loadout-slot-index="${index}">
+        <span>${safeText(slot.name)}</span>
+        <strong>${safeText(roleConfig?.name || "空位")}</strong>
+        <small>${safeText(slot.bonus)}</small>
+      </button>`;
+    }).join("");
+    const deployableRoles = (state.loadoutRoleIds || []).map((id) => {
+      const role = DATA.roles[id];
+      if (!role) return "";
+      const assigned = deployedRoles.find((item) => item.roleId === id);
+      const selected = state.selectedDeployCharacterId === id;
+      return `<button type="button" class="xm-loadout-deploy-role ${selected ? "xm-loadout-deploy-role--selected" : ""} ${assigned ? "xm-loadout-deploy-role--assigned" : ""}" data-loadout-deploy-role-id="${safeText(id)}">
+        <span class="xm-loadout-icon">${safeText((role.name || "门").slice(0, 1))}</span>
+        <strong>${safeText(role.name)}</strong>
+        <small>${assigned ? `已入阵 · ${safeText(slots[assigned.col]?.name || `阵位${assigned.col + 1}`)}` : safeText(role.role || role.school || "门人")}</small>
+      </button>`;
+    }).join("");
+    const formationPanel = `
+      <section class="xm-loadout-tab-panel xm-loadout-tab-panel--formation">
+        <div class="xm-loadout-picker"><h3>阵法名录</h3><div class="xm-loadout-pick-grid">${formationCards || "<p>暂无可用阵法。</p>"}</div></div>
+        <div class="xm-loadout-formation-board">
+          <h3>${safeText(selectedFormation.name || "五方阵盘")}</h3>
+          <p>${safeText(selectedFormation.effectText || selectedFormation.description || "阵位加成当前仅作 UI 展示，后续可接入战斗数值系统。")}</p>
+          <div class="xm-formation-disc xm-formation-disc--loadout">
+            <div class="xm-formation-disc__core">阵核</div>
+            ${slotButtons}
+          </div>
+        </div>
+        <aside class="xm-loadout-summary-card"><h3>待入阵门人</h3><p>${state.loadoutRoleIds.length ? "先选门人，再点阵位。" : "请先在“门人”分页选择出战门人。"}</p><div class="xm-loadout-deploy-list">${deployableRoles || "<span class=\"hint\">暂无出战门人</span>"}</div><p class="hint">守山模式下，五方阵位会映射为护山大阵前的防守位置。</p></aside>
+      </section>
+    `;
+
+    const panel = tab === "artifacts" ? artifactPanel : tab === "formation" ? formationPanel : characterPanel;
+    elements.loadoutRoleList.innerHTML = `
+      <nav class="xm-loadout-tabs">${tabs}</nav>
+      ${panel}
+    `;
+
+    const activeBonds = helpers.getActiveArtifactBonds ? helpers.getActiveArtifactBonds(selectedArtifactIds) : [];
+    elements.loadoutArtifactList.innerHTML = `
+      <div class="xm-loadout-final-summary">
+        <span>门人 ${state.loadoutRoleIds.length}/${playerProfile.maxDeploySlots}</span>
+        <span>已入阵 ${deployedRoles.length}/${state.loadoutRoleIds.length || playerProfile.maxDeploySlots}</span>
+        <span>法宝 ${selectedArtifactIds.length}/${artifactSlots}</span>
+        <span>阵法 ${safeText(selectedFormation.name || "未选择")}</span>
+        ${activeBonds.length ? `<span>羁绊 ${activeBonds.map((bond) => safeText(bond.name)).join("、")}</span>` : ""}
+      </div>
+      <div class="xm-loadout-bottom-actions">
+        <button type="button" class="secondary" data-loadout-action="clear-formation">清空布阵</button>
+        <button type="button" class="secondary" data-loadout-action="recommend-formation">推荐布阵</button>
+        <button type="button" class="primary" data-loadout-action="start-battle">开阵迎敌</button>
+      </div>
+    `;
+
+    const roleText = `${state.loadoutRoleIds.length}/${playerProfile.maxDeploySlots}`;
+    const artifactText = `${selectedArtifactIds.length}/${artifactSlots}`;
+    const nextSlot = helpers.getNextDeploySlotUnlock();
+    elements.loadoutStatus.textContent = helpers.loadoutReady()
+      ? `整备中：${xmBattleModeLabel(mode)}，${roleText} 名门人，法宝 ${artifactText}，已入阵 ${deployedRoles.length} 名。`
+      : `整备未完成：需要 1 个阵法、至少 1 名门人；当前出战 ${roleText}，法宝 ${artifactText}。`;
+    if (nextSlot) elements.loadoutStatus.textContent += ` ${nextSlot.level} 级解锁第 ${nextSlot.deploySlots} 个出战位。`;
+    elements.enterDeployButton.textContent = "开阵迎敌";
+    elements.enterDeployButton.disabled = !helpers.loadoutReady();
+  }
+
   function renderHudBattleV2({ elements, state, DATA, nextLevelRequirement }) {
     const player = state.player || { level: 1, spiritQi: 0 };
     const requiredSpiritQi = nextLevelRequirement();
@@ -1488,7 +1669,7 @@
   Object.assign(window.XM.Render, {
     renderHud: renderHudBattleV2,
     renderFeaturePage,
-    renderLoadout: renderLoadoutV2,
+    renderLoadout: renderLoadoutV3,
     renderLobby,
     renderMainHub,
     renderPerkChoiceCard,
