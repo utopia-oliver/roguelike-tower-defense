@@ -1156,8 +1156,69 @@
     elements.settlementLingstone.textContent = `${reward}灵石 / ${playerExp}经验${levelRewards.length ? ` / ${levelRewards.join("、")}` : ""}`;
   }
 
-  function renderPerkChoiceCard(perk) {
-    return `<small>${safeText(perk.rarity)} · ${safeText(perk.category)}</small><strong>${safeText(perk.name)}</strong><p>${safeText(perk.description)}</p>`;
+  function perkTypeLabel(perk = {}) {
+    const source = `${perk.category || ""} ${perk.scope || ""} ${perk.targetType || ""} ${perk.effect?.type || perk.effectType || ""}`;
+    if (/先天武学|martial_art|major_evolution|minor_evolution/.test(source)) return "先天武学";
+    if (/法宝|artifact/.test(source)) return "法宝强化";
+    if (/阵法|formation/.test(source)) return "阵法机缘";
+    if (/阵眼|护山|array|heal|hp/.test(source)) return "护阵机缘";
+    if (/角色|门人|character/.test(source)) return "门人机缘";
+    return "通用机缘";
+  }
+
+  function perkTypeClass(label) {
+    if (label === "先天武学") return "martial";
+    if (label === "法宝强化") return "artifact";
+    if (label === "阵法机缘") return "formation";
+    if (label === "护阵机缘") return "array";
+    if (label === "门人机缘") return "character";
+    return "general";
+  }
+
+  function perkRarityLabel(perk = {}) {
+    const rarity = perk.rarity || "";
+    const upgradeType = perk.upgradeType || perk.upgradeKind || perk.effect?.upgradeType || "";
+    if (/major|evolved/.test(upgradeType) || /大成|突破/.test(`${rarity} ${perk.category || ""} ${perk.name || ""}`)) return rarity || "突破";
+    return rarity || "普通";
+  }
+
+  function perkTargetLabel(perk = {}) {
+    return perk.targetName || perk.target || perk.artifactName || perk.characterName || (perk.scope === "formation" ? "本局阵法" : "") || "本局生效";
+  }
+
+  function perkEffectText(perk = {}) {
+    const text = perk.actualEffectPreview || perk.valueText || perk.description || "此机缘将在本局战斗中产生效果。";
+    return String(text)
+      .replace(/\bprojectileCount\b/g, "弹道数量")
+      .replace(/\bvolleyCount\b/g, "连发波数")
+      .replace(/\bdamageMultiplier\b/g, "伤害提升")
+      .replace(/\battackIntervalMultiplier\b/g, "攻速提升")
+      .replace(/\bcooldown\b/g, "冷却")
+      .replace(/\bpierce\b/g, "穿透")
+      .replace(/\bformationId\b/g, "阵法")
+      .replace(/\bartifactId\b/g, "法宝")
+      .replace(/\bcharacterId\b/g, "门人");
+  }
+
+  function renderPerkChoiceCard(perk = {}) {
+    const type = perkTypeLabel(perk);
+    const rarity = perkRarityLabel(perk);
+    const name = perk.name || "未知机缘";
+    const description = perk.description || "此机缘将在本局战斗中产生效果。";
+    const effectText = perkEffectText(perk);
+    const target = perkTargetLabel(perk);
+    const levelText = perk.valueText && /Lv/.test(perk.valueText) ? perk.valueText : "";
+    return `
+      <span class="perk-card__seal perk-card__seal--${safeText(perkTypeClass(type))}">${safeText(type)}</span>
+      <span class="perk-card__rarity">${safeText(rarity)}</span>
+      <strong class="perk-card__title">${safeText(name)}</strong>
+      <p class="perk-card__desc">${safeText(description)}</p>
+      <div class="perk-card__effect">${safeText(effectText)}</div>
+      <div class="perk-card__meta">
+        <span>影响：${safeText(target)}</span>
+        ${levelText ? `<span>${safeText(levelText)}</span>` : ""}
+      </div>
+    `;
   }
 
   function xmBattleModeLabel(mode) {

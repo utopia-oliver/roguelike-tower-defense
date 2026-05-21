@@ -2550,27 +2550,62 @@ function updateEffects(dt) {
 
 function showPerkChoices() {
   const choices = drawPerksFiltered(3);
+  const panel = perkModal.querySelector(".modal-panel");
+  const title = perkModal.querySelector("h2");
+  const subtitle = perkModal.querySelector("p");
+  const totalWaves = Array.isArray(DATA.waves) ? DATA.waves.length : state.highestWave || state.wave || 1;
+  const modeLabel = {
+    guard: "守山模式",
+    expedition: "推进模式",
+    encounter: "遭遇战",
+    boss: "讨伐战",
+    trial: "宗门试炼",
+  }[state.battleMode || "guard"] || "守山模式";
+  panel?.classList.add("perk-modal-panel");
+  if (title) title.textContent = "机缘降临";
+  if (subtitle) {
+    subtitle.innerHTML = `
+      <span class="perk-modal-subtitle">灵气汇聚，择一道机缘入局。</span>
+      <span class="perk-modal-tags">
+        <b>灵气 Lv.${state.player?.level || 1}</b>
+        <b>妖潮 ${state.wave} / ${totalWaves}</b>
+        <b>${modeLabel}</b>
+      </span>
+    `;
+  }
   perkGrid.innerHTML = "";
   choices.forEach((perk) => {
     const button = document.createElement("button");
-    button.className = "perk-card";
+    const typeClass = perk.scope === "artifact" || /法宝/.test(perk.category || "")
+      ? "perk-card--artifact"
+      : perk.scope === "formation" || /阵法/.test(perk.category || "")
+      ? "perk-card--formation"
+      : perk.scope === "array_core" || /阵眼|护山/.test(`${perk.category || ""}${perk.name || ""}`)
+      ? "perk-card--array"
+      : perk.scope === "martial_art" || perk.scope === "martial_art_branch" || /先天武学/.test(perk.category || "")
+      ? "perk-card--martial"
+      : "perk-card--general";
+    button.className = `perk-card ${typeClass}`;
     button.innerHTML = renderSystemPerkChoiceCard(perk);
     button.addEventListener("click", () => {
+      button.classList.add("perk-card--selected");
       chooseLevelUpPerk(perk);
     });
     perkGrid.appendChild(button);
   });
   if (!choices.length) {
     const button = document.createElement("button");
-    button.className = "perk-card";
+    button.className = "perk-card perk-card--martial";
     button.innerHTML = renderSystemPerkChoiceCard({
       rarity: "",
       category: "",
       name: "武学稳固",
       description: "没有可用机缘时，当前武学伤害+5%。",
+      targetName: "本局武学",
     });
     button.addEventListener("click", () => {
       const fallbackArt = martialArtForCharacter(currentRunCharacters()[0]?.id);
+      button.classList.add("perk-card--selected");
       chooseLevelUpPerk({
         id: `fallback_damage_${state.runLevel}_${Date.now()}`,
         name: fallbackArt ? `${fallbackArt.name}·武学稳固` : "护体圣光",
