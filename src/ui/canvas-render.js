@@ -216,12 +216,17 @@
 
   function drawProjectile({ ctx, projectile }) {
     if (projectile.visualOnly) {
+      ctx.save();
+      ctx.shadowColor = projectile.color;
+      ctx.shadowBlur = 8;
       ctx.strokeStyle = projectile.color;
       ctx.lineWidth = 3;
+      ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(projectile.x, projectile.y);
       ctx.lineTo(projectile.tx, projectile.ty);
       ctx.stroke();
+      ctx.restore();
       return;
     }
     const angle = Math.atan2(projectile.vy, projectile.vx);
@@ -343,15 +348,18 @@
       const toY = event.toY ?? event.y;
       const fromX = event.fromX ?? event.x;
       const fromY = event.fromY ?? event.y;
+      ctx.shadowColor = eventColor(event, alpha);
+      ctx.shadowBlur = 12;
       ctx.strokeStyle = eventColor(event, alpha);
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 5;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(fromX, fromY);
       ctx.lineTo(toX, toY);
       ctx.stroke();
+      ctx.shadowBlur = 0;
       ctx.strokeStyle = eventColor(event, alpha * 0.35);
-      ctx.lineWidth = 9;
+      ctx.lineWidth = 12;
       ctx.beginPath();
       ctx.moveTo(fromX, fromY);
       ctx.lineTo(toX, toY);
@@ -360,18 +368,26 @@
       ctx.beginPath();
       ctx.arc(toX, toY, radius * 0.35, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = `rgba(255, 154, 118, ${alpha * 0.65})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(toX, toY, radius * 0.48, 0, Math.PI * 2);
+      ctx.stroke();
     } else if (event.type === "curse_beam") {
       const toX = event.toX ?? event.x;
       const toY = event.toY ?? event.y;
       const fromX = event.fromX ?? event.x;
       const fromY = event.fromY ?? event.y;
       ctx.strokeStyle = eventColor(event, alpha * 0.8);
-      ctx.lineWidth = 6;
+      ctx.shadowColor = eventColor(event, alpha);
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 7;
       ctx.setLineDash([8, 6]);
       ctx.beginPath();
       ctx.moveTo(fromX, fromY);
       ctx.lineTo(toX, toY);
       ctx.stroke();
+      ctx.shadowBlur = 0;
       ctx.setLineDash([]);
       ctx.strokeStyle = eventColor(event, alpha);
       ctx.lineWidth = 2;
@@ -579,7 +595,7 @@
     ctx.beginPath();
     ctx.ellipse(canvas.width * 0.5, gateHeight * 0.34, canvas.width * 0.18, gateHeight * 0.22, 0, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = "rgba(216, 172, 82, 0.1)";
+    ctx.strokeStyle = "rgba(216, 172, 82, 0.08)";
     ctx.lineWidth = 1;
     for (let col = 1; col < grid.columns; col += 1) {
       const x = col * grid.cellW;
@@ -588,12 +604,29 @@
       ctx.lineTo(x, arrayTop - 8);
       ctx.stroke();
     }
-    ctx.fillStyle = "rgba(5, 12, 11, 0.18)";
+    ctx.fillStyle = "rgba(5, 12, 11, 0.16)";
     for (let i = 0; i < 9; i += 1) {
       const y = gateHeight + i * (travelHeight / 8);
       ctx.beginPath();
       ctx.ellipse(canvas.width * 0.5, y, canvas.width * (0.18 + i * 0.018), 7, 0, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    ctx.strokeStyle = "rgba(109, 226, 190, 0.1)";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 4; i += 1) {
+      const offset = (i - 1.5) * grid.cellW * 0.72;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width * 0.5 + offset, gateHeight + 22);
+      ctx.bezierCurveTo(
+        canvas.width * 0.5 + offset * 0.55,
+        gateHeight + travelHeight * 0.35,
+        canvas.width * 0.5 - offset * 0.35,
+        gateHeight + travelHeight * 0.68,
+        canvas.width * 0.5 - offset * 0.22,
+        arrayTop - 18,
+      );
+      ctx.stroke();
     }
 
     ctx.strokeStyle = "rgba(109, 226, 190, 0.18)";
@@ -628,8 +661,15 @@
     if (!formation) return;
     const roles = state.deployedRoles || [];
     const arrayTop = (grid.rows - 1) * grid.cellH;
+    const hp = Number.isFinite(state.arrayCoreHp) ? state.arrayCoreHp : Number.isFinite(state.baseHp) ? state.baseHp : 180;
+    const maxHp = Number.isFinite(state.arrayCoreMaxHp)
+      ? state.arrayCoreMaxHp
+      : Number.isFinite(state.maxBaseHp)
+      ? state.maxBaseHp
+      : Math.max(hp, 180);
+    const coreRatio = Math.max(0, Math.min(1, hp / Math.max(1, maxHp)));
     ctx.save();
-    ctx.strokeStyle = "rgba(109, 226, 190, 0.32)";
+    ctx.strokeStyle = coreRatio < 0.35 ? "rgba(255, 154, 118, 0.58)" : "rgba(109, 226, 190, 0.32)";
     ctx.lineWidth = 2;
     ctx.strokeRect(3, arrayTop + 3, canvas.width - 6, grid.cellH - 6);
 
@@ -650,6 +690,15 @@
     ctx.beginPath();
     ctx.arc(coreX, coreY, grid.cellW * 0.68, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.strokeStyle = coreRatio < 0.35 ? "rgba(255, 154, 118, 0.4)" : "rgba(109, 226, 190, 0.2)";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 8; i += 1) {
+      const angle = i * (Math.PI / 4);
+      ctx.beginPath();
+      ctx.moveTo(coreX + Math.cos(angle) * grid.cellW * 0.38, coreY + Math.sin(angle) * grid.cellW * 0.38);
+      ctx.lineTo(coreX + Math.cos(angle) * grid.cellW * 1.34, coreY + Math.sin(angle) * grid.cellW * 1.34);
+      ctx.stroke();
+    }
 
     roles.forEach((role, index) => {
       if (!Number.isFinite(role.x) || !Number.isFinite(role.y)) return;
@@ -680,6 +729,13 @@
     const accent = roleAccent(config);
     const label = (config.name || role.roleId || "门人").slice(0, 2);
     ctx.save();
+    ctx.strokeStyle = "rgba(216, 172, 82, 0.28)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    ctx.arc(role.x, role.y, 34, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
     ctx.shadowColor = accent;
     ctx.shadowBlur = 12;
     ctx.fillStyle = "rgba(6, 22, 18, 0.9)";
@@ -769,6 +825,10 @@
       ctx.moveTo(enemy.x, enemy.y - 8);
       ctx.lineTo(enemy.x, enemy.y + 8);
       ctx.stroke();
+      ctx.fillStyle = "rgba(255, 247, 219, 0.86)";
+      ctx.font = "bold 11px Microsoft YaHei";
+      ctx.textAlign = "center";
+      ctx.fillText("符", enemy.x, enemy.y + 4);
     }
     if (enemy.config.attackMode === "caster" || enemy.config.type === "support" || enemy.config.type === "caster") {
       ctx.strokeStyle = "rgba(216, 180, 254, 0.78)";
@@ -778,6 +838,10 @@
       ctx.arc(enemy.x, enemy.y, radius + 7, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(255, 247, 219, 0.86)";
+      ctx.font = "bold 11px Microsoft YaHei";
+      ctx.textAlign = "center";
+      ctx.fillText("咒", enemy.x, enemy.y + 4);
     }
     if (enemy.config.type === "array_breaker" || enemy.config.type === "array_attacker") {
       ctx.strokeStyle = "#ff5c7a";
@@ -849,12 +913,17 @@
 
   function drawProjectile({ ctx, projectile }) {
     if (projectile.visualOnly) {
+      ctx.save();
+      ctx.shadowColor = projectile.color;
+      ctx.shadowBlur = 8;
       ctx.strokeStyle = projectile.color;
       ctx.lineWidth = 3;
+      ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(projectile.x, projectile.y);
       ctx.lineTo(projectile.tx, projectile.ty);
       ctx.stroke();
+      ctx.restore();
       return;
     }
     const angle = Math.atan2(projectile.vy, projectile.vx);

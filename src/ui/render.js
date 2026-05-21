@@ -1120,7 +1120,13 @@
     const player = state.player || { level: 1, spiritQi: 0 };
     const requiredSpiritQi = nextLevelRequirement();
     const currentHp = Number.isFinite(state.baseHp) ? state.baseHp : Number.isFinite(state.arrayCoreHp) ? state.arrayCoreHp : 180;
-    const maxHp = Number.isFinite(state.baseMaxHp) ? state.baseMaxHp : Number.isFinite(state.arrayCoreMaxHp) ? state.arrayCoreMaxHp : Math.max(currentHp, 180);
+    const maxHp = Number.isFinite(state.baseMaxHp)
+      ? state.baseMaxHp
+      : Number.isFinite(state.maxBaseHp)
+      ? state.maxBaseHp
+      : Number.isFinite(state.arrayCoreMaxHp)
+      ? state.arrayCoreMaxHp
+      : Math.max(currentHp, 180);
     elements.waveText.textContent = `妖潮\n第 ${state.wave} 波`;
     elements.hpText.textContent = `护山阵眼\n${Math.max(0, Math.ceil(currentHp))} / ${Math.max(1, Math.ceil(maxHp))}`;
     elements.lingqiText.textContent = `灵气 Lv.${player.level}\n${Math.floor(player.spiritQi)} / ${requiredSpiritQi}`;
@@ -1654,7 +1660,7 @@
     const modeText = xmBattleModeLabel(state.battleMode || node?.battleMode || "guard");
     const nodeText = node ? `${node.displayId} ${node.name}` : chapter?.name || "山门守势";
 
-    elements.waveText.textContent = `${modeText}\n妖潮 ${state.wave} / ${totalWaves}`;
+    elements.waveText.textContent = `${modeText} · ${nodeText}\n妖潮 ${state.wave} / ${totalWaves}`;
     elements.hpText.textContent = `护山大阵\n阵眼韧性 ${Math.max(0, Math.ceil(currentHp))} / ${Math.max(1, Math.ceil(maxHp))}`;
     elements.lingqiText.textContent = `灵气 Lv.${player.level}\n${Math.floor(player.spiritQi)} / ${requiredSpiritQi}`;
     elements.hpText.parentElement?.style.setProperty("--hud-fill", `${Math.max(0, Math.min(100, (currentHp / Math.max(1, maxHp)) * 100))}%`);
