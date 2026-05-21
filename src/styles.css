@@ -3677,7 +3677,9 @@ button:disabled {
   display: flex;
   flex-direction: column;
   min-height: min(720px, calc(100vh - 290px));
+  min-width: 0;
   overflow: visible;
+  width: 100%;
 }
 
 .xm-loadout-picker,
@@ -3725,6 +3727,12 @@ button:disabled {
 .xm-loadout-tab-panel--formation .xm-loadout-pick {
   flex: 0 0 150px;
   min-height: 94px;
+}
+
+.xm-loadout-tab-panel--formation .xm-loadout-picker,
+.xm-loadout-tab-panel--formation .xm-loadout-summary-card {
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .xm-loadout-picker,
@@ -3820,30 +3828,34 @@ button:disabled {
 
 .xm-loadout-formation-board {
   align-items: center;
+  box-sizing: border-box;
   display: grid;
   justify-items: center;
   min-height: 520px;
   overflow: visible;
+  width: 100%;
 }
 
 .xm-formation-disc--loadout {
-  height: min(520px, 54vh);
-  margin-top: 12px;
-  max-width: 720px;
+  box-sizing: border-box;
+  height: 500px;
+  margin: 12px auto 0;
+  max-height: min(520px, 54vh);
+  max-width: min(760px, calc(100% - 24px));
   min-height: 430px;
   overflow: visible;
-  width: min(100%, 720px);
+  width: min(760px, calc(100% - 24px));
 }
 
 .xm-formation-disc--loadout .xm-formation-slot {
-  min-height: 74px;
-  width: clamp(120px, 15vw, 150px);
+  min-height: 72px;
+  width: 128px;
 }
 
 .xm-formation-disc--loadout .xm-formation-slot--1 { left: 50%; top: 13%; }
-.xm-formation-disc--loadout .xm-formation-slot--2 { left: 25%; top: 48%; }
+.xm-formation-disc--loadout .xm-formation-slot--2 { left: 30%; top: 50%; }
 .xm-formation-disc--loadout .xm-formation-slot--3 { left: 50%; top: 50%; }
-.xm-formation-disc--loadout .xm-formation-slot--4 { left: 75%; top: 48%; }
+.xm-formation-disc--loadout .xm-formation-slot--4 { left: 70%; top: 50%; }
 .xm-formation-disc--loadout .xm-formation-slot--5 { left: 50%; top: 84%; }
 
 .xm-loadout-deploy-list {
@@ -4107,22 +4119,26 @@ button:disabled {
 
 .xm-loadout-formation-board .xm-formation-disc--loadout {
   aspect-ratio: auto;
-  height: min(520px, 54vh);
-  max-width: 720px;
+  box-sizing: border-box;
+  height: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  max-height: min(520px, 54vh);
+  max-width: min(760px, calc(100% - 24px));
   min-height: 430px;
   overflow: visible;
-  width: min(100%, 720px);
+  width: min(760px, calc(100% - 24px));
 }
 
 .xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot {
-  min-height: 74px;
-  width: clamp(120px, 15vw, 150px);
+  min-height: 72px;
+  width: 128px;
 }
 
 .xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot--1 { left: 50%; top: 13%; }
-.xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot--2 { left: 25%; top: 48%; }
+.xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot--2 { left: 30%; top: 50%; }
 .xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot--3 { left: 50%; top: 50%; }
-.xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot--4 { left: 75%; top: 48%; }
+.xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot--4 { left: 70%; top: 50%; }
 .xm-loadout-formation-board .xm-formation-disc--loadout .xm-formation-slot--5 { left: 50%; top: 84%; }
 
 .xm-deploy-note {
@@ -4864,4 +4880,767 @@ h2 {
   .roles {
     grid-template-columns: 1fr;
   }
+}
+
+/* 28B Hotfix13: loadout formation v3 fixed three-column slots */
+
+.xm-loadout-page,
+.xm-loadout-shell,
+.xm-loadout-main-panel,
+.xm-loadout-tab-panel,
+.xm-loadout-tab-panel--formation {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.xm-loadout-page {
+  width: min(1180px, calc(100vw - 64px));
+  margin: 0 auto;
+  overflow-x: hidden;
+}
+
+.xm-loadout-shell {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+  overflow-x: hidden;
+}
+
+.xm-loadout-main-panel {
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.xm-loadout-tab-panel--formation {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+html,
+body,
+#app {
+  overflow-x: hidden;
+}
+
+.xm-loadout-tab-panel--formation {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.xm-loadout-formation-v3 {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.xm-loadout-formation-v3__picker {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.xm-loadout-formation-v3__card {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 104px;
+  box-sizing: border-box;
+  border: 1px solid rgba(198, 166, 91, 0.36);
+  border-radius: 10px;
+  background: rgba(8, 28, 22, 0.58);
+  color: #f7edcf;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.xm-loadout-formation-v3__card:hover,
+.xm-loadout-formation-v3__card:focus-visible,
+.xm-loadout-formation-v3__card--selected {
+  border-color: rgba(226, 196, 112, 0.92);
+  background: rgba(17, 66, 51, 0.7);
+  box-shadow: 0 0 18px rgba(122, 226, 190, 0.16);
+}
+
+.xm-loadout-formation-v3__card strong,
+.xm-loadout-formation-v3__card small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xm-loadout-formation-v3__summary {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(198, 166, 91, 0.28);
+  border-radius: 12px;
+  background: rgba(7, 24, 19, 0.48);
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.xm-loadout-formation-v3__summary h3,
+.xm-loadout-formation-v3__summary p {
+  margin: 0;
+}
+
+.xm-loadout-formation-v3__summary p {
+  margin-top: 6px;
+}
+
+.xm-loadout-formation-v3__summary small {
+  display: block;
+  margin-top: 6px;
+  color: rgba(245, 235, 205, 0.72);
+}
+
+.xm-loadout-formation-v3__board {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 28px 0 0;
+  min-height: 360px;
+  display: grid;
+  grid-template-columns: repeat(3, 156px);
+  grid-template-rows: 96px 112px 96px;
+  grid-template-areas:
+    ". front ."
+    "left center right"
+    ". back .";
+  column-gap: 32px;
+  row-gap: 20px;
+  justify-content: center;
+  align-content: center;
+  justify-items: center;
+  align-items: center;
+  box-sizing: border-box;
+  overflow: visible;
+  position: relative;
+}
+
+.xm-loadout-formation-v3__board::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 520px;
+  height: 260px;
+  transform: translate(-50%, -50%);
+  border-radius: 28px;
+  pointer-events: none;
+  opacity: 0.28;
+  z-index: 0;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at center, rgba(126, 229, 197, 0.13), transparent 58%),
+    linear-gradient(90deg, transparent 0 48%, rgba(126, 229, 197, 0.16) 49% 51%, transparent 52%),
+    linear-gradient(0deg, transparent 0 48%, rgba(226, 196, 112, 0.12) 49% 51%, transparent 52%);
+}
+
+.xm-loadout-formation-v3__slot {
+  width: 156px;
+  min-height: 76px;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(126, 229, 197, 0.38);
+  border-radius: 12px;
+  background: rgba(8, 30, 25, 0.84);
+  color: #f8efd2;
+  display: grid;
+  gap: 3px;
+  place-items: center;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.xm-loadout-formation-v3__slot:hover,
+.xm-loadout-formation-v3__slot:focus-visible,
+.xm-loadout-formation-v3__slot--filled {
+  border-color: rgba(226, 196, 112, 0.9);
+  box-shadow: 0 0 18px rgba(126, 229, 197, 0.18);
+}
+
+.xm-loadout-formation-v3__slot span,
+.xm-loadout-formation-v3__slot strong,
+.xm-loadout-formation-v3__slot small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.xm-loadout-formation-v3__slot--front {
+  grid-area: front;
+}
+
+.xm-loadout-formation-v3__slot--left {
+  grid-area: left;
+}
+
+.xm-loadout-formation-v3__slot--center {
+  grid-area: center;
+}
+
+.xm-loadout-formation-v3__slot--right {
+  grid-area: right;
+}
+
+.xm-loadout-formation-v3__slot--back {
+  grid-area: back;
+}
+
+.xm-loadout-formation-v3__roster {
+  margin-top: 18px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(198, 166, 91, 0.28);
+  border-radius: 12px;
+  background: rgba(7, 24, 19, 0.42);
+  padding: 12px;
+}
+
+.xm-loadout-formation-v3__roster-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.xm-loadout-formation-v3__roster-head h3,
+.xm-loadout-formation-v3__roster-head p {
+  margin: 0;
+}
+
+.xm-loadout-formation-v3__roster-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  box-sizing: border-box;
+  padding-bottom: 4px;
+}
+
+@media (max-width: 1100px) {
+  .xm-loadout-formation-v3__picker {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* 28B Hotfix14: constrain LOADOUT shell and main panel to the grid cell */
+#loadoutView .xm-loadout-page {
+  width: min(1180px, calc(100vw - 64px)) !important;
+  max-width: calc(100vw - 64px) !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: 92px minmax(0, 1fr) !important;
+  gap: 20px !important;
+  align-items: start !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+#loadoutRoleList > .xm-loadout-main-panel,
+.xm-loadout-main-panel {
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  justify-self: stretch !important;
+  align-self: stretch !important;
+  overflow-x: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.xm-loadout-main-panel > .xm-loadout-tab-panel,
+.xm-loadout-tab-panel,
+.xm-loadout-tab-panel--formation,
+.xm-loadout-formation-v3 {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+}
+
+/* 28B Hotfix15: final LOADOUT formation layout and footer breathing room */
+#loadoutView .xm-loadout-page {
+  height: auto !important;
+  min-height: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  padding-bottom: 96px !important;
+}
+
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+#loadoutRoleList > .xm-loadout-main-panel,
+.xm-loadout-main-panel {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.xm-loadout-tab-panel {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow-y: visible !important;
+}
+
+.xm-loadout-tab-panel--formation {
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+.xm-loadout-tab-panel--formation .xm-loadout-formation-v3 {
+  max-width: calc(100% + 40px) !important;
+  overflow: visible !important;
+  transform: translateX(-40px);
+  width: calc(100% + 40px) !important;
+}
+
+.xm-loadout-formation-v3__picker {
+  display: grid !important;
+  gap: 12px !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+.xm-loadout-formation-v3__card {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+.xm-loadout-formation-v3__summary {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+.xm-loadout-formation-v3__board {
+  box-sizing: border-box !important;
+  margin: 28px auto 0 !important;
+  max-width: 100% !important;
+  width: min(640px, 100%) !important;
+}
+
+.xm-loadout-footer {
+  margin-top: 24px !important;
+  padding-bottom: 24px !important;
+  position: static !important;
+}
+
+html,
+body,
+#app {
+  overflow-x: hidden !important;
+}
+
+/* 28B Hotfix17 final override: keep LOADOUT vertical flow after later patches */
+#loadoutView,
+#loadoutView.xm-screen,
+#loadoutView .xm-loadout-page,
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell,
+#loadoutRoleList > .xm-loadout-main-panel,
+.xm-loadout-main-panel,
+.xm-loadout-main-panel > .xm-loadout-tab-panel,
+.xm-loadout-tab-panel {
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+#loadoutView,
+#loadoutView.xm-screen {
+  align-self: start !important;
+}
+
+#loadoutView .xm-loadout-page {
+  padding-bottom: 120px !important;
+}
+
+.xm-loadout-footer {
+  margin-top: 24px !important;
+  padding-bottom: 32px !important;
+  position: static !important;
+}
+
+body {
+  overflow-y: auto !important;
+}
+/* 28B Hotfix17 final override: keep LOADOUT vertical flow after later patches */
+#loadoutView,
+#loadoutView.xm-screen,
+#loadoutView .xm-loadout-page,
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell,
+#loadoutRoleList > .xm-loadout-main-panel,
+.xm-loadout-main-panel,
+.xm-loadout-main-panel > .xm-loadout-tab-panel,
+.xm-loadout-tab-panel {
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+#loadoutView,
+#loadoutView.xm-screen {
+  align-self: start !important;
+}
+
+#loadoutView .xm-loadout-page {
+  padding-bottom: 120px !important;
+}
+
+.xm-loadout-footer {
+  margin-top: 24px !important;
+  padding-bottom: 32px !important;
+  position: static !important;
+}
+
+body {
+  overflow-y: auto !important;
+}
+
+/* 28B Hotfix17: allow LOADOUT to expand vertically instead of clipping in the view frame */
+#loadoutView,
+#loadoutView.xm-screen {
+  align-self: start !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: calc(100vh - 32px) !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+}
+
+#loadoutView .xm-loadout-page {
+  box-sizing: border-box !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  max-height: none !important;
+  max-width: calc(100vw - 48px) !important;
+  min-height: auto !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: visible !important;
+  padding-bottom: 120px !important;
+  width: min(1180px, calc(100vw - 48px)) !important;
+}
+
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell {
+  box-sizing: border-box !important;
+  height: auto !important;
+  max-height: none !important;
+  max-width: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+#loadoutRoleList > .xm-loadout-main-panel,
+.xm-loadout-main-panel,
+.xm-loadout-main-panel > .xm-loadout-tab-panel,
+.xm-loadout-tab-panel,
+.xm-loadout-tab-panel--characters,
+.xm-loadout-tab-panel--artifacts,
+.xm-loadout-tab-panel--formation {
+  box-sizing: border-box !important;
+  height: auto !important;
+  max-height: none !important;
+  max-width: 100% !important;
+  min-height: 0 !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+}
+
+.xm-loadout-picker,
+.xm-loadout-focus,
+.xm-loadout-summary-card {
+  max-height: none !important;
+}
+
+.xm-loadout-pick-grid {
+  max-height: none !important;
+}
+
+.xm-loadout-tab-panel--formation .xm-loadout-formation-v3__picker {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.xm-loadout-footer {
+  box-sizing: border-box !important;
+  margin-top: 24px !important;
+  padding-bottom: 32px !important;
+  position: static !important;
+  width: 100% !important;
+}
+
+html,
+body,
+#app {
+  min-height: 100% !important;
+  overflow-x: hidden !important;
+}
+
+#app {
+  height: auto !important;
+  overflow-y: visible !important;
+}
+
+body {
+  overflow-y: auto !important;
+}
+
+body {
+  overflow-y: auto !important;
+}
+
+#loadoutRoleList > .xm-loadout-main-panel {
+  overflow-x: visible !important;
+}
+
+/* 28B Hotfix16: compact formation picker with local horizontal scroll */
+.xm-loadout-formation-v3 {
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  transform: none !important;
+  width: 100% !important;
+}
+
+.xm-loadout-formation-v3__picker {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 10px !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 0 0 8px !important;
+  scroll-behavior: smooth;
+  width: 100% !important;
+}
+
+.xm-loadout-formation-v3__card {
+  box-sizing: border-box !important;
+  flex: 0 0 132px !important;
+  max-width: 132px !important;
+  min-height: 86px !important;
+  min-width: 132px !important;
+  padding: 10px 8px !important;
+  width: 132px !important;
+}
+
+.xm-loadout-formation-v3__card strong {
+  font-size: 15px !important;
+  line-height: 1.2 !important;
+}
+
+.xm-loadout-formation-v3__card small {
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+.xm-loadout-formation-v3__board {
+  box-sizing: border-box !important;
+  margin: 28px auto 0 !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  width: min(620px, 100%) !important;
+}
+
+.xm-loadout-formation-v3__slot {
+  box-sizing: border-box !important;
+  min-height: 72px !important;
+  width: 140px !important;
+}
+
+.xm-loadout-page,
+.xm-loadout-shell,
+.xm-loadout-main-panel,
+.xm-loadout-tab-panel {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+}
+
+html,
+body,
+#app {
+  overflow-x: hidden !important;
+}
+
+/* 28B Hotfix17 final override: keep LOADOUT vertical flow after later patches */
+#loadoutView,
+#loadoutView.xm-screen,
+#loadoutView .xm-loadout-page,
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell,
+#loadoutRoleList > .xm-loadout-main-panel,
+.xm-loadout-main-panel,
+.xm-loadout-main-panel > .xm-loadout-tab-panel,
+.xm-loadout-tab-panel {
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+#loadoutView,
+#loadoutView.xm-screen {
+  align-self: start !important;
+}
+
+#loadoutView .xm-loadout-page {
+  padding-bottom: 120px !important;
+}
+
+.xm-loadout-footer {
+  margin-top: 24px !important;
+  padding-bottom: 32px !important;
+  position: static !important;
+}
+
+body {
+  overflow-y: auto !important;
+}
+
+/* 28B Hotfix18: LOADOUT safe outer frame and local scrolling */
+#loadoutView,
+#loadoutView.xm-screen {
+  align-self: start !important;
+  height: auto !important;
+  justify-self: center !important;
+  max-height: none !important;
+  max-width: 100% !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  width: 100% !important;
+}
+
+#loadoutView .xm-loadout-page,
+.xm-loadout-page {
+  box-sizing: border-box !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: calc(100vw - 96px) !important;
+  min-width: 0 !important;
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  padding-bottom: 96px !important;
+  width: min(1080px, calc(100vw - 96px)) !important;
+}
+
+#loadoutRoleList,
+#loadoutView .xm-loadout-shell,
+.xm-loadout-shell {
+  align-items: start !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  gap: 18px !important;
+  grid-template-columns: 88px minmax(0, 1fr) !important;
+  height: auto !important;
+  max-height: none !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+#loadoutRoleList > .xm-loadout-main-panel,
+.xm-loadout-main-panel,
+.xm-loadout-main-panel > .xm-loadout-tab-panel,
+.xm-loadout-tab-panel {
+  box-sizing: border-box !important;
+  height: auto !important;
+  max-height: none !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  width: 100% !important;
+}
+
+.xm-loadout-tab-panel--characters .xm-loadout-pick-grid,
+.xm-loadout-tab-panel--artifacts .xm-loadout-pick-grid {
+  max-height: 560px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.xm-loadout-tab-panel--formation .xm-loadout-formation-v3__picker,
+.xm-loadout-formation-v3__picker {
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+.xm-loadout-footer {
+  box-sizing: border-box !important;
+  margin-top: 24px !important;
+  padding-bottom: 32px !important;
+  position: static !important;
+  width: 100% !important;
+}
+
+html,
+body,
+#app {
+  overflow-x: hidden !important;
+}
+
+body {
+  overflow-y: auto !important;
 }
