@@ -77,6 +77,11 @@ const waveText = document.querySelector("#waveText");
 const hpText = document.querySelector("#hpText");
 const lingqiText = document.querySelector("#lingqiText");
 const startButton = document.querySelector("#startButton");
+const battlePauseButton = document.querySelector("#battlePauseButton");
+const battlePauseModal = document.querySelector("#battlePauseModal");
+const battleResumeButton = document.querySelector("#battleResumeButton");
+const battleRestartButton = document.querySelector("#battleRestartButton");
+const battleAbandonButton = document.querySelector("#battleAbandonButton");
 const deployBackButton = document.querySelector("#deployBackButton");
 const formationList = document.querySelector("#formationList");
 const roleList = document.querySelector("#roleList");
@@ -1282,6 +1287,47 @@ function startRun() {
   updateUi();
 }
 
+function openBattlePauseMenu() {
+  if (state.appState !== APP_STATE.BATTLE || state.gameOver) return;
+  state.paused = true;
+  state.running = false;
+  battlePauseModal?.classList.remove("hidden");
+  setStatus("战斗已暂停。");
+  updateUi();
+}
+
+function closeBattlePauseMenu() {
+  battlePauseModal?.classList.add("hidden");
+}
+
+function resumeBattleFromPause() {
+  if (state.appState !== APP_STATE.BATTLE) return;
+  state.paused = false;
+  state.running = true;
+  closeBattlePauseMenu();
+  setStatus("继续守山。");
+  updateUi();
+}
+
+function restartCurrentBattle() {
+  closeBattlePauseMenu();
+  state.paused = false;
+  state.running = false;
+  state.appState = APP_STATE.LOADOUT;
+  state.phase = "loadout";
+  startRun();
+}
+
+function abandonCurrentBattle() {
+  closeBattlePauseMenu();
+  state.paused = false;
+  state.running = false;
+  state.gameOver = false;
+  Object.assign(state, createInitialRuntimeCollections({ includeAvailableRoles: false, includeDeployedRoles: false }));
+  setStatus("已放弃本次历练，返回战前整备。");
+  enterLoadout();
+}
+
 function startWave() {
   return startSystemWave({
     state,
@@ -2436,6 +2482,7 @@ function diagnoseBattleLoop(dt) {
 
 function update(dt) {
   if (state.appState !== APP_STATE.BATTLE || state.gameOver) return;
+  if (state.paused) return;
   if (!state.waveActive) startWave();
 
   diagnoseBattleLoop(dt);
@@ -3100,7 +3147,36 @@ function renderFeaturePage() {
   });
 }
 
+function captureLoadoutScrollPositions() {
+  if (!loadoutView || state.appState !== APP_STATE.LOADOUT) return [];
+  const selectors = [
+    ".xm-character-list",
+    ".xm-artifact-list",
+    ".xm-loadout-formation-v3__picker",
+    ".xm-loadout-formation-v3__roster",
+    ".xm-loadout-picker",
+    ".xm-loadout-pick-grid",
+  ];
+  return selectors.map((selector) => {
+    const node = loadoutView.querySelector(selector);
+    return node ? { selector, top: node.scrollTop || 0, left: node.scrollLeft || 0 } : null;
+  }).filter(Boolean);
+}
+
+function restoreLoadoutScrollPositions(scrolls = []) {
+  if (!loadoutView || !scrolls.length) return;
+  requestAnimationFrame(() => {
+    scrolls.forEach(({ selector, top, left }) => {
+      const node = loadoutView.querySelector(selector);
+      if (!node) return;
+      node.scrollTop = top;
+      node.scrollLeft = left;
+    });
+  });
+}
+
 function renderLoadout() {
+  const scrolls = captureLoadoutScrollPositions();
   renderSystemLoadout({
     elements: {
       loadoutFormationList,
@@ -3119,6 +3195,7 @@ function renderLoadout() {
       loadoutReady,
     },
   });
+  restoreLoadoutScrollPositions(scrolls);
   loadoutView.querySelectorAll("[data-loadout-formation-id]").forEach((button) => {
     button.addEventListener("click", () => {
       state.loadoutFormationId = button.dataset.loadoutFormationId;
@@ -3260,6 +3337,11 @@ function updateUi() {
   deployBoard?.classList.toggle("hidden", state.appState !== APP_STATE.DEPLOY);
   canvas?.classList.toggle("hidden", state.appState === APP_STATE.DEPLOY);
   deployBackButton?.classList.toggle("hidden", state.appState !== APP_STATE.DEPLOY);
+  battlePauseButton?.classList.toggle("hidden", state.appState !== APP_STATE.BATTLE);
+  if (battlePauseButton) {
+    battlePauseButton.textContent = state.paused ? "已暂停" : "暂停";
+  }
+  if (state.appState !== APP_STATE.BATTLE) closeBattlePauseMenu();
   renderLobby();
   renderMainHub();
   renderFeaturePage();
@@ -5317,6 +5399,10 @@ deployBackButton?.addEventListener("click", () => {
   updateUi();
 });
 startButton.addEventListener("click", startRun);
+battlePauseButton?.addEventListener("click", openBattlePauseMenu);
+battleResumeButton?.addEventListener("click", resumeBattleFromPause);
+battleRestartButton?.addEventListener("click", restartCurrentBattle);
+battleAbandonButton?.addEventListener("click", abandonCurrentBattle);
 returnLobbyButton.addEventListener("click", () => enterMainHub());
 settlementAdventureButton.addEventListener("click", () => {
   enterHubPage(APP_STATE.ADVENTURE);

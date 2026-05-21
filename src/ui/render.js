@@ -992,8 +992,29 @@
     const rewards = (selectedNode.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
     const locked = selectedStatus === "locked";
     const startLabel = selectedStatus === "cleared" ? "再次挑战" : "开始历练";
-    const detail = detailOpen ? `<aside class="xm-node-detail xm-node-detail--drawer ${locked ? "xm-node-detail--locked" : ""}"><button type="button" class="xm-node-detail-close" data-page-action="close-adventure-detail" aria-label="关闭节点详情">×</button><p class="xm-eyebrow">${safeText(selectedNode.displayId)} · ${safeText(nodeTypeLabel(selectedNode.type))}${selectedNode.boss || selectedNode.type === "boss" ? " · Boss" : ""}</p><h2>${safeText(selectedNode.name)}</h2><p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p><blockquote>${safeText(selectedNode.storyText || selectedNode.description)}</blockquote><div class="xm-preview-row"><strong>节点状态</strong><div><span>${safeText(statusLabel(selectedStatus))}</span></div></div><div class="xm-preview-row"><strong>敌人预览</strong><div>${enemies || "<span>未知妖物</span>"}</div></div><div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards || "<span>灵石</span>"}</div></div><button type="button" class="primary" data-page-action="start-adventure" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(locked ? "请先完成前置节点" : startLabel)}</button><button type="button" class="secondary" data-page-action="back-main">返回宗门</button></aside>` : "";
-    return `<section class="xm-adventure-map"><div class="xm-adventure-map-frame"><header class="xm-adventure-map-header"><div><p class="xm-eyebrow">山门外</p><h2>${safeText(chapter.name)}</h2></div><p>${safeText(chapter.subtitle)} · 进度 ${clearedCount} / ${chapter.nodes.length}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><svg class="xm-map-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${routeSegments}</svg><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}</div></section>`;
+    const detail = detailOpen ? `
+      <aside class="xm-node-detail xm-node-detail--drawer ${locked ? "xm-node-detail--locked" : ""}">
+        <header class="xm-node-detail__header">
+          <div>
+            <p class="xm-eyebrow">${safeText(selectedNode.displayId)} · ${safeText(nodeTypeLabel(selectedNode.type))}${selectedNode.boss || selectedNode.type === "boss" ? " · Boss" : ""}</p>
+            <h2>${safeText(selectedNode.name)}</h2>
+          </div>
+          <button type="button" class="xm-node-detail-close" data-page-action="close-adventure-detail" aria-label="关闭节点详情">×</button>
+        </header>
+        <div class="xm-node-detail__body">
+          <p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p>
+          <blockquote>${safeText(selectedNode.storyText || selectedNode.description)}</blockquote>
+          <div class="xm-preview-row"><strong>节点状态</strong><div><span>${safeText(statusLabel(selectedStatus))}</span></div></div>
+          <div class="xm-preview-row"><strong>敌人预览</strong><div>${enemies || "<span>未知妖物</span>"}</div></div>
+          <div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards || "<span>灵石</span>"}</div></div>
+        </div>
+        <footer class="xm-node-detail__footer">
+          <button type="button" class="primary" data-page-action="start-adventure" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(locked ? "请先完成前置节点" : startLabel)}</button>
+          <button type="button" class="secondary" data-page-action="back-main">返回宗门</button>
+        </footer>
+      </aside>
+    ` : "";
+    return `<section class="xm-adventure-map"><div class="xm-adventure-map-frame"><header class="xm-adventure-map-header"><div class="xm-adventure-map-header__main"><p class="xm-eyebrow">山门外</p><h2>${safeText(chapter.name)}</h2><span>${safeText(chapter.subtitle || "妖门裂隙初现，山门大阵初醒。")}</span></div><p class="xm-adventure-progress">进度 ${clearedCount} / ${chapter.nodes.length}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><svg class="xm-map-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${routeSegments}</svg><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}</div></section>`;
   }
 
   function renderFeaturePage({ elements, page, DATA, playerProfile, state, helpers }) {

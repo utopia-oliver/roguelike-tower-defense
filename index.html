@@ -191,6 +191,7 @@
           </div>
           <button id="deployBackButton" class="secondary">返回整备</button>
           <button id="startButton" class="primary">开始战斗</button>
+          <button id="battlePauseButton" class="secondary" type="button">暂停</button>
         </header>
 
         <canvas id="gameCanvas" width="540" height="840"></canvas>
@@ -251,6 +252,18 @@
         <h2>机缘降临</h2>
         <p>灵气汇聚，择一道机缘入局。</p>
         <div class="perk-grid" id="perkGrid"></div>
+      </div>
+    </div>
+
+    <div class="modal hidden" id="battlePauseModal">
+      <div class="modal-panel xm-battle-pause-modal">
+        <h2>暂停中</h2>
+        <p>妖潮暂歇，护山大阵维持当前战局。</p>
+        <div class="xm-pause-actions">
+          <button id="battleResumeButton" class="primary" type="button">继续游戏</button>
+          <button id="battleRestartButton" class="secondary" type="button">重新开始</button>
+          <button id="battleAbandonButton" class="secondary danger" type="button">放弃历练</button>
+        </div>
       </div>
     </div>
 

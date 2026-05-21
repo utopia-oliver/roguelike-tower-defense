@@ -5457,6 +5457,145 @@ body {
   overflow-y: auto !important;
 }
 
+/* 28E: adventure detail, loadout scroll, battle pause fixes */
+.xm-adventure-map-header {
+  align-items: start !important;
+  display: grid !important;
+  gap: 8px !important;
+  justify-content: start !important;
+  max-width: min(460px, calc(100% - 32px)) !important;
+  padding: 14px 16px !important;
+}
+
+.xm-adventure-map-header__main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.xm-adventure-map-header__main .xm-eyebrow {
+  margin: 0;
+}
+
+.xm-adventure-map-header__main h2 {
+  font-size: clamp(20px, 2.2vw, 28px) !important;
+  letter-spacing: 0;
+  line-height: 1.15 !important;
+  margin: 0;
+  white-space: nowrap;
+  word-break: keep-all;
+}
+
+.xm-adventure-map-header__main span {
+  color: rgba(240, 230, 196, 0.84);
+  display: block;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.xm-adventure-progress {
+  align-self: start;
+  border: 1px solid rgba(201, 166, 92, 0.32);
+  border-radius: 999px;
+  color: #f7e9bd;
+  font-size: 12px;
+  margin: 0;
+  padding: 3px 10px;
+  width: max-content;
+}
+
+.xm-chapter-panel--compact {
+  max-width: 280px !important;
+  opacity: 0.9;
+}
+
+.xm-node-detail {
+  display: grid !important;
+  grid-template-rows: auto minmax(0, 1fr) auto !important;
+  max-height: calc(100% - 36px) !important;
+  overflow: hidden !important;
+}
+
+.xm-node-detail__header {
+  align-items: start;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.xm-node-detail__header h2 {
+  margin: 2px 0 0;
+}
+
+.xm-node-detail__body {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.xm-node-detail__footer {
+  border-top: 1px solid rgba(201, 166, 92, 0.24);
+  display: grid;
+  gap: 8px;
+  padding-top: 10px;
+}
+
+.xm-node-detail__footer button {
+  width: 100%;
+}
+
+.xm-character-list,
+.xm-artifact-list {
+  max-height: 560px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+.xm-loadout-formation-v3__picker,
+.xm-loadout-formation-v3__roster {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+#battleView .hud {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto auto !important;
+}
+
+#battlePauseButton {
+  justify-self: end;
+  min-width: 72px;
+}
+
+.xm-battle-pause-modal {
+  max-width: 420px;
+  text-align: center;
+}
+
+.xm-battle-pause-modal p {
+  color: rgba(240, 230, 196, 0.82);
+  line-height: 1.65;
+  margin: 8px 0 0;
+}
+
+.xm-pause-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.xm-pause-actions .danger {
+  border-color: rgba(201, 92, 69, 0.55);
+  color: #ffd8c7;
+}
+
+.xm-pause-actions .danger:hover {
+  border-color: rgba(237, 126, 92, 0.8);
+  color: #fff0e8;
+}
+
 /* 28C: battle HUD and field readability polish */
 #battleView.game-shell {
   align-items: start;
@@ -5842,4 +5981,13 @@ body,
 
 body {
   overflow-y: auto !important;
+}
+
+/* 28E final override: keep pause control visible after battle HUD polish */
+#battleView .hud {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto auto !important;
+}
+
+#battlePauseButton {
+  justify-self: end !important;
 }
