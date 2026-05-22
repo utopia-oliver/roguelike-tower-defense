@@ -14,6 +14,55 @@
     return Array.isArray(collection) ? collection : Object.values(collection || {});
   }
 
+  const CHAPTER_DAO_SEAL_REWARDS = {
+    chapter_1: {
+      12: { spiritStones: 300 },
+      18: { spiritStones: 500, materials: { "阵纹残片": 2 } },
+      24: { spiritStones: 800, materials: { "法宝碎片": 3 } },
+      30: { spiritStones: 1200, materials: { "青冥剑匣碎片": 5 } },
+    },
+  };
+
+  function daoSealGlyph(count = 0) {
+    const value = Math.max(0, Math.min(3, Math.floor(Number(count) || 0)));
+    return `${"◆".repeat(value)}${"◇".repeat(3 - value)}`;
+  }
+
+  function getNodeDaoSealCount(playerProfile, chapterId, nodeId) {
+    return Math.max(0, Math.min(3, Math.floor(Number(playerProfile.chapterStars?.[chapterId]?.[nodeId]) || 0)));
+  }
+
+  function getChapterDaoSealTotal(playerProfile, chapter) {
+    return (chapter?.nodes || []).reduce((sum, node) => sum + getNodeDaoSealCount(playerProfile, chapter.chapterId, node.nodeId), 0);
+  }
+
+  function formatDaoSealReward(reward = {}) {
+    const parts = [];
+    if (reward.spiritStones) parts.push(`灵石 x${reward.spiritStones}`);
+    Object.entries(reward.materials || {}).forEach(([name, amount]) => parts.push(`${name} x${amount}`));
+    return parts.join("、") || "奖励待定";
+  }
+
+  function renderChapterDaoSealRewards({ chapter, playerProfile }) {
+    const rewards = CHAPTER_DAO_SEAL_REWARDS[chapter.chapterId] || {};
+    const total = getChapterDaoSealTotal(playerProfile, chapter);
+    const claimed = playerProfile.chapterStarChests?.[chapter.chapterId] || {};
+    return Object.entries(rewards).map(([threshold, reward]) => {
+      const tier = Number(threshold);
+      const isClaimed = Boolean(claimed[threshold] || claimed[tier]);
+      const available = total >= tier && !isClaimed;
+      const stateLabel = isClaimed ? "已领取" : available ? "可领取" : "未达成";
+      const stateClass = isClaimed ? "claimed" : available ? "available" : "locked";
+      return `
+        <button type="button" class="xm-dao-seal-reward xm-dao-seal-reward--${stateClass}" data-page-action="claim-dao-seal-reward" data-chapter-id="${safeText(chapter.chapterId)}" data-threshold="${safeText(threshold)}" ${available ? "" : "disabled"}>
+          <strong>${safeText(threshold)}印奖励</strong>
+          <span>${safeText(stateLabel)}</span>
+          <small>${safeText(formatDaoSealReward(reward))}</small>
+        </button>
+      `;
+    }).join("");
+  }
+
   function currentChapterSummary({ DATA, playerProfile, helpers }) {
     const chapter = DATA.chapters?.chapter_1;
     const nodeId = helpers?.getCurrentChapterNodeId
@@ -967,6 +1016,8 @@
     const selectedNode = chapter.nodes.find((node) => node.nodeId === selectedNodeId) || chapter.nodes[0];
     const selectedStatus = helpers.getChapterNodeStatus(chapter.chapterId, selectedNode.nodeId);
     const clearedCount = progress.clearedNodeIds?.length || 0;
+    const chapterDaoSeals = getChapterDaoSealTotal(playerProfile, chapter);
+    const chapterMaxDaoSeals = (chapter.nodes?.length || 0) * 3;
     const detailOpen = Boolean(state.adventureDetailOpen && selectedNode);
     const nodePositions = [[18, 72], [27, 64], [36, 57], [45, 50], [53, 43], [60, 36], [67, 30], [74, 25], [82, 22], [89, 18]];
     const statusLabel = (status) => ({ locked: "未解锁", cleared: "已通关", available: "可挑战" }[status] || "未知");
@@ -986,11 +1037,13 @@
       const isSelected = detailOpen && node.nodeId === selectedNode.nodeId;
       const [x, y] = nodePositions[index] || [18 + index * 7, 72 - index * 6];
       const boss = node.boss || node.type === "boss" || node.type === "mini_boss";
-      return `<button type="button" class="xm-map-node xm-map-node--${safeText(status)} ${boss ? "xm-map-node--boss" : ""} ${isSelected ? "xm-map-node--selected" : ""}" style="--node-x: ${x}%; --node-y: ${y}%;" data-adventure-chapter-id="${safeText(chapter.chapterId)}" data-adventure-node-id="${safeText(node.nodeId)}" aria-label="${safeText(`${node.displayId} ${node.name}`)}" title="${safeText(`${node.displayId} ${node.name}`)}"><span>${safeText(node.displayId)}</span><strong>${safeText(node.name)}</strong><small>${safeText(statusLabel(status))}${boss ? " · Boss" : ""}</small></button>`;
+      const seals = getNodeDaoSealCount(playerProfile, chapter.chapterId, node.nodeId);
+      return `<button type="button" class="xm-map-node xm-map-node--${safeText(status)} ${boss ? "xm-map-node--boss" : ""} ${isSelected ? "xm-map-node--selected" : ""}" style="--node-x: ${x}%; --node-y: ${y}%;" data-adventure-chapter-id="${safeText(chapter.chapterId)}" data-adventure-node-id="${safeText(node.nodeId)}" aria-label="${safeText(`${node.displayId} ${node.name}`)}" title="${safeText(`${node.displayId} ${node.name}`)}"><span>${safeText(node.displayId)}</span><strong>${safeText(node.name)}</strong><small>${safeText(statusLabel(status))}${boss ? " · Boss" : ""}</small><em class="xm-node-dao-seals ${status === "locked" ? "xm-node-dao-seals--locked" : ""}">${safeText(daoSealGlyph(status === "locked" ? 0 : seals))}</em></button>`;
     };
     const enemies = (selectedNode.enemyPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
     const rewards = (selectedNode.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
     const locked = selectedStatus === "locked";
+    const selectedNodeDaoSeals = getNodeDaoSealCount(playerProfile, chapter.chapterId, selectedNode.nodeId);
     const startLabel = selectedStatus === "cleared" ? "再次挑战" : "开始历练";
     const detail = detailOpen ? `
       <aside class="xm-node-detail xm-node-detail--drawer ${locked ? "xm-node-detail--locked" : ""}">
@@ -1005,6 +1058,7 @@
           <p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p>
           <blockquote>${safeText(selectedNode.storyText || selectedNode.description)}</blockquote>
           <div class="xm-preview-row"><strong>节点状态</strong><div><span>${safeText(statusLabel(selectedStatus))}</span></div></div>
+          <div class="xm-preview-row"><strong>历史最高道印</strong><div><span class="xm-dao-seal-mark">${safeText(daoSealGlyph(selectedNodeDaoSeals))}</span></div></div>
           <div class="xm-preview-row"><strong>敌人预览</strong><div>${enemies || "<span>未知妖物</span>"}</div></div>
           <div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards || "<span>灵石</span>"}</div></div>
         </div>
@@ -1014,7 +1068,7 @@
         </footer>
       </aside>
     ` : "";
-    return `<section class="xm-adventure-map"><div class="xm-adventure-map-frame"><header class="xm-adventure-map-header"><div class="xm-adventure-map-header__main"><p class="xm-eyebrow">山门外</p><h2>${safeText(chapter.name)}</h2><span>${safeText(chapter.subtitle || "妖门裂隙初现，山门大阵初醒。")}</span></div><p class="xm-adventure-progress">进度 ${clearedCount} / ${chapter.nodes.length}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><svg class="xm-map-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${routeSegments}</svg><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}</div></section>`;
+    return `<section class="xm-adventure-map"><div class="xm-adventure-map-frame"><header class="xm-adventure-map-header"><div class="xm-adventure-map-header__main"><p class="xm-eyebrow">山门外</p><h2>${safeText(chapter.name)}</h2><span>${safeText(chapter.subtitle || "妖门裂隙初现，山门大阵初醒。")}</span></div><p class="xm-adventure-progress">进度 ${clearedCount} / ${chapter.nodes.length} · 本章道印 ${chapterDaoSeals} / ${chapterMaxDaoSeals}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><aside class="xm-dao-seal-panel"><div><strong>道印奖励</strong><span>本章道印 ${safeText(chapterDaoSeals)} / ${safeText(chapterMaxDaoSeals)}</span></div><div class="xm-dao-seal-rewards">${renderChapterDaoSealRewards({ chapter, playerProfile })}</div></aside><svg class="xm-map-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${routeSegments}</svg><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}</div></section>`;
   }
 
   function renderFeaturePage({ elements, page, DATA, playerProfile, state, helpers }) {
@@ -1170,11 +1224,33 @@
       : "战斗中门人会自动攻击。";
   }
 
-  function renderSettlement({ elements, win, state, reward, playerExp, levelRewards }) {
+  function renderSettlement({ elements, win, state, reward, playerExp, levelRewards, daoSealResult, bestDaoSeals }) {
     elements.settlementTitle.textContent = win ? "守山成功" : "阵眼破碎";
     elements.settlementWave.textContent = state.highestWave;
     elements.settlementKills.textContent = state.kills;
     elements.settlementLingstone.textContent = `${reward}灵石 / ${playerExp}经验${levelRewards.length ? ` / ${levelRewards.join("、")}` : ""}`;
+    if (elements.settlementSealInfo) {
+      const result = daoSealResult || { count: 0, conditions: [] };
+      const conditions = result.conditions?.length
+        ? result.conditions
+        : [
+            { label: "守住山门", met: Boolean(win) },
+            { label: "阵眼韧性不低于 50%", met: false },
+            { label: "阵眼韧性不低于 80%", met: false },
+          ];
+      elements.settlementSealInfo.innerHTML = `
+        <section class="xm-settlement-dao-seals">
+          <p class="xm-eyebrow">本关道印</p>
+          <div class="xm-dao-seal-mark xm-dao-seal-mark--large">${safeText(daoSealGlyph(win ? result.count : 0))}</div>
+          <ul class="xm-dao-seal-conditions">
+            ${win
+              ? conditions.map((item) => `<li class="${item.met ? "is-met" : "is-missing"}"><span>${item.met ? "✓" : "◇"}</span>${safeText(item.label)}</li>`).join("")
+              : "<li class=\"is-missing\"><span>◇</span>未能守住山门，暂无道印。</li>"}
+          </ul>
+          <p class="xm-dao-seal-best">历史最高道印：${safeText(daoSealGlyph(bestDaoSeals || 0))}</p>
+        </section>
+      `;
+    }
   }
 
   function perkTypeLabel(perk = {}) {

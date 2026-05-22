@@ -71,6 +71,7 @@ const settlementWave = document.querySelector("#settlementWave");
 const settlementKills = document.querySelector("#settlementKills");
 const settlementLingstone = document.querySelector("#settlementLingstone");
 const settlementNodeInfo = document.querySelector("#settlementNodeInfo");
+const settlementSealInfo = document.querySelector("#settlementSealInfo");
 const canvas = document.querySelector("#gameCanvas");
 const ctx = canvas.getContext("2d");
 const waveText = document.querySelector("#waveText");
@@ -968,6 +969,108 @@ function markAdventureNodeCleared(chapterId, nodeId) {
   state.selectedAdventureNodeId = progress.currentNodeId;
   savePlayerProfile();
   return { node, nextNodeId };
+}
+
+const CHAPTER_DAO_SEAL_REWARDS = {
+  chapter_1: {
+    12: { spiritStones: 300 },
+    18: { spiritStones: 500, materials: { "阵纹残片": 2 } },
+    24: { spiritStones: 800, materials: { "法宝碎片": 3 } },
+    30: { spiritStones: 1200, materials: { "青冥剑匣碎片": 5 } },
+  },
+};
+
+function daoSealGlyph(count = 0) {
+  const value = Math.max(0, Math.min(3, Math.floor(Number(count) || 0)));
+  return `${"◆".repeat(value)}${"◇".repeat(3 - value)}`;
+}
+
+function ensureDaoSealState() {
+  if (!playerMeta.chapterStars || typeof playerMeta.chapterStars !== "object") playerMeta.chapterStars = {};
+  if (!playerMeta.chapterStarChests || typeof playerMeta.chapterStarChests !== "object") playerMeta.chapterStarChests = {};
+  if (!playerMeta.materials || typeof playerMeta.materials !== "object") playerMeta.materials = {};
+}
+
+function getNodeDaoSealCount(chapterId, nodeId) {
+  ensureDaoSealState();
+  return Math.max(0, Math.min(3, Math.floor(Number(playerMeta.chapterStars?.[chapterId]?.[nodeId]) || 0)));
+}
+
+function getChapterDaoSealTotal(chapterId) {
+  const chapter = DATA.chapters?.[chapterId];
+  if (!chapter) return 0;
+  return (chapter.nodes || []).reduce((total, node) => total + getNodeDaoSealCount(chapterId, node.nodeId), 0);
+}
+
+function calculateDaoSealResult(win) {
+  const currentHp = Number.isFinite(state.baseHp) ? state.baseHp : Number.isFinite(state.arrayCoreHp) ? state.arrayCoreHp : 0;
+  const maxHp = Number.isFinite(state.baseMaxHp)
+    ? state.baseMaxHp
+    : Number.isFinite(state.maxBaseHp)
+    ? state.maxBaseHp
+    : Number.isFinite(state.arrayCoreMaxHp)
+    ? state.arrayCoreMaxHp
+    : Math.max(currentHp, 180);
+  const ratio = maxHp > 0 ? Math.max(0, currentHp / maxHp) : 0;
+  const conditions = [
+    { label: "守住山门", met: Boolean(win) },
+    { label: "阵眼韧性不低于 50%", met: Boolean(win && ratio >= 0.5) },
+    { label: "阵眼韧性不低于 80%", met: Boolean(win && ratio >= 0.8) },
+  ];
+  return {
+    count: conditions.filter((item) => item.met).length,
+    ratio,
+    conditions,
+  };
+}
+
+function recordNodeDaoSeals(chapterId, nodeId, count) {
+  ensureDaoSealState();
+  if (!chapterId || !nodeId) return 0;
+  const value = Math.max(0, Math.min(3, Math.floor(Number(count) || 0)));
+  playerMeta.chapterStars[chapterId] = playerMeta.chapterStars[chapterId] || {};
+  const previous = getNodeDaoSealCount(chapterId, nodeId);
+  playerMeta.chapterStars[chapterId][nodeId] = Math.max(previous, value);
+  return playerMeta.chapterStars[chapterId][nodeId];
+}
+
+function formatDaoSealReward(reward = {}) {
+  const items = [];
+  if (reward.spiritStones) items.push(`灵石 x${reward.spiritStones}`);
+  Object.entries(reward.materials || {}).forEach(([name, amount]) => {
+    items.push(`${name} x${amount}`);
+  });
+  return items.join("、") || "奖励待定";
+}
+
+function claimChapterDaoSealReward(chapterId, threshold) {
+  ensureDaoSealState();
+  const tier = Math.floor(Number(threshold) || 0);
+  const reward = CHAPTER_DAO_SEAL_REWARDS[chapterId]?.[tier];
+  if (!reward) {
+    setStatus("该道印奖励暂未配置。");
+    return false;
+  }
+  if (getChapterDaoSealTotal(chapterId) < tier) {
+    setStatus(`${tier}印尚未达成。`);
+    return false;
+  }
+  playerMeta.chapterStarChests[chapterId] = playerMeta.chapterStarChests[chapterId] || {};
+  if (playerMeta.chapterStarChests[chapterId][tier]) {
+    setStatus(`${tier}印奖励已领取。`);
+    return false;
+  }
+  playerMeta.spiritStones += Math.max(0, Math.floor(Number(reward.spiritStones) || 0));
+  Object.entries(reward.materials || {}).forEach(([name, amount]) => {
+    playerMeta.materials[name] = Math.max(0, Math.floor(Number(playerMeta.materials[name]) || 0)) + Math.max(0, Math.floor(Number(amount) || 0));
+  });
+  playerMeta.chapterStarChests[chapterId][tier] = true;
+  syncPlayerMetaAliases();
+  savePlayerProfile();
+  setStatus(`已领取 ${tier}印奖励：${formatDaoSealReward(reward)}`);
+  renderFeaturePage();
+  updateDebugPanel();
+  return true;
 }
 
 function enterLoadout() {
@@ -3043,9 +3146,13 @@ function endGame(win) {
   const levelRewards = checkPlayerLevelUp();
   playerMeta.highestWave = Math.max(playerMeta.highestWave || 0, state.highestWave);
   playerMeta.totalKills = (playerMeta.totalKills || 0) + state.kills;
+  const daoSealResult = calculateDaoSealResult(win);
   const clearedAdventure = win && state.currentChapterId && state.currentNodeId
     ? markAdventureNodeCleared(state.currentChapterId, state.currentNodeId)
     : null;
+  const bestDaoSeals = win && state.currentChapterId && state.currentNodeId
+    ? recordNodeDaoSeals(state.currentChapterId, state.currentNodeId, daoSealResult.count)
+    : 0;
   syncPlayerMetaAliases();
   savePlayerProfile();
   renderSystemSettlement({
@@ -3054,12 +3161,15 @@ function endGame(win) {
       settlementWave,
       settlementKills,
       settlementLingstone,
+      settlementSealInfo,
     },
     win,
     state,
     reward,
     playerExp,
     levelRewards,
+    daoSealResult,
+    bestDaoSeals,
   });
   if (settlementNodeInfo) {
     const node = getChapterNode(state.lastChallengeChapterId || state.currentChapterId, state.lastChallengeNodeId || state.currentNodeId);
@@ -5284,6 +5394,10 @@ featurePageContent.addEventListener("click", (event) => {
   }
   if (action?.dataset.pageAction === "start-adventure") {
     startAdventureNode(action.dataset.nodeId || state.selectedAdventureNodeId || getCurrentChapterNodeId("chapter_1"), action.dataset.chapterId || "chapter_1");
+    return;
+  }
+  if (action?.dataset.pageAction === "claim-dao-seal-reward") {
+    claimChapterDaoSealReward(action.dataset.chapterId || "chapter_1", action.dataset.threshold);
     return;
   }
   const characterSelect = event.target.closest("[data-character-select-id]");

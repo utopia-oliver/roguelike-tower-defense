@@ -76,6 +76,9 @@
       arrayCoreBaseHpBonus: 0,
       arrayCoreDefenseBonus: 0,
       chapterProgress: createDefaultChapterProgress(profileHelpers.chapters),
+      chapterStars: {},
+      chapterStarChests: {},
+      materials: {},
     };
   }
 
@@ -188,6 +191,9 @@
     profile.arrayCoreBaseHpBonus = Math.max(0, Math.floor(Number(profile.arrayCoreBaseHpBonus) || defaults.arrayCoreBaseHpBonus));
     profile.arrayCoreDefenseBonus = Math.max(0, Math.floor(Number(profile.arrayCoreDefenseBonus) || defaults.arrayCoreDefenseBonus));
     profile.chapterProgress = normalizeChapterProgress(profile.chapterProgress, profileHelpers.chapters);
+    profile.chapterStars = profile.chapterStars && typeof profile.chapterStars === "object" ? profile.chapterStars : {};
+    profile.chapterStarChests = profile.chapterStarChests && typeof profile.chapterStarChests === "object" ? profile.chapterStarChests : {};
+    profile.materials = profile.materials && typeof profile.materials === "object" ? profile.materials : {};
 
     return {
       playerLevel: profile.playerLevel,
@@ -207,6 +213,9 @@
       arrayCoreBaseHpBonus: profile.arrayCoreBaseHpBonus,
       arrayCoreDefenseBonus: profile.arrayCoreDefenseBonus,
       chapterProgress: profile.chapterProgress,
+      chapterStars: profile.chapterStars,
+      chapterStarChests: profile.chapterStarChests,
+      materials: profile.materials,
     };
   }
 
