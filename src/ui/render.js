@@ -1603,7 +1603,7 @@
     const chosenRoles = (state.loadoutRoleIds || []).map((id) => DATA.roles[id]?.name || id);
     const characterPanel = `
       <section class="xm-loadout-tab-panel xm-loadout-tab-panel--characters">
-        <div class="xm-loadout-picker"><h3>门人名册</h3><div class="xm-loadout-pick-grid">${roleCards || "<p>暂无可出战门人。</p>"}</div></div>
+        <div class="xm-loadout-picker"><h3>门人名册</h3><div class="xm-loadout-pick-grid" data-scroll-key="loadout-characters">${roleCards || "<p>暂无可出战门人。</p>"}</div></div>
         <div class="xm-loadout-focus">
           <div class="xm-loadout-focus__portrait">${safeText((selectedCharacter.name || "门").slice(0, 1))}</div>
           <h3>${safeText(selectedCharacter.name || "请选择门人")}</h3>
@@ -1633,7 +1633,7 @@
     const chosenArtifacts = selectedArtifactIds.map((id) => DATA.artifacts[id]?.name || id);
     const artifactPanel = `
       <section class="xm-loadout-tab-panel xm-loadout-tab-panel--artifacts">
-        <div class="xm-loadout-picker"><h3>法宝名录</h3><div class="xm-loadout-pick-grid">${artifactCards || "<p>暂无可携带法宝。</p>"}</div></div>
+        <div class="xm-loadout-picker"><h3>法宝名录</h3><div class="xm-loadout-pick-grid" data-scroll-key="loadout-artifacts">${artifactCards || "<p>暂无可携带法宝。</p>"}</div></div>
         <div class="xm-loadout-focus xm-loadout-focus--artifact">
           <div class="xm-loadout-focus__portrait">${safeText((selectedArtifact.name || "器").slice(0, 1))}</div>
           <h3>${safeText(selectedArtifact.name || "请选择法宝")}</h3>
@@ -1680,7 +1680,7 @@
     const formationPanel = `
       <section class="xm-loadout-tab-panel xm-loadout-tab-panel--formation">
         <section class="xm-loadout-formation-v3">
-          <section class="xm-loadout-formation-v3__picker">${formationCards || "<p>暂无可用阵法。</p>"}</section>
+          <section class="xm-loadout-formation-v3__picker" data-scroll-key="loadout-formations">${formationCards || "<p>暂无可用阵法。</p>"}</section>
           <section class="xm-loadout-formation-v3__summary">
             <h3>${safeText(selectedFormation.name || "五方阵盘")}</h3>
             <p>${safeText(selectedFormation.effectText || selectedFormation.description || "阵位加成当前仅作 UI 展示，后续可接入战斗数值系统。")}</p>

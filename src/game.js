@@ -3147,30 +3147,45 @@ function renderFeaturePage() {
   });
 }
 
-function captureLoadoutScrollPositions() {
+let pendingLoadoutScrollPositions = null;
+
+function readLoadoutScrollPositions() {
   if (!loadoutView || state.appState !== APP_STATE.LOADOUT) return [];
-  const selectors = [
-    ".xm-character-list",
-    ".xm-artifact-list",
-    ".xm-loadout-formation-v3__picker",
-    ".xm-loadout-formation-v3__roster",
-    ".xm-loadout-picker",
-    ".xm-loadout-pick-grid",
+  const keys = [
+    "loadout-characters",
+    "loadout-artifacts",
+    "loadout-formations",
   ];
-  return selectors.map((selector) => {
-    const node = loadoutView.querySelector(selector);
-    return node ? { selector, top: node.scrollTop || 0, left: node.scrollLeft || 0 } : null;
+  return keys.map((key) => {
+    const node = loadoutView.querySelector(`[data-scroll-key="${key}"]`);
+    return node ? { key, top: node.scrollTop || 0, left: node.scrollLeft || 0 } : null;
   }).filter(Boolean);
 }
 
+function captureLoadoutScrollPositions() {
+  if (pendingLoadoutScrollPositions) return pendingLoadoutScrollPositions;
+  pendingLoadoutScrollPositions = readLoadoutScrollPositions();
+  return pendingLoadoutScrollPositions;
+}
+
 function restoreLoadoutScrollPositions(scrolls = []) {
-  if (!loadoutView || !scrolls.length) return;
-  requestAnimationFrame(() => {
-    scrolls.forEach(({ selector, top, left }) => {
-      const node = loadoutView.querySelector(selector);
+  if (!loadoutView || !scrolls.length) {
+    if (pendingLoadoutScrollPositions === scrolls) pendingLoadoutScrollPositions = null;
+    return;
+  }
+  const apply = () => {
+    scrolls.forEach(({ key, top, left }) => {
+      const node = loadoutView.querySelector(`[data-scroll-key="${key}"]`);
       if (!node) return;
       node.scrollTop = top;
       node.scrollLeft = left;
+    });
+  };
+  requestAnimationFrame(() => {
+    apply();
+    requestAnimationFrame(() => {
+      apply();
+      if (pendingLoadoutScrollPositions === scrolls) pendingLoadoutScrollPositions = null;
     });
   });
 }
@@ -3197,15 +3212,18 @@ function renderLoadout() {
   });
   restoreLoadoutScrollPositions(scrolls);
   loadoutView.querySelectorAll("[data-loadout-formation-id]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
       state.loadoutFormationId = button.dataset.loadoutFormationId;
       renderLoadout();
       updateUi();
     });
   });
   loadoutView.querySelectorAll("[data-loadout-role-id]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
       const id = button.dataset.loadoutRoleId;
+      state.selectedLoadoutCharacterId = id;
       const selected = state.loadoutRoleIds.includes(id);
       if (selected) {
         state.loadoutRoleIds = state.loadoutRoleIds.filter((roleId) => roleId !== id);
@@ -3214,13 +3232,19 @@ function renderLoadout() {
       } else {
         setStatus(`当前最多选择 ${playerMeta.maxDeploySlots} 名出战角色。`);
       }
+      state.selectedDeployCharacterId = state.loadoutRoleIds.includes(id)
+        ? id
+        : state.loadoutRoleIds[0] || "";
+      state.deployedRoles = (state.deployedRoles || []).filter((role) => state.loadoutRoleIds.includes(role.roleId));
       renderLoadout();
       updateUi();
     });
   });
   loadoutView.querySelectorAll("[data-loadout-artifact-id]").forEach((button) => {
-    button.addEventListener("click", () => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
       const id = button.dataset.loadoutArtifactId;
+      state.selectedLoadoutArtifactId = id;
       const selected = state.loadoutArtifactIds.includes(id);
       if (selected) {
         state.loadoutArtifactIds = state.loadoutArtifactIds.filter((artifactId) => artifactId !== id);
