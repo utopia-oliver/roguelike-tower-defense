@@ -6224,3 +6224,164 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* 28H: compact adventure dao rewards, node details, and sweep modal */
+.xm-dao-seal-panel {
+  width: min(440px, calc(100% - 48px));
+  padding: 10px 12px;
+}
+
+.xm-dao-seal-panel > div:first-child {
+  margin-bottom: 8px;
+}
+
+.xm-dao-seal-rewards {
+  display: flex;
+  gap: 8px;
+}
+
+.xm-dao-seal-reward {
+  align-items: center;
+  display: grid;
+  flex: 0 0 82px;
+  gap: 2px;
+  justify-items: center;
+  min-height: 58px;
+  padding: 7px 6px;
+  text-align: center;
+}
+
+.xm-dao-seal-reward strong {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.xm-dao-seal-chest {
+  align-items: center;
+  border: 1px solid rgba(245, 217, 141, 0.45);
+  border-radius: 8px;
+  display: inline-flex !important;
+  height: 22px;
+  justify-content: center;
+  width: 24px;
+}
+
+.xm-dao-seal-reward small {
+  font-size: 11px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.xm-dao-seal-reward--available .xm-dao-seal-chest {
+  background: rgba(239, 203, 107, 0.18);
+  box-shadow: 0 0 14px rgba(245, 217, 141, 0.28);
+}
+
+.xm-node-copy-block {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(211, 176, 94, 0.16);
+  border-radius: 9px;
+  background: rgba(6, 24, 20, 0.38);
+}
+
+.xm-node-copy-block strong,
+.xm-node-dao-conditions > strong {
+  color: #f5d98d;
+  font-size: 13px;
+}
+
+.xm-node-copy-block p,
+.xm-node-copy-block blockquote {
+  margin: 0;
+}
+
+.xm-node-dao-conditions {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(211, 176, 94, 0.18);
+  border-radius: 9px;
+  background: rgba(6, 24, 20, 0.34);
+}
+
+.xm-node-dao-conditions ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.xm-node-dao-conditions li {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: rgba(241, 236, 211, 0.72);
+  font-size: 12px;
+}
+
+.xm-node-dao-conditions li.is-met {
+  color: #f7e9bd;
+}
+
+.xm-node-dao-conditions li span {
+  color: #f5d98d;
+}
+
+.xm-node-dao-conditions li strong {
+  color: inherit;
+}
+
+.xm-preview-row--dao-result .xm-dao-seal-mark {
+  font-size: 16px;
+}
+
+.xm-adventure-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 8, 6, 0.42);
+  backdrop-filter: blur(3px);
+}
+
+.xm-adventure-modal__panel {
+  width: min(360px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(211, 176, 94, 0.42);
+  border-radius: 12px;
+  background: rgba(7, 24, 20, 0.9);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+  color: #f7efd4;
+}
+
+.xm-adventure-modal__panel h3,
+.xm-adventure-modal__panel p {
+  margin: 0;
+}
+
+.xm-adventure-modal__items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xm-adventure-modal__items span {
+  padding: 5px 9px;
+  border: 1px solid rgba(135, 211, 178, 0.24);
+  border-radius: 999px;
+  background: rgba(12, 46, 38, 0.54);
+}
+
+.xm-adventure-modal__actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}

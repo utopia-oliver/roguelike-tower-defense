@@ -730,6 +730,8 @@ function resetGame(targetAppState = APP_STATE.TITLE) {
     modifiers: createInitialModifiers(),
     selectedAdventureChapterId: playerMeta.chapterProgress?.chapter_1 ? "chapter_1" : "",
     selectedAdventureNodeId: getCurrentChapterNodeId("chapter_1"),
+    adventureDetailOpen: false,
+    adventureModal: null,
     currentChapterId: "",
     currentNodeId: "",
     currentBattleConfigId: "",
@@ -853,7 +855,10 @@ function enterMainHub(notice = "") {
 
 function enterHubPage(page, returnState = APP_STATE.MAIN_HUB) {
   if (!HUB_PAGE_STATES.has(page)) return;
-  if (page === APP_STATE.ADVENTURE) state.adventureDetailOpen = false;
+  if (page === APP_STATE.ADVENTURE) {
+    state.adventureDetailOpen = false;
+    state.adventureModal = null;
+  }
   featureReturnState = returnState;
   state.appState = page;
   state.phase = "hub_page";
@@ -1071,7 +1076,88 @@ function claimChapterDaoSealReward(chapterId, threshold) {
   playerMeta.chapterStarChests[chapterId][tier] = true;
   syncPlayerMetaAliases();
   savePlayerProfile();
-  setStatus(`已领取 ${tier}印奖励：${formatDaoSealReward(reward)}`);
+  const rewardText = formatDaoSealReward(reward);
+  state.adventureModal = {
+    type: "reward-result",
+    title: `${tier}◇ 道印奖励`,
+    message: "奖励已收入宗门库藏。",
+    items: rewardText.split("、").filter(Boolean),
+  };
+  setStatus(`已领取 ${tier}印奖励：${rewardText}`);
+  renderFeaturePage();
+  updateDebugPanel();
+  return true;
+}
+
+function sweepRewardForNode(chapterId, nodeId) {
+  const node = getChapterNode(chapterId, nodeId);
+  const config = DATA.battleConfigs?.[node?.battleConfigId] || {};
+  const waveEnd = Math.max(1, Math.floor(Number(config.waveEnd || config.waveStart || 1)));
+  const spiritStones = Math.max(0, Math.floor(waveEnd * (DATA.settlement?.basePerWave || 0) + (DATA.settlement?.victoryBonus || 0)));
+  const playerExp = Math.max(0, Math.floor(waveEnd * 10));
+  const materials = {};
+  (node?.rewardPreview || []).forEach((name) => {
+    if (!name || /灵石|经验|图鉴|旧阵残拓|归门妖纹|大量/.test(name)) return;
+    materials[name] = (materials[name] || 0) + 1;
+  });
+  return {
+    spiritStones,
+    playerExp,
+    materials,
+    items: [
+      spiritStones > 0 ? `灵石 x${spiritStones}` : "",
+      playerExp > 0 ? `宗主经验 x${playerExp}` : "",
+      ...Object.entries(materials).map(([name, amount]) => `${name} x${amount}`),
+    ].filter(Boolean),
+  };
+}
+
+function openSweepConfirm(chapterId, nodeId) {
+  const bestSeals = getNodeDaoSealCount(chapterId, nodeId);
+  const node = getChapterNode(chapterId, nodeId);
+  if (!node || bestSeals < 3) {
+    setStatus("该节点尚未达成三印，不能扫荡。");
+    return false;
+  }
+  const reward = sweepRewardForNode(chapterId, nodeId);
+  state.adventureModal = {
+    type: "sweep-confirm",
+    chapterId,
+    nodeId,
+    title: `扫荡 ${node.displayId} ${node.name}`,
+    message: "是否扫荡本关？消耗：无。扫荡不会重新计算或覆盖历史最高道印。",
+    items: reward.items.length ? reward.items : ["暂无额外奖励"],
+  };
+  renderFeaturePage();
+  return true;
+}
+
+function confirmAdventureSweep(chapterId, nodeId) {
+  const bestSeals = getNodeDaoSealCount(chapterId, nodeId);
+  const node = getChapterNode(chapterId, nodeId);
+  if (!node || bestSeals < 3) {
+    state.adventureModal = null;
+    setStatus("该节点尚未达成三印，不能扫荡。");
+    renderFeaturePage();
+    return false;
+  }
+  ensureDaoSealState();
+  const reward = sweepRewardForNode(chapterId, nodeId);
+  playerMeta.spiritStones += reward.spiritStones;
+  playerMeta.playerExp += reward.playerExp;
+  const levelRewards = checkPlayerLevelUp();
+  Object.entries(reward.materials || {}).forEach(([name, amount]) => {
+    playerMeta.materials[name] = Math.max(0, Math.floor(Number(playerMeta.materials[name]) || 0)) + Math.max(0, Math.floor(Number(amount) || 0));
+  });
+  syncPlayerMetaAliases();
+  savePlayerProfile();
+  state.adventureModal = {
+    type: "sweep-result",
+    title: "扫荡完成",
+    message: `${node.displayId} ${node.name} 的基础奖励已收入宗门。`,
+    items: [...(reward.items.length ? reward.items : ["暂无额外奖励"]), ...levelRewards],
+  };
+  setStatus(`扫荡完成：${reward.items.join("、") || "暂无额外奖励"}`);
   renderFeaturePage();
   updateDebugPanel();
   return true;
@@ -5438,6 +5524,19 @@ featurePageContent.addEventListener("click", (event) => {
   }
   if (action?.dataset.pageAction === "start-adventure") {
     startAdventureNode(action.dataset.nodeId || state.selectedAdventureNodeId || getCurrentChapterNodeId("chapter_1"), action.dataset.chapterId || "chapter_1");
+    return;
+  }
+  if (action?.dataset.pageAction === "open-sweep-confirm") {
+    openSweepConfirm(action.dataset.chapterId || "chapter_1", action.dataset.nodeId || state.selectedAdventureNodeId || getCurrentChapterNodeId("chapter_1"));
+    return;
+  }
+  if (action?.dataset.pageAction === "confirm-sweep") {
+    confirmAdventureSweep(action.dataset.chapterId || "chapter_1", action.dataset.nodeId || state.selectedAdventureNodeId || getCurrentChapterNodeId("chapter_1"));
+    return;
+  }
+  if (action?.dataset.pageAction === "close-adventure-modal") {
+    state.adventureModal = null;
+    renderFeaturePage();
     return;
   }
   if (action?.dataset.pageAction === "claim-dao-seal-reward") {

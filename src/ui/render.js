@@ -51,13 +51,13 @@
       const tier = Number(threshold);
       const isClaimed = Boolean(claimed[threshold] || claimed[tier]);
       const available = total >= tier && !isClaimed;
-      const stateLabel = isClaimed ? "已领取" : available ? "可领取" : "未达成";
+      const stateLabel = isClaimed ? "已领" : available ? "可领取" : "未达成";
       const stateClass = isClaimed ? "claimed" : available ? "available" : "locked";
       return `
         <button type="button" class="xm-dao-seal-reward xm-dao-seal-reward--${stateClass}" data-page-action="claim-dao-seal-reward" data-chapter-id="${safeText(chapter.chapterId)}" data-threshold="${safeText(threshold)}" ${available ? "" : "disabled"}>
-          <strong>${safeText(threshold)}印奖励</strong>
-          <span>${safeText(stateLabel)}</span>
-          <small>${safeText(formatDaoSealReward(reward))}</small>
+          <strong>${safeText(threshold)}◇</strong>
+          <span class="xm-dao-seal-chest" aria-hidden="true">▣</span>
+          <small>${safeText(stateLabel)}</small>
         </button>
       `;
     }).join("");
@@ -1008,6 +1008,40 @@
     }[type] || type || "战斗";
   }
 
+  function nodeBriefText(node) {
+    const map = {
+      chapter1_1: "妖气初涌，赤鬃獠正沿山门外线冲击第一道防线。",
+      chapter1_2: "掠影猲贴地疾行，试图越过青石外阶直扑阵眼。",
+      chapter1_3: "铁甲魈披骨甲压近，适合用稳定输出尽快破开厚甲。",
+      chapter1_4: "裂爪獠撕咬外阵裂纹，阵眼第一次受到明确破阵威胁。",
+      chapter1_5: "幽符巫与赤鬃妖将协同压阵，需要优先处理施咒与精英威胁。",
+      chapter1_6: "腐瘴妖物盘踞旧阵残碑，战后或可收录旧阵线索。",
+      chapter1_7: "幽箭猲与骨符祭巫从黑雾中远程压制阵眼。",
+      chapter1_8: "噬阵螟啃噬裂隙外环，破阵妖种开始成群出现。",
+      chapter1_9: "赤鬃妖将据守封阵祭坛，妖潮强度明显上升。",
+      chapter1_10: "黑渊门将踏出妖门裂隙，第一章迎来最终守山考验。",
+    };
+    return map[node?.nodeId] || node?.description || "妖气逼近山门，需整备门人与法宝守住护山大阵。";
+  }
+
+  function nodeStoryText(node) {
+    if (!node) return "山门外妖气未散，宗门卷宗尚未收录完整情报。";
+    if (node.storyText && node.storyText !== node.description) return node.storyText;
+    return `${node.description || "山门外妖气渐盛。"} 此地情势已被镇妖录标记为历练节点，宗主需据敌情调整阵法与出战门人。`;
+  }
+
+  function renderDaoSealConditions(bestCount = 0) {
+    const rows = [
+      ["一印", "成功通关"],
+      ["二印", "成功通关，且阵眼韧性不低于 50%"],
+      ["三印", "成功通关，且阵眼韧性不低于 80%"],
+    ];
+    return rows.map(([label, text], index) => {
+      const met = bestCount >= index + 1;
+      return `<li class="${met ? "is-met" : ""}"><span>${met ? "◆" : "◇"}</span><strong>${safeText(label)}</strong>${safeText(text)}</li>`;
+    }).join("");
+  }
+
   function renderAdventurePage({ DATA, playerProfile, state, helpers }) {
     const chapter = DATA.chapters?.chapter_1;
     if (!chapter) return `<section class="xm-page-panel"><h2>历练</h2><p>章节数据暂未开放。</p></section>`;
@@ -1044,7 +1078,9 @@
     const rewards = (selectedNode.rewardPreview || []).map((name) => `<span>${safeText(name)}</span>`).join("");
     const locked = selectedStatus === "locked";
     const selectedNodeDaoSeals = getNodeDaoSealCount(playerProfile, chapter.chapterId, selectedNode.nodeId);
-    const startLabel = selectedStatus === "cleared" ? "再次挑战" : "开始历练";
+    const sweepReady = selectedStatus === "cleared" && selectedNodeDaoSeals >= 3;
+    const startLabel = locked ? "请先完成前置节点" : sweepReady ? "扫荡" : selectedStatus === "cleared" ? "再次挑战" : "开始历练";
+    const startAction = sweepReady ? "open-sweep-confirm" : "start-adventure";
     const detail = detailOpen ? `
       <aside class="xm-node-detail xm-node-detail--drawer ${locked ? "xm-node-detail--locked" : ""}">
         <header class="xm-node-detail__header">
@@ -1055,20 +1091,39 @@
           <button type="button" class="xm-node-detail-close" data-page-action="close-adventure-detail" aria-label="关闭节点详情">×</button>
         </header>
         <div class="xm-node-detail__body">
-          <p>${safeText(locked ? "未解锁，请先完成前置节点。" : selectedNode.description)}</p>
-          <blockquote>${safeText(selectedNode.storyText || selectedNode.description)}</blockquote>
+          <section class="xm-node-copy-block">
+            <strong>节点简介</strong>
+            <p>${safeText(locked ? "未解锁，请先完成前置节点。" : nodeBriefText(selectedNode))}</p>
+          </section>
+          <section class="xm-node-copy-block">
+            <strong>剧情描述</strong>
+            <blockquote>${safeText(locked ? "前路妖雾未散，宗门尚未掌握此处完整情报。" : nodeStoryText(selectedNode))}</blockquote>
+          </section>
           <div class="xm-preview-row"><strong>节点状态</strong><div><span>${safeText(statusLabel(selectedStatus))}</span></div></div>
-          <div class="xm-preview-row"><strong>历史最高道印</strong><div><span class="xm-dao-seal-mark">${safeText(daoSealGlyph(selectedNodeDaoSeals))}</span></div></div>
+          <div class="xm-preview-row xm-preview-row--dao-result"><strong>历史最高道印</strong><div><span class="xm-dao-seal-mark">${safeText(daoSealGlyph(selectedNodeDaoSeals))}</span></div></div>
+          <section class="xm-node-dao-conditions"><strong>本关道印</strong><ul>${renderDaoSealConditions(selectedNodeDaoSeals)}</ul></section>
           <div class="xm-preview-row"><strong>敌人预览</strong><div>${enemies || "<span>未知妖物</span>"}</div></div>
           <div class="xm-preview-row"><strong>奖励预览</strong><div>${rewards || "<span>灵石</span>"}</div></div>
         </div>
         <footer class="xm-node-detail__footer">
-          <button type="button" class="primary" data-page-action="start-adventure" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(locked ? "请先完成前置节点" : startLabel)}</button>
+          <button type="button" class="primary" data-page-action="${safeText(startAction)}" data-chapter-id="${safeText(chapter.chapterId)}" data-node-id="${safeText(selectedNode.nodeId)}" ${locked ? "disabled" : ""}>${safeText(startLabel)}</button>
           <button type="button" class="secondary" data-page-action="back-main">返回宗门</button>
         </footer>
       </aside>
     ` : "";
-    return `<section class="xm-adventure-map"><div class="xm-adventure-map-frame"><header class="xm-adventure-map-header"><div class="xm-adventure-map-header__main"><p class="xm-eyebrow">山门外</p><h2>${safeText(chapter.name)}</h2><span>${safeText(chapter.subtitle || "妖门裂隙初现，山门大阵初醒。")}</span></div><p class="xm-adventure-progress">进度 ${clearedCount} / ${chapter.nodes.length} · 本章道印 ${chapterDaoSeals} / ${chapterMaxDaoSeals}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><aside class="xm-dao-seal-panel"><div><strong>道印奖励</strong><span>本章道印 ${safeText(chapterDaoSeals)} / ${safeText(chapterMaxDaoSeals)}</span></div><div class="xm-dao-seal-rewards">${renderChapterDaoSealRewards({ chapter, playerProfile })}</div></aside><svg class="xm-map-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${routeSegments}</svg><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}</div></section>`;
+    const modal = state.adventureModal ? `
+      <div class="xm-adventure-modal">
+        <div class="xm-adventure-modal__panel">
+          <h3>${safeText(state.adventureModal.title || "提示")}</h3>
+          <p>${safeText(state.adventureModal.message || "")}</p>
+          ${state.adventureModal.items?.length ? `<div class="xm-adventure-modal__items">${state.adventureModal.items.map((item) => `<span>${safeText(item)}</span>`).join("")}</div>` : ""}
+          <div class="xm-adventure-modal__actions">
+            ${state.adventureModal.type === "sweep-confirm" ? `<button type="button" class="secondary" data-page-action="close-adventure-modal">取消</button><button type="button" class="primary" data-page-action="confirm-sweep" data-chapter-id="${safeText(state.adventureModal.chapterId)}" data-node-id="${safeText(state.adventureModal.nodeId)}">确认扫荡</button>` : `<button type="button" class="primary" data-page-action="close-adventure-modal">确认</button>`}
+          </div>
+        </div>
+      </div>
+    ` : "";
+    return `<section class="xm-adventure-map"><div class="xm-adventure-map-frame"><header class="xm-adventure-map-header"><div class="xm-adventure-map-header__main"><p class="xm-eyebrow">山门外</p><h2>${safeText(chapter.name)}</h2><span>${safeText(chapter.subtitle || "妖门裂隙初现，山门大阵初醒。")}</span></div><p class="xm-adventure-progress">进度 ${clearedCount} / ${chapter.nodes.length} · 本章道印 ${chapterDaoSeals} / ${chapterMaxDaoSeals}</p></header><aside class="xm-chapter-panel xm-chapter-panel--compact"><strong>${safeText(chapter.theme)}</strong><span>${safeText(chapter.description)}</span></aside><aside class="xm-dao-seal-panel"><div><strong>道印进度</strong><span>本章道印 ${safeText(chapterDaoSeals)} / ${safeText(chapterMaxDaoSeals)}</span></div><div class="xm-dao-seal-rewards">${renderChapterDaoSealRewards({ chapter, playerProfile })}</div></aside><svg class="xm-map-route-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${routeSegments}</svg><div class="xm-node-route">${chapter.nodes.map(nodeButton).join("")}</div>${detail}${modal}</div></section>`;
   }
 
   function renderFeaturePage({ elements, page, DATA, playerProfile, state, helpers }) {
