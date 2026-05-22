@@ -1224,11 +1224,32 @@
       : "战斗中门人会自动攻击。";
   }
 
-  function renderSettlement({ elements, win, state, reward, playerExp, levelRewards, daoSealResult, bestDaoSeals }) {
-    elements.settlementTitle.textContent = win ? "守山成功" : "阵眼破碎";
-    elements.settlementWave.textContent = state.highestWave;
-    elements.settlementKills.textContent = state.kills;
-    elements.settlementLingstone.textContent = `${reward}灵石 / ${playerExp}经验${levelRewards.length ? ` / ${levelRewards.join("、")}` : ""}`;
+  function renderSettlement({ elements, win, state, reward, playerExp, levelRewards, daoSealResult, bestDaoSeals, settlementContext }) {
+    const context = settlementContext || {};
+    const rewardItems = Array.isArray(context.rewardItems) ? context.rewardItems : [];
+    const roleNames = Array.isArray(context.roleNames) ? context.roleNames : [];
+    const artifactNames = Array.isArray(context.artifactNames) ? context.artifactNames : [];
+    elements.settlementTitle.textContent = win ? "守山功成" : "山门失守";
+    if (elements.settlementSubtitle) {
+      elements.settlementSubtitle.textContent = win ? "妖潮暂退，山门大阵重归稳定。" : "阵眼失衡，众弟子被迫退守山门。";
+    }
+    elements.settlementWave.textContent = `妖潮 ${safeText(context.waveText || `${state.highestWave || state.wave || 1}`)}`;
+    elements.settlementKills.textContent = `${safeText(context.coreHp ?? 0)} / ${safeText(context.coreMaxHp ?? 0)}`;
+    elements.settlementLingstone.textContent = rewardItems.length
+      ? rewardItems.map((item) => `${safeText(item.name)} +${safeText(item.amount)}`).join(" / ")
+      : "暂无额外奖励";
+    if (elements.settlementNodeInfo) {
+      const progressText = win
+        ? context.nextNodeText
+          ? `节点已通关：${safeText(context.clearedNodeText || "未知节点")} · 新节点已解锁：${safeText(context.nextNodeText)}`
+          : `节点已通关：${safeText(context.clearedNodeText || "未知节点")} · 本章当前节点已全部完成。`
+        : `失败原因：${safeText(context.failureReason || "护山阵眼破碎")}`;
+      elements.settlementNodeInfo.textContent = progressText;
+    }
+    if (elements.settlementNextButton) {
+      elements.settlementNextButton.disabled = win && !context.nextNodeText;
+      elements.settlementNextButton.textContent = win ? (context.nextNodeText ? "下一关" : "暂无下一关") : "重新整备";
+    }
     if (elements.settlementSealInfo) {
       const result = daoSealResult || { count: 0, conditions: [] };
       const conditions = result.conditions?.length
@@ -1240,6 +1261,13 @@
           ];
       elements.settlementSealInfo.innerHTML = `
         <section class="xm-settlement-dao-seals">
+          <div class="xm-settlement-summary-grid">
+            <p><strong>当前章节</strong><span>${safeText(context.chapterName || "未知章节")}</span></p>
+            <p><strong>当前节点</strong><span>${safeText(context.nodeName || "未知节点")}</span></p>
+            <p><strong>战斗模式</strong><span>${safeText(context.battleModeLabel || "守山模式")}</span></p>
+            <p><strong>阵眼韧性</strong><span>${safeText(context.coreHp ?? 0)} / ${safeText(context.coreMaxHp ?? 0)}</span></p>
+            <p><strong>本局阵法</strong><span>${safeText(context.formationName || "未选择阵法")}</span></p>
+          </div>
           <p class="xm-eyebrow">本关道印</p>
           <div class="xm-dao-seal-mark xm-dao-seal-mark--large">${safeText(daoSealGlyph(win ? result.count : 0))}</div>
           <ul class="xm-dao-seal-conditions">
@@ -1248,6 +1276,16 @@
               : "<li class=\"is-missing\"><span>◇</span>未能守住山门，暂无道印。</li>"}
           </ul>
           <p class="xm-dao-seal-best">历史最高道印：${safeText(daoSealGlyph(bestDaoSeals || 0))}</p>
+          <div class="xm-settlement-roster">
+            <section><strong>本局出战门人</strong><div>${roleNames.length ? roleNames.map((name) => `<span>${safeText(name)}</span>`).join("") : "<span>暂无记录</span>"}</div></section>
+            <section><strong>本局法宝</strong><div>${artifactNames.length ? artifactNames.map((name) => `<span>${safeText(name)}</span>`).join("") : "<span>未携带法宝</span>"}</div></section>
+          </div>
+          <section class="xm-settlement-rewards">
+            <strong>本局奖励</strong>
+            <div>${rewardItems.length ? rewardItems.map((item) => `<span>${safeText(item.name)} +${safeText(item.amount)}</span>`).join("") : "<span>暂无额外奖励</span>"}</div>
+            ${levelRewards.length ? `<small>额外：${safeText(levelRewards.join("、"))}</small>` : ""}
+          </section>
+          ${win ? "" : "<p class=\"xm-settlement-tip\">建议提升门人等级、强化法宝或调整阵法后再战。</p>"}
         </section>
       `;
     }

@@ -50,6 +50,7 @@ const loadoutClearFormationButton = document.querySelector("#loadoutClearFormati
 const loadoutRecommendButton = document.querySelector("#loadoutRecommendButton");
 const returnLobbyButton = document.querySelector("#returnLobbyButton");
 const settlementAdventureButton = document.querySelector("#settlementAdventureButton");
+const settlementNextButton = document.querySelector("#settlementNextButton");
 const settlementCodexButton = document.querySelector("#settlementCodexButton");
 const settingsModal = document.querySelector("#settingsModal");
 const settingsCloseButton = document.querySelector("#settingsCloseButton");
@@ -67,6 +68,7 @@ const loadoutRoleList = document.querySelector("#loadoutRoleList");
 const loadoutArtifactList = document.querySelector("#loadoutArtifactList");
 const loadoutStatus = document.querySelector("#loadoutStatus");
 const settlementTitle = document.querySelector("#settlementTitle");
+const settlementSubtitle = document.querySelector("#settlementSubtitle");
 const settlementWave = document.querySelector("#settlementWave");
 const settlementKills = document.querySelector("#settlementKills");
 const settlementLingstone = document.querySelector("#settlementLingstone");
@@ -734,6 +736,8 @@ function resetGame(targetAppState = APP_STATE.TITLE) {
     lastChallengeChapterId: "",
     lastChallengeNodeId: "",
     lastBattleConfigId: "",
+    settlementNextChapterId: "",
+    settlementNextNodeId: "",
   });
   perkModal.classList.add("hidden");
   window.__SHOUSHANMEN_DEBUG__ = getDebugSnapshot;
@@ -3133,6 +3137,48 @@ function calculatePlayerExp(win) {
   return exp;
 }
 
+function buildSettlementContext({ win, reward, playerExp, clearedAdventure, daoSealResult, bestDaoSeals }) {
+  const chapterId = state.lastChallengeChapterId || state.currentChapterId || "chapter_1";
+  const nodeId = state.lastChallengeNodeId || state.currentNodeId || getCurrentChapterNodeId(chapterId);
+  const chapter = getChapter(chapterId);
+  const node = getChapterNode(chapterId, nodeId);
+  const nextNodeId = clearedAdventure?.nextNodeId || "";
+  const nextNode = nextNodeId ? getChapterNode(chapterId, nextNodeId) : null;
+  const currentHp = Number.isFinite(state.baseHp) ? state.baseHp : Number.isFinite(state.arrayCoreHp) ? state.arrayCoreHp : 0;
+  const maxHp = Number.isFinite(state.baseMaxHp)
+    ? state.baseMaxHp
+    : Number.isFinite(state.maxBaseHp)
+    ? state.maxBaseHp
+    : Number.isFinite(state.arrayCoreMaxHp)
+    ? state.arrayCoreMaxHp
+    : Math.max(currentHp, 0);
+  const totalWaves = Array.isArray(DATA.waves) ? DATA.waves.length : Math.max(1, state.highestWave || state.wave || 1);
+  const roleNames = (state.deployedRoles || []).map((role) => DATA.roles[role.roleId]?.name || role.roleId).filter(Boolean);
+  const artifactNames = (state.selectedArtifactIds || []).map((id) => DATA.artifacts[id]?.name || id).filter(Boolean);
+  const formationName = DATA.formations[state.selectedFormationId]?.name || DATA.formations[state.loadoutFormationId]?.name || "未选择阵法";
+  return {
+    win,
+    chapterName: chapter?.name || "未知章节",
+    nodeName: node ? `${node.displayId} ${node.name}` : "未知节点",
+    battleModeLabel: "守山模式",
+    failureReason: win ? "" : "护山阵眼破碎",
+    waveText: `${state.highestWave || state.wave || 1} / ${totalWaves}`,
+    coreHp: Math.max(0, Math.ceil(currentHp || 0)),
+    coreMaxHp: Math.max(0, Math.ceil(maxHp || 0)),
+    formationName,
+    roleNames,
+    artifactNames,
+    rewardItems: [
+      reward > 0 ? { name: "灵石", amount: reward } : null,
+      playerExp > 0 ? { name: "宗主经验", amount: playerExp } : null,
+    ].filter(Boolean),
+    clearedNodeText: node ? `${node.displayId} ${node.name}` : "",
+    nextNodeText: nextNode ? `${nextNode.displayId} ${nextNode.name}` : "",
+    daoSealResult,
+    bestDaoSeals,
+  };
+}
+
 function endGame(win) {
   if (state.gameOver) return;
   state.gameOver = true;
@@ -3153,15 +3199,21 @@ function endGame(win) {
   const bestDaoSeals = win && state.currentChapterId && state.currentNodeId
     ? recordNodeDaoSeals(state.currentChapterId, state.currentNodeId, daoSealResult.count)
     : 0;
+  state.settlementNextChapterId = win && clearedAdventure?.nextNodeId ? state.currentChapterId : "";
+  state.settlementNextNodeId = win && clearedAdventure?.nextNodeId ? clearedAdventure.nextNodeId : "";
+  const settlementContext = buildSettlementContext({ win, reward, playerExp, clearedAdventure, daoSealResult, bestDaoSeals });
   syncPlayerMetaAliases();
   savePlayerProfile();
   renderSystemSettlement({
     elements: {
       settlementTitle,
+      settlementSubtitle,
       settlementWave,
       settlementKills,
       settlementLingstone,
       settlementSealInfo,
+      settlementNodeInfo,
+      settlementNextButton,
     },
     win,
     state,
@@ -3170,16 +3222,8 @@ function endGame(win) {
     levelRewards,
     daoSealResult,
     bestDaoSeals,
+    settlementContext,
   });
-  if (settlementNodeInfo) {
-    const node = getChapterNode(state.lastChallengeChapterId || state.currentChapterId, state.lastChallengeNodeId || state.currentNodeId);
-    const unlockText = clearedAdventure?.node?.storyUnlock
-      ? `剧情线索：${clearedAdventure.node.storyUnlock === "old_array_rubbing" ? "旧阵残拓" : "归门妖纹"}`
-      : "";
-    settlementNodeInfo.textContent = node
-      ? `${win ? "已完成" : "未通关"}：${node.displayId} ${node.name}${clearedAdventure?.nextNodeId ? ` · 已解锁 ${getChapterNode(state.currentChapterId, clearedAdventure.nextNodeId)?.displayId || ""}` : ""}${unlockText ? ` · ${unlockText}` : ""}`
-      : "";
-  }
   showView(settlementView);
   updateDebugPanel();
 }
@@ -5545,11 +5589,17 @@ returnLobbyButton.addEventListener("click", () => enterMainHub());
 settlementAdventureButton.addEventListener("click", () => {
   enterHubPage(APP_STATE.ADVENTURE);
 });
+settlementNextButton?.addEventListener("click", () => {
+  startAdventureNode(
+    state.settlementNextNodeId || state.lastChallengeNodeId || state.currentNodeId || getCurrentChapterNodeId("chapter_1"),
+    state.settlementNextChapterId || state.lastChallengeChapterId || state.currentChapterId || "chapter_1"
+  );
+});
 const settlementRetryButton = document.querySelector("#settlementRetryButton");
 settlementRetryButton?.addEventListener("click", () => {
   startAdventureNode(state.lastChallengeNodeId || state.currentNodeId || getCurrentChapterNodeId("chapter_1"), state.lastChallengeChapterId || state.currentChapterId || "chapter_1");
 });
-settlementCodexButton.addEventListener("click", () => {
+settlementCodexButton?.addEventListener("click", () => {
   resetGame(APP_STATE.CODEX);
 });
 roleUpgradeButton.addEventListener("click", () => {
