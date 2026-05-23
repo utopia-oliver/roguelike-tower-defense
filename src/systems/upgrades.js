@@ -12,6 +12,52 @@
     major_evolution_upgrade: 25,
   };
 
+  const MOJIBAKE_PATTERNS = [
+    "\uFFFD",
+    "\u00C3",
+    "\u00C2",
+    "\u00E6",
+    "\u00E7",
+    "\u00E5",
+    "\u00E8",
+    "\u00E9",
+    "\u00E4",
+    "\u00EF\u00BF\u00BD",
+    "\u5BB8",
+    "\u58A4",
+    "\u6D7C",
+    "\u5A67",
+    "\u705E",
+    "\u9350",
+    "\u7EFE",
+    "\u7ED7",
+    "\u5A09",
+    "\u6097",
+    "\u940F",
+    "\u741A",
+    "\u9286",
+    "\u95C8",
+    "\u59E3",
+    "\u8930",
+    "\u7EC2",
+    "\u6984",
+    "\u7176",
+  ];
+
+  function detectMojibakeInPerks(choices = []) {
+    const bad = new RegExp(MOJIBAKE_PATTERNS.join("|"));
+    const badChoices = choices.filter((perk) => {
+      try {
+        return bad.test(JSON.stringify(perk));
+      } catch (error) {
+        return false;
+      }
+    });
+    if (badChoices.length) {
+      console.warn("[Mojibake] upgrade choices contain suspicious text:", badChoices);
+    }
+  }
+
   function currentRunCharacters({ state, data }) {
     return state.deployedRoles
       .map((role) => data.roles[role.roleId])
@@ -315,7 +361,7 @@
               targetName: "青崖巨阙",
               effectType: "martial_art_branch_upgrade",
               description: "青崖巨阙伤害提升30%。",
-              valueText: "宸ㄥ墤浼ゅ +30%",
+              valueText: "巨剑伤害 +30%",
               effect: { type: "martial_art_branch_upgrade", martialArtId: art.id, upgradeId: "qingya_giant_damage" },
             },
             {
@@ -335,7 +381,7 @@
               targetName: "青崖巨阙",
               effectType: "martial_art_branch_upgrade",
               description: "青崖巨阙溅射范围提升25%。",
-              valueText: "宸ㄥ墤婧呭皠 +25%",
+              valueText: "巨剑溅射 +25%",
               effect: { type: "martial_art_branch_upgrade", martialArtId: art.id, upgradeId: "qingya_giant_splash" },
             },
           ];
@@ -359,7 +405,7 @@
             categoryKey: "martial_art_damage",
             effectField: "damageMultiplier",
             description: `${art.name}伤害提升25%。`,
-            valueText: "浼ゅ +25%",
+            valueText: "伤害 +25%",
             effect: { type: "martial_art_damage_bonus", martialArtId: art.id, value: 0.25 },
           },
           {
@@ -380,7 +426,7 @@
             categoryKey: "attack_speed",
             effectField: "attackIntervalMultiplier",
             description: `${art.name}攻击间隔降低12%。`,
-            valueText: "鏀诲嚮闂撮殧 -12%",
+            valueText: "攻击间隔 -12%",
             effect: { type: "martial_art_attack_interval_mult", martialArtId: art.id, value: 0.88 },
           },
           {
@@ -866,11 +912,16 @@
     if (!hasExplicitPerkTarget(perk)) return false;
     if (perk.stackable === false && state.acquiredPerks.has(perk.id)) return false;
     const requirement = String(perk.requirement || "");
-    if (requirement.includes("灞€鍐呯瓑绾?=")) {
-      const required = Number(requirement.match(/\d+/)?.[0] || 1);
+    const levelMatch = requirement.match(/局内等级\s*>=\s*(\d+)/);
+    if (levelMatch) {
+      const required = Number(levelMatch[1] || 1);
       if (state.runLevel < required) return false;
     }
-    if (requirement.includes("绗?娉㈠悗") && state.wave <= 5) return false;
+    const waveMatch = requirement.match(/第\s*(\d+)\s*波后/);
+    if (waveMatch) {
+      const requiredWave = Number(waveMatch[1] || 1);
+      if (state.wave <= requiredWave) return false;
+    }
     if (perk.scope === "invalid") return false;
     if (perk.scope === "martial_art_branch") {
       if (!currentRunCharacters({ state, data }).some((character) => character.id === "lu_qingya")) return false;
@@ -1065,6 +1116,7 @@
       pool.splice(pool.indexOf(selected), 1);
     }
     if (choices.length < count) fillWithGenericPerks({ choices, count, context });
+    detectMojibakeInPerks(choices);
     return choices;
   }
 
