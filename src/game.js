@@ -579,6 +579,7 @@ function getCharacterUpgradeCost(characterLevel, rarity) {
 }
 
 const CHARACTER_MAX_LEVEL = 20;
+const ARTIFACT_MAX_LEVEL = 20;
 
 function getCharacterUpgradeCostInfo(characterId) {
   const level = Math.max(1, Math.floor(Number(getCharacterLevel(characterId)) || 1));
@@ -617,6 +618,69 @@ function upgradeCharacter(characterId) {
   syncPlayerMetaAliases();
   savePlayerProfile();
   setStatus(`${character.name} 修为提升至 Lv.${cost.nextLevel}。`);
+  renderLobby();
+  renderFeaturePage();
+  updateDebugPanel();
+  return true;
+}
+
+function getArtifactLevel(artifactId) {
+  playerMeta.artifactLevels = playerMeta.artifactLevels || {};
+  return Math.max(1, Math.floor(Number(playerMeta.artifactLevels[artifactId]) || 1));
+}
+
+function getArtifactUpgradeCostInfo(artifactId) {
+  const level = getArtifactLevel(artifactId);
+  const isMax = level >= ARTIFACT_MAX_LEVEL;
+  return {
+    level,
+    nextLevel: isMax ? level : level + 1,
+    maxLevel: ARTIFACT_MAX_LEVEL,
+    isMax,
+    spiritStones: isMax ? 0 : level * 150,
+  };
+}
+
+function getArtifactEffectiveStats(artifactId) {
+  const artifact = DATA.artifacts?.[artifactId] || {};
+  const level = getArtifactLevel(artifactId);
+  const baseDamage = Number(artifact.damage ?? artifact.baseDamage ?? 0) || 0;
+  return {
+    level,
+    baseDamage,
+    damage: baseDamage * (1 + (level - 1) * 0.1),
+    nextDamage: baseDamage * (1 + level * 0.1),
+    supportsDamageUpgrade: baseDamage > 0,
+  };
+}
+
+function upgradeArtifact(artifactId) {
+  const artifact = DATA.artifacts?.[artifactId];
+  if (!artifact || !playerMeta.ownedArtifacts.includes(artifactId)) {
+    setStatus("该法宝尚未入库，无法淬炼。");
+    return false;
+  }
+  if (!getArtifactEffectiveStats(artifactId).supportsDamageUpgrade) {
+    setStatus(`${artifact.name || "法宝"} 当前版本暂不支持淬炼效果。`);
+    return false;
+  }
+  playerMeta.artifactLevels = playerMeta.artifactLevels || {};
+  const cost = getArtifactUpgradeCostInfo(artifactId);
+  if (cost.isMax) {
+    setStatus(`${artifact.name || "法宝"} 已达当前版本等级上限。`);
+    return false;
+  }
+  const spend = spendResources([
+    { type: "currency", id: "spiritStones", name: "灵石", amount: cost.spiritStones },
+  ]);
+  if (!spend.success) {
+    setStatus(`${artifact.name || "法宝"} 淬炼灵石不足：需要灵石 ${cost.spiritStones}。`);
+    return false;
+  }
+  playerMeta.artifactLevels[artifactId] = cost.nextLevel;
+  syncPlayerMetaAliases();
+  savePlayerProfile();
+  setStatus(`${artifact.name || "法宝"} 淬炼至 Lv.${cost.nextLevel}。`);
   renderLobby();
   renderFeaturePage();
   updateDebugPanel();
@@ -2915,6 +2979,7 @@ function updateArtifact(dt) {
       getArtifactOrigin() {
         return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
       },
+      getArtifactLevel,
       healArrayCore(amount) {
         state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + amount);
         syncBaseHpAliases();
@@ -3585,6 +3650,9 @@ function renderFeaturePage() {
       getCharacterLevel,
       getCharacterBaseFinalDamage,
       getCharacterUpgradeCostInfo,
+      getArtifactLevel,
+      getArtifactUpgradeCostInfo,
+      getArtifactEffectiveStats,
     },
   });
 }
@@ -4256,6 +4324,7 @@ function artifactDebugCallbacks() {
     getArtifactOrigin() {
       return { x: canvas.width / 2, y: canvas.height - grid.cellH * 0.35 };
     },
+    getArtifactLevel,
     healArrayCore(amount) {
       state.arrayCoreHp = Math.min(state.arrayCoreMaxHp, state.arrayCoreHp + amount);
       syncBaseHpAliases();
@@ -5775,6 +5844,12 @@ featurePageContent.addEventListener("click", (event) => {
       setStatus(`当前最多可携带 ${playerMeta.maxArtifactSlots} 件法宝。`);
     }
     state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
+    renderFeaturePage();
+    return;
+  }
+  const artifactUpgrade = event.target.closest("[data-artifact-upgrade-id]");
+  if (artifactUpgrade) {
+    upgradeArtifact(artifactUpgrade.dataset.artifactUpgradeId);
     renderFeaturePage();
     return;
   }

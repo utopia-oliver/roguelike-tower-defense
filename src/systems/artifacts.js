@@ -342,13 +342,21 @@
     }
   }
 
-  function artifactParams({ state, artifact }) {
+  function applyArtifactLevelParams(params, artifact, callbacks) {
+    const level = Math.max(1, Math.floor(Number(call(callbacks, "getArtifactLevel", artifact.id)) || 1));
+    return {
+      ...params,
+      damage: (Number(params.damage) || 0) * (1 + (level - 1) * 0.1),
+    };
+  }
+
+  function artifactParams({ state, artifact, callbacks }) {
     const runtime = getArtifactRuntimeState({ state, artifactId: artifact.id });
-    return applyArtifactEvolutionParams(
+    return applyArtifactLevelParams(applyArtifactEvolutionParams(
       applyArtifactModifierToParams(artifact, getArtifactModifier({ state, artifactId: artifact.id })),
       artifact,
       runtime,
-    );
+    ), artifact, callbacks);
   }
 
   function hasArtifactUpgrade(runtime, suffix) {
@@ -651,7 +659,7 @@
   function triggerArtifact({ state, DATA, artifactId, callbacks }) {
     const artifact = getArtifactConfig({ DATA, artifactId });
     if (!artifact) return false;
-    const params = artifactParams({ state, artifact });
+    const params = artifactParams({ state, artifact, callbacks });
     if (artifact.type === "projectile") return triggerProjectileArtifact({ state, artifact, params, callbacks });
     if (artifact.type === "chain") return triggerChainArtifact({ state, artifact, params, callbacks });
     if (artifact.type === "support") return triggerSupportArtifact({ state, artifact, params, callbacks });

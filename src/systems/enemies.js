@@ -635,7 +635,7 @@
         for (let i = 0; i < 3; i += 1) {
           call(this.context, "spawnEnemy", "enemy_little_yao");
         }
-        call(this.context, "setStatus", "黑风妖将召来山野小妖。");
+        call(this.context, "setStatus", "赤影妖将召来赤鬃獠。");
         this.recordAbilityAction();
         return true;
       }

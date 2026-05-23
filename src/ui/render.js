@@ -14,6 +14,23 @@
     return Array.isArray(collection) ? collection : Object.values(collection || {});
   }
 
+  function assetFallbackLabel(type, label = "") {
+    if (label) return label;
+    if (type === "character") return "门人";
+    if (type === "monster") return "妖物";
+    return "图";
+  }
+
+  function renderSafeImage(path, type = "generic", label = "", className = "xm-safe-image") {
+    const fallback = assetFallbackLabel(type, label);
+    const baseClass = className === "xm-safe-image" ? "xm-safe-image" : `xm-safe-image ${className}`;
+    const typeClass = `xm-safe-image--${type} ${className}--${type}`;
+    if (!path) {
+      return `<span class="${safeText(`${baseClass} ${typeClass} ${className}--placeholder`)}"><span>${safeText(fallback)}</span></span>`;
+    }
+    return `<span class="${safeText(`${baseClass} ${typeClass}`)}"><img src="${safeText(path)}" alt="" loading="lazy" onerror="this.hidden=true;this.nextElementSibling.hidden=false;"><span hidden>${safeText(fallback)}</span></span>`;
+  }
+
   const CHAPTER_DAO_SEAL_REWARDS = {
     chapter_1: {
       12: { spiritStones: 300 },
@@ -571,18 +588,18 @@
   function codexEnemyLore(enemy = {}) {
     const lores = {
       enemy_little_yao: "低阶兽妖，常成群冲阵。鬃毛赤红，遇妖气则狂，虽无灵智，却极易受高阶妖物驱使。",
-      redmane_fiend: "低阶兽妖，常成群冲阵。鬃毛赤红，遇妖气则狂，虽无灵智，却极易受高阶妖物驱使。",
+      redmane_fiend: "赤鬃凶獠常成群冲阵。鬃毛赤红，遇妖气则狂，虽无灵智，却极易受高阶妖物驱使。",
       enemy_swift_wolf: "身形瘦长，行动极快，常绕开正面防线直扑阵眼。若不及时处理，容易造成阵眼压力。",
-      shadow_hound: "身形瘦长，行动极快，常绕开正面防线直扑阵眼。若不及时处理，容易造成阵眼压力。",
+      shadow_hound: "掠影妖猲身形瘦长，行动极快，常绕开正面防线直扑阵眼。若不及时处理，容易造成阵眼压力。",
       enemy_armor_beast: "披有妖化骨甲，行动缓慢但极耐击打。适合用持续输出或穿透类攻击压制。",
-      ironhide_xiao: "披有妖化骨甲，行动缓慢但极耐击打。适合用持续输出或穿透类攻击压制。",
-      rending_claw: "爪尖缠有污浊妖气，擅长撕咬阵纹。其出现意味着妖潮已经开始主动破阵。",
-      dark_talisman_shaman: "操使残符与骨铃的妖巫，常在妖群后方施咒，强化其他妖物或干扰护山大阵。",
-      miasma_mirage: "死后可残留毒瘴，污染战场。若处理不当，会持续压迫阵眼附近区域。",
-      array_devouring_moth: "专门啃噬灵纹的破阵妖种。并非天然妖兽，更像是被人为炼化出的破阵之物。",
+      ironhide_xiao: "铁甲魈卫披有妖化骨甲，行动缓慢但极耐击打。适合用持续输出或穿透类攻击压制。",
+      rending_claw: "裂爪凶獠爪尖缠有污浊妖气，擅长撕咬阵纹。其出现意味着妖潮已经开始主动破阵。",
+      dark_talisman_shaman: "幽符邪巫操使残符与骨铃，常在妖群后方施咒，强化其他妖物或干扰护山大阵。",
+      miasma_mirage: "腐瘴妖蜃死后可残留毒瘴，污染战场。若处理不当，会持续压迫阵眼附近区域。",
+      array_devouring_moth: "噬阵妖螟专门啃噬灵纹。并非天然妖兽，更像是被人为炼化出的破阵之物。",
       redmane_demon_general: "赤鬃獠群中的妖将，体魄更强，能统御低阶兽妖冲阵。",
-      gloom_arrow_hound: "擅长在黑雾中远程袭击阵眼，不急于近身，常与施咒妖物配合。",
-      bone_talisman_witch: "比幽符巫更危险的妖术施法者，可短暂压制阵纹运行节律。",
+      gloom_arrow_hound: "幽箭妖猲擅长在黑雾中远程袭击阵眼，不急于近身，常与施咒妖物配合。",
+      bone_talisman_witch: "比幽符邪巫更危险的妖术施法者，可短暂压制阵纹运行节律。",
       black_gate_guardian: "妖门裂隙前出现的黑甲妖将。其甲胄上刻有古老门纹，似乎并非普通妖族军卒，而是某种旧封印的守门者。",
     };
     return lores[enemy.id] || enemy.note || "此妖物条目尚在补录，后续将随山门外历练逐步完善。";
@@ -611,13 +628,13 @@
   }
 
   function codexEntries(DATA, playerProfile, category) {
-    if (category === "门人") return valuesOf(DATA.roles).map((role) => ({ id: role.id, name: role.name, icon: (role.name || "门").slice(0, 1), type: role.school || "门人", rarity: role.rarity || "-", tag: rolePositionLabel(role), unlocked: (playerProfile.ownedCharacters || []).includes(role.id), raw: role }));
+    if (category === "门人") return valuesOf(DATA.roles).map((role) => ({ id: role.id, name: role.name, icon: (role.name || "门").slice(0, 1), image: role.thumb, type: role.school || "门人", rarity: role.rarity || "-", tag: rolePositionLabel(role), unlocked: (playerProfile.ownedCharacters || []).includes(role.id), raw: role }));
     if (category === "法宝") return valuesOf(DATA.artifacts).map((artifact) => ({ id: artifact.id, name: artifact.name, icon: artifactIconText(artifact), type: artifactRoleLabel(artifact), rarity: artifact.rarity || "-", tag: "法宝记录", unlocked: (playerProfile.ownedArtifacts || []).includes(artifact.id), raw: artifact }));
     if (category === "阵法") return valuesOf(DATA.formations).map((formation) => ({ id: formation.id, name: formation.name, icon: "阵", type: formationRoleLabel(formation), rarity: formation.rarity || "-", tag: "护山阵法", unlocked: (playerProfile.unlockedFormations || []).includes(formation.id), raw: formation }));
     if (category === "剧情线索") return codexStoryEntries(playerProfile).map((item) => ({ ...item, icon: "线", rarity: item.unlocked ? "已收录" : "待收录", tag: item.source, raw: item }));
     if (category === "世界秘闻") return codexWorldEntries().map((item) => ({ ...item, icon: "闻", rarity: "秘闻", tag: item.type, raw: item }));
-    const chapterOneNames = new Set(["赤鬃獠", "掠影猲", "铁甲魈", "裂爪獠", "幽符巫", "腐瘴蜃", "噬阵螟", "赤鬃妖将", "幽箭猲", "骨符祭巫", "黑渊门将"]);
-    return valuesOf(DATA.enemies).filter((enemy) => chapterOneNames.has(enemy.name)).map((enemy) => ({ id: enemy.id, name: enemy.name, icon: (enemy.name || "妖").slice(0, 1), type: enemyTypeLabel(enemy), rarity: enemy.isBoss ? "首领" : enemy.trait || "妖物", tag: enemy.attackMode === "ranged" ? "远程威胁" : enemy.isBoss ? "Boss" : "山门外妖物", unlocked: true, raw: enemy }));
+    const chapterOneNames = new Set(["赤鬃獠", "掠影猲", "铁甲魈", "幽符巫", "赤鬃凶獠", "掠影妖猲", "铁甲魈卫", "裂爪凶獠", "幽符邪巫", "腐瘴妖蜃", "噬阵妖螟", "赤鬃妖将", "幽箭妖猲", "骨符祭巫", "黑渊门将", "赤影妖将", "血莲魔修", "域外魔影"]);
+    return valuesOf(DATA.enemies).filter((enemy) => chapterOneNames.has(enemy.name)).map((enemy) => ({ id: enemy.id, name: enemy.name, icon: (enemy.name || "妖").slice(0, 1), image: enemy.thumb, type: enemyTypeLabel(enemy), rarity: enemy.isBoss ? "首领" : enemy.trait || "妖物", tag: enemy.attackMode === "ranged" ? "远程威胁" : enemy.isBoss ? "Boss" : "山门外妖物", unlocked: true, raw: enemy }));
   }
 
   function codexDetail(entry, category) {
@@ -638,7 +655,7 @@
     const selected = entries.find((entry) => entry.id === state.selectedCodexEntryId) || entries[0];
     if (state && selected?.id) state.selectedCodexEntryId = selected.id;
     const listTitle = { 妖物: "妖物名录", 门人: "门人档案", 法宝: "法宝记录", 阵法: "阵法卷宗", 剧情线索: "旧事线索", 世界秘闻: "山海秘闻" }[activeCategory] || "卷宗条目";
-    return `<section class="xm-codex-page"><aside class="xm-codex-page__sidebar xm-inner-panel"><h2>卷宗分类</h2><div class="xm-codex-category-list">${categories.map((category) => `<button type="button" class="xm-codex-category ${category === activeCategory ? "xm-codex-category--selected" : ""}" data-codex-category="${safeText(category)}"><strong>${safeText(category)}</strong><span>卷宗</span></button>`).join("")}</div></aside><section class="xm-codex-page__main xm-inner-panel"><h2>${safeText(listTitle)}</h2><div class="xm-codex-entry-list">${entries.map((entry) => `<button type="button" class="xm-codex-entry ${entry.id === selected?.id ? "xm-codex-entry--selected" : ""} ${entry.unlocked ? "" : "xm-codex-entry--locked"}" data-codex-entry-id="${safeText(entry.id)}"><span class="xm-codex-entry__icon">${safeText(entry.unlocked ? entry.icon : "?")}</span><strong>${safeText(entry.unlocked ? entry.name : "？？？")}</strong><small>${safeText(entry.type || entry.tag || "-")} · ${safeText(entry.rarity || "-")}</small><em>${safeText(entry.unlocked ? entry.tag || "已收录" : "尚未收录")}</em></button>`).join("")}</div></section><aside class="xm-codex-page__detail xm-inner-panel"><h2>卷宗详情</h2><div class="xm-codex-detail">${codexDetail(selected, activeCategory)}</div></aside></section>`;
+    return `<section class="xm-codex-page"><aside class="xm-codex-page__sidebar xm-inner-panel"><h2>卷宗分类</h2><div class="xm-codex-category-list">${categories.map((category) => `<button type="button" class="xm-codex-category ${category === activeCategory ? "xm-codex-category--selected" : ""}" data-codex-category="${safeText(category)}"><strong>${safeText(category)}</strong><span>卷宗</span></button>`).join("")}</div></aside><section class="xm-codex-page__main xm-inner-panel"><h2>${safeText(listTitle)}</h2><div class="xm-codex-entry-list">${entries.map((entry) => `<button type="button" class="xm-codex-entry ${entry.id === selected?.id ? "xm-codex-entry--selected" : ""} ${entry.unlocked ? "" : "xm-codex-entry--locked"}" data-codex-entry-id="${safeText(entry.id)}">${entry.unlocked && entry.image ? renderSafeImage(entry.image, activeCategory === "妖物" ? "monster" : "character", entry.icon, "xm-codex-entry__icon") : `<span class="xm-codex-entry__icon">${safeText(entry.unlocked ? entry.icon : "?")}</span>`}<strong>${safeText(entry.unlocked ? entry.name : "？？？")}</strong><small>${safeText(entry.type || entry.tag || "-")} · ${safeText(entry.rarity || "-")}</small><em>${safeText(entry.unlocked ? entry.tag || "已收录" : "尚未收录")}</em></button>`).join("")}</div></section><aside class="xm-codex-page__detail xm-inner-panel"><h2>卷宗详情</h2><div class="xm-codex-detail">${codexDetail(selected, activeCategory)}</div></aside></section>`;
   }
 
   function characterAttackTypeLabel(value) {
@@ -784,14 +801,14 @@
               const isOwned = ownedSet.has(role.id);
               const selected = role.id === currentRole.id;
               const roleLevel = helpers?.getCharacterLevel ? helpers.getCharacterLevel(role.id) : levels[role.id] || 1;
-              return `<button type="button" class="xm-character-list-item ${selected ? "xm-character-list-item--selected" : ""} ${isOwned ? "" : "xm-character-list-item--locked"}" data-character-select-id="${safeText(role.id)}"><span class="xm-character-list-item__avatar">${safeText((role.name || "?").slice(0, 1))}</span><span class="xm-character-list-item__body"><strong>${safeText(role.name || role.id || "未命名门人")}</strong><small>${safeText(role.rarity || "-")} · ${safeText(role.school || "宗门")} · Lv.${safeText(isOwned ? roleLevel : "-")}</small></span><em>${safeText(isOwned ? "已拥有" : "未拥有")}</em></button>`;
+              return `<button type="button" class="xm-character-list-item ${selected ? "xm-character-list-item--selected" : ""} ${isOwned ? "" : "xm-character-list-item--locked"}" data-character-select-id="${safeText(role.id)}">${renderSafeImage(role.thumb, "character", (role.name || "?").slice(0, 1), "xm-character-list-item__avatar")}<span class="xm-character-list-item__body"><strong>${safeText(role.name || role.id || "未命名门人")}</strong><small>${safeText(role.rarity || "-")} · ${safeText(role.school || "宗门")} · Lv.${safeText(isOwned ? roleLevel : "-")}</small></span><em>${safeText(isOwned ? "已拥有" : "未拥有")}</em></button>`;
             }).join("")}
           </div>
         </aside>
         <section class="xm-character-page__center xm-inner-panel">
           <h2>洞府修行</h2>
           <div class="xm-character-stage">
-            <div class="xm-character-stage__portrait"><span>${safeText((currentRole.name || "门").slice(0, 1))}</span></div>
+            <div class="xm-character-stage__portrait">${renderSafeImage(currentRole.portrait, "character", (currentRole.name || "门").slice(0, 1), "xm-character-stage__image")}</div>
             <div class="xm-character-stage__name">${safeText(currentRole.name || "门人")}</div>
             <div class="xm-character-stage__meta">${safeText(currentRole.rarity || "-")} · ${safeText(currentRole.rankTitle || currentRole.rank || "宗门门人")} · ${safeText(currentRole.school || "宗门")}</div>
             <div class="xm-character-stage__role">${safeText(rolePositionLabel(currentRole))}</div>
@@ -964,17 +981,23 @@
     return artifact.evolutionBranches || byId[artifact.id] || generic;
   }
 
-  function renderArtifactCultivation(artifact = {}, level = 1) {
+  function renderArtifactCultivation(artifact = {}, level = 1, upgrade = {}) {
     const rank = artifactRankLabel(level);
     const plan = artifactMaterialPlan(artifact, level);
-    return `<section class="xm-artifact-cultivation"><h3>器灵养成</h3><p class="xm-artifact-note">局外永久成长仅在炼器阁进行；战斗中的机缘三选一只影响本局临时强化。</p><div class="xm-artifact-info-grid"><p><strong>当前等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>当前品阶</strong><span>${safeText(rank)}</span></p><p><strong>当前路线</strong><span>${safeText(artifactRouteLabel(artifact))}</span></p></div><div class="xm-artifact-materials"><strong>升级所需材料</strong><ul>${plan.materials.map((item) => `<li>${safeText(item)}</li>`).join("")}</ul></div><div class="xm-artifact-materials"><strong>材料来源</strong><ul>${plan.sources.map((item) => `<li>${safeText(item)}</li>`).join("")}</ul></div><p class="xm-artifact-muted">${safeText(plan.note)}</p><div class="xm-artifact-stage__actions"><button type="button" class="secondary" disabled title="材料系统暂未完全开放。">升级法宝</button><button type="button" class="secondary" disabled title="材料系统暂未完全开放。">进阶法宝</button><button type="button" class="secondary" disabled title="多路线大成系统后续开放。">选择大成路线</button><button type="button" class="secondary" disabled title="重修路线后续开放。">重修路线</button></div></section>`;
+    const cost = upgrade.cost || {};
+    const owned = upgrade.owned || {};
+    const supportsDamageUpgrade = upgrade.supportsDamageUpgrade !== false;
+    const hasResources = (owned.spiritStones || 0) >= (cost.spiritStones || 0);
+    const canUpgrade = Boolean(upgrade.isOwned && supportsDamageUpgrade && !cost.isMax && hasResources);
+    const upgradeLabel = !supportsDamageUpgrade ? "暂未开放" : cost.isMax ? "已达上限" : hasResources ? "淬炼法宝" : "灵石不足";
+    return `<section class="xm-artifact-cultivation"><h3>器灵养成</h3><p class="xm-artifact-note">局外永久成长仅在炼器阁进行；本版本法宝基础升级只消耗灵石，只提升伤害，不改变冷却、范围和触发频率。</p><div class="xm-artifact-info-grid"><p><strong>当前等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>当前品阶</strong><span>${safeText(rank)}</span></p><p><strong>当前路线</strong><span>${safeText(artifactRouteLabel(artifact))}</span></p><p><strong>当前效果</strong><span>${safeText(supportsDamageUpgrade ? `法宝伤害 ${upgrade.currentDamage}` : "当前版本暂不支持该法宝升级效果")}</span></p><p><strong>升级后</strong><span>${safeText(supportsDamageUpgrade && !cost.isMax ? `法宝伤害 ${upgrade.nextDamage}` : cost.isMax ? "已达当前版本等级上限" : "后续开放")}</span></p></div><div class="xm-artifact-materials"><strong>升级消耗</strong><ul>${cost.isMax ? "<li>无需消耗</li>" : `<li>灵石 ${safeText(cost.spiritStones || 0)}</li>`}</ul></div><div class="xm-artifact-materials"><strong>当前拥有</strong><ul><li>灵石 ${safeText(owned.spiritStones || 0)}</li></ul></div><section class="xm-character-detail__section"><h3>灵核进阶</h3><p class="xm-artifact-muted">灵核进阶需消耗法宝碎片、妖核、妖魂等材料，当前版本暂未开放。</p><button type="button" class="secondary" disabled>后续开放</button></section><p class="xm-artifact-muted">${safeText(supportsDamageUpgrade ? "淬炼会提升该法宝进入战斗后的伤害表现。" : "该法宝以辅助或回复为主，升级效果将在后续版本开放。")}</p><div class="xm-artifact-stage__actions"><button type="button" class="${canUpgrade ? "primary" : "secondary"}" data-artifact-upgrade-id="${safeText(artifact.id)}" ${canUpgrade ? "" : "disabled"}>${safeText(upgradeLabel)}</button><button type="button" class="secondary" disabled title="进阶系统后续开放。">进阶法宝</button><button type="button" class="secondary" disabled title="多路线大成系统后续开放。">选择大成路线</button><button type="button" class="secondary" disabled title="重修路线后续开放。">重修路线</button></div></section>`;
   }
 
   function renderArtifactBranches(artifact = {}) {
     return `<section class="xm-artifact-branches"><h3>大成路线</h3><p class="xm-artifact-note">大成方向属于局外永久选择，后续在炼器阁中消耗材料解锁，不会进入战斗中的三选一。</p><div class="xm-artifact-branch-list">${artifactEvolutionBranches(artifact).map((branch) => `<article class="xm-artifact-branch"><header><strong>${safeText(branch.name)}</strong><em>${safeText(branch.type)}</em></header><p>${safeText(branch.description)}</p><div><span>解锁条件：${safeText((branch.requirements || []).join("、"))}</span><span>所需材料：${safeText((branch.materials || []).join("、"))}</span><span>状态：${safeText(branch.status || "暂未开放")}</span></div></article>`).join("")}</div></section>`;
   }
 
-  function renderArtifactsPageV2({ DATA, playerProfile, state }) {
+  function renderArtifactsPageV2({ DATA, playerProfile, state, helpers }) {
     const artifacts = valuesOf(DATA.artifacts);
     const ownedIds = Array.isArray(playerProfile?.ownedArtifacts) ? playerProfile.ownedArtifacts : [];
     const ownedSet = new Set(ownedIds);
@@ -989,9 +1012,34 @@
     if (state && current?.id && state.selectedArtifactId !== current.id) state.selectedArtifactId = current.id;
     const owned = ownedSet.has(current.id);
     const carried = selectedIds.includes(current.id);
-    const level = playerProfile?.artifactLevels?.[current.id] || 1;
+    const level = helpers?.getArtifactLevel ? helpers.getArtifactLevel(current.id) : playerProfile?.artifactLevels?.[current.id] || 1;
     const rank = artifactRankLabel(level);
     const route = artifactRouteLabel(current);
+    const cost = helpers?.getArtifactUpgradeCostInfo
+      ? helpers.getArtifactUpgradeCostInfo(current.id)
+      : {
+        level,
+        nextLevel: level + 1,
+        maxLevel: 20,
+        isMax: level >= 20,
+        spiritStones: level * 150,
+      };
+    const effectiveStats = helpers?.getArtifactEffectiveStats
+      ? helpers.getArtifactEffectiveStats(current.id)
+      : {
+        baseDamage: Number(current.damage ?? current.baseDamage ?? 0) || 0,
+        damage: (Number(current.damage ?? current.baseDamage ?? 0) || 0) * (1 + (level - 1) * 0.1),
+        nextDamage: (Number(current.damage ?? current.baseDamage ?? 0) || 0) * (1 + level * 0.1),
+        supportsDamageUpgrade: (Number(current.damage ?? current.baseDamage ?? 0) || 0) > 0,
+      };
+    const currentDamage = Math.round((effectiveStats.damage || 0) * 10) / 10;
+    const nextDamage = Math.round((effectiveStats.nextDamage || 0) * 10) / 10;
+    const artifactOwnedResources = {
+      spiritStones: currencyAmount(playerProfile, "spiritStones"),
+    };
+    const hasUpgradeResources = artifactOwnedResources.spiritStones >= cost.spiritStones;
+    const artifactCanUpgrade = owned && effectiveStats.supportsDamageUpgrade && !cost.isMax && hasUpgradeResources;
+    const artifactUpgradeLabel = !effectiveStats.supportsDamageUpgrade ? "暂未开放" : cost.isMax ? "已达上限" : hasUpgradeResources ? "淬炼法宝" : "灵石不足";
 
     return `
       <section class="xm-artifact-page">
@@ -1001,7 +1049,8 @@
             ${artifacts.map((artifact) => {
               const isOwned = ownedSet.has(artifact.id);
               const selected = artifact.id === current.id;
-              return `<button type="button" class="xm-artifact-list-item ${selected ? "xm-artifact-list-item--selected" : ""} ${isOwned ? "" : "xm-artifact-list-item--locked"}" data-artifact-select-id="${safeText(artifact.id)}"><span class="xm-artifact-list-item__icon">${safeText(artifactIconText(artifact))}</span><span class="xm-artifact-list-item__body"><strong>${safeText(artifact.name || artifact.id)}</strong><small>${safeText(artifact.rarity || "-")} · ${safeText(artifactRoleLabel(artifact))}</small></span><em>${safeText(isOwned ? "已拥有" : "未拥有")}</em></button>`;
+              const artifactLevel = helpers?.getArtifactLevel ? helpers.getArtifactLevel(artifact.id) : playerProfile?.artifactLevels?.[artifact.id] || 1;
+              return `<button type="button" class="xm-artifact-list-item ${selected ? "xm-artifact-list-item--selected" : ""} ${isOwned ? "" : "xm-artifact-list-item--locked"}" data-artifact-select-id="${safeText(artifact.id)}"><span class="xm-artifact-list-item__icon">${safeText(artifactIconText(artifact))}</span><span class="xm-artifact-list-item__body"><strong>${safeText(artifact.name || artifact.id)}</strong><small>${safeText(artifact.rarity || "-")} · ${safeText(artifactRoleLabel(artifact))} · Lv.${safeText(isOwned ? artifactLevel : "-")}</small></span><em>${safeText(isOwned ? "已拥有" : "未拥有")}</em></button>`;
             }).join("")}
           </div>
         </aside>
@@ -1015,7 +1064,7 @@
             <div class="xm-artifact-stage__level">当前路线：${safeText(route)}</div>
             <div class="xm-artifact-stage__actions">
               ${owned ? `<button type="button" class="primary" data-artifact-toggle-id="${safeText(current.id)}">${carried ? "卸下法宝" : "携带法宝"}</button>` : `<button type="button" class="secondary" disabled>尚未拥有</button>`}
-              <button type="button" class="secondary" disabled title="材料系统暂未完全开放。">升级法宝</button>
+              ${owned ? `<button type="button" class="${artifactCanUpgrade ? "primary" : "secondary"}" data-artifact-upgrade-id="${safeText(current.id)}" ${artifactCanUpgrade ? "" : "disabled"}>${safeText(artifactUpgradeLabel)}</button>` : ""}
               <button type="button" class="secondary" disabled title="材料系统暂未完全开放。">进阶法宝</button>
               <button type="button" class="secondary" disabled title="多路线大成系统后续开放。">选择大成路线</button>
               <button type="button" class="secondary" disabled>查看羁绊</button>
@@ -1026,8 +1075,8 @@
           <h2>法宝卷宗</h2>
           <div class="xm-artifact-detail">
             <section class="xm-character-detail__section"><h3>法宝信息</h3><p><strong>名称</strong><span>${safeText(current.name || "-")}</span></p><p><strong>品质</strong><span>${safeText(current.rarity || "-")}</span></p><p><strong>定位</strong><span>${safeText(artifactRoleLabel(current))}</span></p><p><strong>等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>品阶</strong><span>${safeText(rank)}</span></p><p><strong>当前路线</strong><span>${safeText(route)}</span></p><p><strong>状态</strong><span>${safeText(`${owned ? "已拥有" : "未拥有"} · ${carried ? "本局携带" : "未携带"}`)}</span></p><p><strong>冷却</strong><span>${safeText(current.cooldown ? `${current.cooldown}秒` : "-")}</span></p><p><strong>目标</strong><span>${safeText(artifactTargetLabel(current.targetRule))}</span></p></section>
-            <section class="xm-character-detail__section"><h3>战斗效果</h3><p>${safeText(artifactEffectText(current))}</p><p class="xm-artifact-muted">此处展示进入战斗后的自动生效效果；本局机缘强化仍在战斗中通过三选一临时获得。</p></section>
-            ${renderArtifactCultivation(current, level)}
+            <section class="xm-character-detail__section"><h3>战斗效果</h3><p>${safeText(artifactEffectText(current))}</p><p><strong>法宝伤害</strong><span>${safeText(effectiveStats.supportsDamageUpgrade ? currentDamage : "当前版本暂不支持升级效果")}</span></p><p class="xm-artifact-muted">此处展示进入战斗后的自动生效效果；本局机缘强化仍在战斗中通过三选一临时获得。</p></section>
+            ${renderArtifactCultivation(current, level, { cost, owned: artifactOwnedResources, isOwned: owned, currentDamage, nextDamage, supportsDamageUpgrade: effectiveStats.supportsDamageUpgrade })}
             ${renderArtifactBranches(current)}
             <section class="xm-artifact-bonds"><h3>法宝羁绊</h3>${artifactBondRows(current, ownedIds, selectedIds, DATA)}</section>
             <section class="xm-character-detail__section xm-character-detail__bio"><h3>法宝来历</h3><p>${safeText(artifactLore(current))}</p></section>
@@ -1052,14 +1101,14 @@
 
   function nodeBriefText(node) {
     const map = {
-      chapter1_1: "妖气初涌，赤鬃獠正沿山门外线冲击第一道防线。",
-      chapter1_2: "掠影猲贴地疾行，试图越过青石外阶直扑阵眼。",
-      chapter1_3: "铁甲魈披骨甲压近，适合用稳定输出尽快破开厚甲。",
-      chapter1_4: "裂爪獠撕咬外阵裂纹，阵眼第一次受到明确破阵威胁。",
-      chapter1_5: "幽符巫与赤鬃妖将协同压阵，需要优先处理施咒与精英威胁。",
+      chapter1_1: "妖气初涌，赤鬃凶獠正沿山门外线冲击第一道防线。",
+      chapter1_2: "掠影妖猲贴地疾行，试图越过青石外阶直扑阵眼。",
+      chapter1_3: "铁甲魈卫披骨甲压近，适合用稳定输出尽快破开厚甲。",
+      chapter1_4: "裂爪凶獠撕咬外阵裂纹，阵眼第一次受到明确破阵威胁。",
+      chapter1_5: "幽符邪巫与赤鬃妖将协同压阵，需要优先处理施咒与精英威胁。",
       chapter1_6: "腐瘴妖物盘踞旧阵残碑，战后或可收录旧阵线索。",
-      chapter1_7: "幽箭猲与骨符祭巫从黑雾中远程压制阵眼。",
-      chapter1_8: "噬阵螟啃噬裂隙外环，破阵妖种开始成群出现。",
+      chapter1_7: "幽箭妖猲与骨符祭巫从黑雾中远程压制阵眼。",
+      chapter1_8: "噬阵妖螟啃噬裂隙外环，破阵妖种开始成群出现。",
       chapter1_9: "赤鬃妖将据守封阵祭坛，妖潮强度明显上升。",
       chapter1_10: "黑渊门将踏出妖门裂隙，第一章迎来最终守山考验。",
     };
@@ -1174,7 +1223,7 @@
     elements.featurePageSubtitle.textContent = subtitle;
     const renderers = {
       CHARACTERS: () => renderCharactersPageV2({ DATA, playerProfile, state, helpers }),
-      ARTIFACTS: () => renderArtifactsPageV2({ DATA, playerProfile, state }),
+      ARTIFACTS: () => renderArtifactsPageV2({ DATA, playerProfile, state, helpers }),
       FORMATIONS: () => renderFormationsPage({ DATA, playerProfile, state }),
       BAG: () => renderBagPage({ state, playerProfile }),
       GACHA: () => renderGachaPage({ DATA, playerProfile, state }),

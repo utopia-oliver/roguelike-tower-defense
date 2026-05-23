@@ -570,7 +570,7 @@ window.GAME_DATA = {
     "role_shen_tianque": {
       "id": "role_shen_tianque",
       "name": "沈天阙",
-      "rank": "宗主",
+      "rank": "镇宗长老",
       "rarity": "神话",
       "unlock": "后续版本/高保底",
       "unlockCondition": "后续版本/高保底",
@@ -584,8 +584,8 @@ window.GAME_DATA = {
       "baseAttackSpeed": 0.625,
       "range": 5.0,
       "baseRange": 5.0,
-      "talent": "宗主威压：全队攻击+10%，阵眼低血时效果翻倍。",
-      "passiveSkill": "宗主威压：全队攻击+10%，阵眼低血时效果翻倍。",
+      "talent": "镇宗道威：全队攻击+10%，阵眼低血时效果翻倍。",
+      "passiveSkill": "镇宗道威：全队攻击+10%，阵眼低血时效果翻倍。",
       "level": 1,
       "upgradeCost": 50,
       "note": "MVP可做数据，后续实现。"
@@ -1541,7 +1541,7 @@ window.GAME_DATA = {
   "enemies": {
     "enemy_little_yao": {
       "id": "enemy_little_yao",
-      "name": "山野小妖",
+      "name": "赤鬃獠",
       "type": "普通",
       "hp": 28.0,
       "maxHp": 28.0,
@@ -1558,7 +1558,7 @@ window.GAME_DATA = {
     },
     "enemy_swift_wolf": {
       "id": "enemy_swift_wolf",
-      "name": "疾行妖狼",
+      "name": "掠影猲",
       "type": "快速",
       "hp": 22.0,
       "maxHp": 22.0,
@@ -1575,7 +1575,7 @@ window.GAME_DATA = {
     },
     "enemy_armor_beast": {
       "id": "enemy_armor_beast",
-      "name": "玄甲巨兽",
+      "name": "铁甲魈",
       "type": "坦克",
       "hp": 90.0,
       "maxHp": 90.0,
@@ -1592,7 +1592,7 @@ window.GAME_DATA = {
     },
     "enemy_blood_cultivator": {
       "id": "enemy_blood_cultivator",
-      "name": "血煞邪修",
+      "name": "幽符巫",
       "type": "精英",
       "hp": 120.0,
       "maxHp": 120.0,
@@ -1609,7 +1609,7 @@ window.GAME_DATA = {
     },
     "boss_blackwind": {
       "id": "boss_blackwind",
-      "name": "黑风妖将",
+      "name": "赤影妖将",
       "type": "Boss",
       "hp": 450.0,
       "maxHp": 450.0,
@@ -1620,7 +1620,7 @@ window.GAME_DATA = {
       "attackInterval": 2.5,
       "spiritQiReward": 80.0,
       "lingqiReward": 80.0,
-      "trait": "每8秒召唤3只山野小妖",
+      "trait": "每8秒召唤3只赤鬃獠",
       "note": "第5波",
       "isBoss": true
     },
@@ -2094,6 +2094,9 @@ window.GAME_DATA.roles = {
   lu_qingya: {
     id: "lu_qingya",
     name: "陆青崖",
+    gender: "male",
+    ageStage: "青年",
+    heightCm: 178,
     rarity: "SR",
     rankTitle: "外门弟子",
     rank: "外门弟子",
@@ -2118,6 +2121,9 @@ window.GAME_DATA.roles = {
   shen_lianxing: {
     id: "shen_lianxing",
     name: "沈炼星",
+    gender: "female",
+    ageStage: "青年",
+    heightCm: 169,
     rarity: "SR",
     rankTitle: "内门弟子",
     rank: "内门弟子",
@@ -2142,6 +2148,9 @@ window.GAME_DATA.roles = {
   ye_hanyan: {
     id: "ye_hanyan",
     name: "叶寒烟",
+    gender: "female",
+    ageStage: "青年",
+    heightCm: 170,
     rarity: "SR",
     rankTitle: "内门弟子",
     rank: "内门弟子",
@@ -2166,6 +2175,9 @@ window.GAME_DATA.roles = {
   wen_suyi: {
     id: "wen_suyi",
     name: "温素衣",
+    gender: "female",
+    ageStage: "青年",
+    heightCm: 166,
     rarity: "SSR",
     rankTitle: "核心弟子",
     rank: "核心弟子",
@@ -2190,6 +2202,9 @@ window.GAME_DATA.roles = {
   gu_changfeng: {
     id: "gu_changfeng",
     name: "顾长风",
+    gender: "male",
+    ageStage: "青年",
+    heightCm: 183,
     rarity: "SSR",
     rankTitle: "执事",
     rank: "执事",
@@ -2214,6 +2229,9 @@ window.GAME_DATA.roles = {
   xiao_jingxuan: {
     id: "xiao_jingxuan",
     name: "萧景玄",
+    gender: "male",
+    ageStage: "稍成熟",
+    heightCm: 186,
     rarity: "SSR",
     rankTitle: "长老",
     rank: "长老",
@@ -2238,6 +2256,9 @@ window.GAME_DATA.roles = {
   qin_bugui: {
     id: "qin_bugui",
     name: "秦不归",
+    gender: "male",
+    ageStage: "青年",
+    heightCm: 181,
     rarity: "SSR",
     rankTitle: "核心弟子",
     rank: "核心弟子",
@@ -2262,6 +2283,9 @@ window.GAME_DATA.roles = {
   luo_shenyin: {
     id: "luo_shenyin",
     name: "洛神音",
+    gender: "female",
+    ageStage: "稍成熟",
+    heightCm: 172,
     rarity: "SSR",
     rankTitle: "执事",
     rank: "执事",
@@ -2286,6 +2310,9 @@ window.GAME_DATA.roles = {
   chu_zhaoye: {
     id: "chu_zhaoye",
     name: "楚照夜",
+    gender: "male",
+    ageStage: "稍成熟",
+    heightCm: 184,
     rarity: "UR",
     rankTitle: "长老",
     rank: "长老",
@@ -2310,9 +2337,12 @@ window.GAME_DATA.roles = {
   ning_jiuxiao: {
     id: "ning_jiuxiao",
     name: "宁九霄",
+    gender: "male",
+    ageStage: "成熟",
+    heightCm: 188,
     rarity: "UR",
-    rankTitle: "宗主",
-    rank: "宗主",
+    rankTitle: "镇宗长老",
+    rank: "镇宗长老",
     school: "万法",
     role: "全局增幅",
     baseDamage: 18,
@@ -2328,7 +2358,7 @@ window.GAME_DATA.roles = {
     unlockLevel: null,
     level: 1,
     upgradeCost: 360,
-    description: "宗门之主，万法归一，可增强全队与护山大阵。",
+    description: "镇守宗门根基的长老，万法归一，可增强全队与护山大阵。",
     designValue: "机制型角色，不只是高伤害，能提升阵容整体强度。"
   }
 };
@@ -2885,7 +2915,7 @@ window.GAME_DATA.martialArts = [
   const enemies = {
     redmane_fiend: {
       id: "redmane_fiend",
-      name: "赤鬃獠",
+      name: "赤鬃凶獠",
       type: "normal",
       attackMode: "melee",
       hp: 38,
@@ -2903,7 +2933,7 @@ window.GAME_DATA.martialArts = [
     },
     shadow_hound: {
       id: "shadow_hound",
-      name: "掠影猲",
+      name: "掠影妖猲",
       type: "fast",
       attackMode: "melee",
       hp: 30,
@@ -2921,7 +2951,7 @@ window.GAME_DATA.martialArts = [
     },
     gloom_arrow_hound: {
       id: "gloom_arrow_hound",
-      name: "幽箭猲",
+      name: "幽箭妖猲",
       type: "ranged",
       attackMode: "ranged",
       hp: 88,
@@ -2944,7 +2974,7 @@ window.GAME_DATA.martialArts = [
     },
     ironhide_xiao: {
       id: "ironhide_xiao",
-      name: "铁甲魈",
+      name: "铁甲魈卫",
       type: "armored",
       attackMode: "melee",
       hp: 96,
@@ -2963,7 +2993,7 @@ window.GAME_DATA.martialArts = [
     },
     rending_claw: {
       id: "rending_claw",
-      name: "裂爪獠",
+      name: "裂爪凶獠",
       type: "array_attacker",
       attackMode: "melee",
       hp: 54,
@@ -2981,7 +3011,7 @@ window.GAME_DATA.martialArts = [
     },
     dark_talisman_shaman: {
       id: "dark_talisman_shaman",
-      name: "幽符巫",
+      name: "幽符邪巫",
       type: "support",
       attackMode: "caster",
       hp: 84,
@@ -3004,7 +3034,7 @@ window.GAME_DATA.martialArts = [
     },
     miasma_mirage: {
       id: "miasma_mirage",
-      name: "腐瘴蜃",
+      name: "腐瘴妖蜃",
       type: "miasma",
       attackMode: "melee",
       hp: 52,
@@ -3024,7 +3054,7 @@ window.GAME_DATA.martialArts = [
     },
     array_devouring_moth: {
       id: "array_devouring_moth",
-      name: "噬阵螟",
+      name: "噬阵妖螟",
       type: "array_breaker",
       attackMode: "melee",
       hp: 70,
@@ -3146,12 +3176,23 @@ window.GAME_DATA.martialArts = [
   };
 
   Object.assign(window.GAME_DATA.enemies, enemies, {
-    enemy_little_yao: { ...enemies.redmane_fiend, id: "enemy_little_yao" },
-    enemy_swift_wolf: { ...enemies.shadow_hound, id: "enemy_swift_wolf" },
-    enemy_armor_beast: { ...enemies.ironhide_xiao, id: "enemy_armor_beast" },
-    enemy_blood_cultivator: { ...enemies.dark_talisman_shaman, id: "enemy_blood_cultivator" },
-    boss_blackwind: { ...enemies.redmane_demon_general, id: "boss_blackwind", isElite: true, isBoss: false },
+    enemy_little_yao: { ...enemies.redmane_fiend, id: "enemy_little_yao", name: "赤鬃獠" },
+    enemy_swift_wolf: { ...enemies.shadow_hound, id: "enemy_swift_wolf", name: "掠影猲" },
+    enemy_armor_beast: { ...enemies.ironhide_xiao, id: "enemy_armor_beast", name: "铁甲魈" },
+    enemy_blood_cultivator: { ...enemies.dark_talisman_shaman, id: "enemy_blood_cultivator", name: "幽符巫" },
+    boss_blackwind: { ...enemies.redmane_demon_general, id: "boss_blackwind", name: "赤影妖将", isElite: true, isBoss: false },
   });
+
+  const applyImagePlaceholders = (collection, folder) => {
+    Object.values(collection || {}).forEach((item) => {
+      if (!item?.id) return;
+      item.portrait = item.portrait || `assets/images/${folder}/portrait/${item.id}.webp`;
+      item.thumb = item.thumb || `assets/images/${folder}/thumb/${item.id}.webp`;
+    });
+  };
+  applyImagePlaceholders(window.GAME_DATA.roles, "characters");
+  window.GAME_DATA.characters = window.GAME_DATA.roles;
+  applyImagePlaceholders(window.GAME_DATA.enemies, "monsters");
 
   const waveTemplates = {
     1: {
@@ -3355,7 +3396,7 @@ window.GAME_DATA.chapters = {
         type: "tutorial_battle",
         description: "山门钟声九响，妖气自外山涌来。你以新任宗主之名重启护山阵眼，率陆青崖守住第一道防线。",
         storyText: "山门钟声穿过云海，惊醒了整座玄门。外山方向，紫黑妖气如潮涌来。执事只留下一句话：守住阵眼，莫让妖物踏入山门。",
-        enemyPreview: ["赤鬃獠"],
+        enemyPreview: ["赤鬃凶獠"],
         rewardPreview: ["灵石", "角色经验"],
         battleConfigId: "chapter1_node1",
         waveRange: "1-1",
@@ -3366,9 +3407,9 @@ window.GAME_DATA.chapters = {
         displayId: "1-2",
         name: "青石外阶",
         type: "normal_battle",
-        description: "青石阶上残留着外门弟子的血迹。掠影猲贴地疾行，试图越过防线直扑阵眼。",
-        storyText: "青石阶上残留着外门弟子的血迹。有黑影贴地疾行，比赤鬃獠更快，也更狡猾。",
-        enemyPreview: ["赤鬃獠", "掠影猲"],
+        description: "青石阶上残留着外门弟子的血迹。掠影妖猲贴地疾行，试图越过防线直扑阵眼。",
+        storyText: "青石阶上残留着外门弟子的血迹。有黑影贴地疾行，比赤鬃凶獠更快，也更狡猾。",
+        enemyPreview: ["赤鬃凶獠", "掠影妖猲"],
         rewardPreview: ["灵石", "法宝碎片"],
         battleConfigId: "chapter1_node2"
       },
@@ -3377,9 +3418,9 @@ window.GAME_DATA.chapters = {
         displayId: "1-3",
         name: "断桥谷",
         type: "normal_battle",
-        description: "断桥谷中传来沉重脚步声。铁甲魈披着妖化骨甲，一步一步压向阵前。",
-        storyText: "断桥谷中传来沉重脚步声。铁甲魈披着妖化骨甲，一步一步压向阵前。",
-        enemyPreview: ["赤鬃獠", "铁甲魈"],
+        description: "断桥谷中传来沉重脚步声。铁甲魈卫披着妖化骨甲，一步一步压向阵前。",
+        storyText: "断桥谷中传来沉重脚步声。铁甲魈卫披着妖化骨甲，一步一步压向阵前。",
+        enemyPreview: ["赤鬃凶獠", "铁甲魈卫"],
         rewardPreview: ["灵石", "角色经验材料"],
         battleConfigId: "chapter1_node3"
       },
@@ -3388,9 +3429,9 @@ window.GAME_DATA.chapters = {
         displayId: "1-4",
         name: "外阵裂纹",
         type: "mechanic_battle",
-        description: "外阵边缘亮起细碎裂纹。裂爪獠以爪尖撕扯阵光，阵眼第一次受到明显威胁。",
+        description: "外阵边缘亮起细碎裂纹。裂爪凶獠以爪尖撕扯阵光，阵眼第一次受到明显威胁。",
         storyText: "外阵边缘亮起细碎裂纹。有妖物伏低身形，爪尖缠着污浊妖气，专门撕咬阵光。",
-        enemyPreview: ["裂爪獠", "掠影猲", "赤鬃獠"],
+        enemyPreview: ["裂爪凶獠", "掠影妖猲", "赤鬃凶獠"],
         rewardPreview: ["阵纹残片", "灵石"],
         battleConfigId: "chapter1_node4"
       },
@@ -3399,9 +3440,9 @@ window.GAME_DATA.chapters = {
         displayId: "1-5",
         name: "幽符林口",
         type: "elite_battle",
-        description: "幽符巫在妖群后方施咒，赤鬃妖将踏雾而来。玩家第一次面对施法怪与精英怪组合。",
+        description: "幽符邪巫在妖群后方施咒，赤鬃妖将踏雾而来。玩家第一次面对施法怪与精英怪组合。",
         storyText: "幽符林中挂满残破符纸，风一吹便发出低哑哭声。妖群后方，有巫者举骨铃施咒，赤鬃妖将踏雾而来。",
-        enemyPreview: ["幽符巫", "赤鬃妖将", "铁甲魈", "赤鬃獠"],
+        enemyPreview: ["幽符邪巫", "赤鬃妖将", "铁甲魈卫", "赤鬃凶獠"],
         rewardPreview: ["抽取券", "灵石"],
         battleConfigId: "chapter1_node5"
       },
@@ -3412,7 +3453,7 @@ window.GAME_DATA.chapters = {
         type: "story_battle",
         description: "外山旧碑半埋在青苔与妖雾中，碑上残留四个古字：镇门于山。",
         storyText: "外山旧碑半埋在青苔与妖雾中。碑上刻着四个残字：镇门于山。",
-        enemyPreview: ["腐瘴蜃", "赤鬃獠", "铁甲魈"],
+        enemyPreview: ["腐瘴妖蜃", "赤鬃凶獠", "铁甲魈卫"],
         rewardPreview: ["旧阵残拓", "灵石"],
         battleConfigId: "chapter1_node6",
         storyUnlock: "old_array_rubbing"
@@ -3422,9 +3463,9 @@ window.GAME_DATA.chapters = {
         displayId: "1-7",
         name: "黑雾前哨",
         type: "ranged_battle",
-        description: "黑雾之中，妖物不再急于近身。幽箭猲与骨符祭巫开始从远处攻击阵眼。",
+        description: "黑雾之中，妖物不再急于近身。幽箭妖猲与骨符祭巫开始从远处攻击阵眼。",
         storyText: "黑雾之中，妖影不再急于近身。几道幽箭穿雾而来，直击阵眼光壁。",
-        enemyPreview: ["幽箭猲", "骨符祭巫", "掠影猲"],
+        enemyPreview: ["幽箭妖猲", "骨符祭巫", "掠影妖猲"],
         rewardPreview: ["法宝材料", "灵石"],
         battleConfigId: "chapter1_node7"
       },
@@ -3433,9 +3474,9 @@ window.GAME_DATA.chapters = {
         displayId: "1-8",
         name: "裂隙外环",
         type: "mechanic_battle",
-        description: "妖门裂隙尚未完全张开，噬阵螟已经开始啃噬外环阵纹。",
-        storyText: "妖门裂隙尚未完全张开，但阵纹已被啃出细孔。成群噬阵螟伏在阵光边缘，像是在啃食一块腐木。",
-        enemyPreview: ["噬阵螟", "幽箭猲", "铁甲魈", "腐瘴蜃"],
+        description: "妖门裂隙尚未完全张开，噬阵妖螟已经开始啃噬外环阵纹。",
+        storyText: "妖门裂隙尚未完全张开，但阵纹已被啃出细孔。成群噬阵妖螟伏在阵光边缘，像是在啃食一块腐木。",
+        enemyPreview: ["噬阵妖螟", "幽箭妖猲", "铁甲魈卫", "腐瘴妖蜃"],
         rewardPreview: ["护山大阵材料", "阵纹残片"],
         battleConfigId: "chapter1_node8"
       },
@@ -3446,7 +3487,7 @@ window.GAME_DATA.chapters = {
         type: "mini_boss",
         description: "封阵祭坛被妖气侵蚀，赤鬃妖将率群妖强行撕开祭坛外阵。",
         storyText: "祭坛上的青金阵纹被紫黑妖气染成暗色。赤鬃妖将立于祭坛中央，胸口妖甲不断鼓动，像在等待某种命令。",
-        enemyPreview: ["赤鬃妖将", "幽符巫", "噬阵螟"],
+        enemyPreview: ["赤鬃妖将", "幽符邪巫", "噬阵妖螟"],
         rewardPreview: ["稀有妖核", "灵石"],
         battleConfigId: "chapter1_node9",
         boss: true
@@ -3458,7 +3499,7 @@ window.GAME_DATA.chapters = {
         type: "boss",
         description: "裂隙终于张开一线，黑渊门将自妖气深处踏出。护山大阵迎来第一场真正考验。",
         storyText: "裂隙终于张开一线。紫黑妖气如潮倒灌，门影之后，有高大的黑甲妖影缓步踏出。它望着护山大阵，像望着一把旧锁。",
-        enemyPreview: ["黑渊门将", "噬阵螟", "幽箭猲", "骨符祭巫"],
+        enemyPreview: ["黑渊门将", "噬阵妖螟", "幽箭妖猲", "骨符祭巫"],
         rewardPreview: ["归门妖纹", "大量灵石", "黑渊门将图鉴"],
         battleConfigId: "chapter1_boss",
         storyUnlock: "return_gate_rune",
