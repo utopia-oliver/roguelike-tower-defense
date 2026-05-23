@@ -578,24 +578,48 @@ function getCharacterUpgradeCost(characterLevel, rarity) {
   return getSystemCharacterUpgradeCost({ characterLevel, rarity });
 }
 
+const CHARACTER_MAX_LEVEL = 20;
+
+function getCharacterUpgradeCostInfo(characterId) {
+  const level = Math.max(1, Math.floor(Number(getCharacterLevel(characterId)) || 1));
+  const isMax = level >= CHARACTER_MAX_LEVEL;
+  return {
+    level,
+    nextLevel: isMax ? level : level + 1,
+    maxLevel: CHARACTER_MAX_LEVEL,
+    isMax,
+    spiritStones: isMax ? 0 : level * 100,
+    characterExpItem: isMax ? 0 : Math.max(1, Math.floor(level / 3) + 1),
+  };
+}
+
 function upgradeCharacter(characterId) {
-  const result = upgradeSystemCharacter({
-    playerProfile: playerMeta,
-    DATA,
-    characterId,
-    callbacks: {
-      savePlayerProfile,
-      syncPlayerMetaAliases,
-    },
-  });
-  if (!result.ok) {
-    if (result.reason === "not_enough_spirit_stones") {
-      setStatus(`灵石不足，${result.character.name} 升级需要 ${result.cost} 灵石。`);
-    }
+  const character = DATA.roles[characterId];
+  if (!character || !playerMeta.ownedCharacters.includes(characterId)) {
+    setStatus("该门人尚未加入宗门，无法提升修为。");
     return false;
   }
-  setStatus(`${result.character.name} 提升到 ${result.newLevel} 级，战斗伤害提高。`);
+  playerMeta.characterLevels = playerMeta.characterLevels || {};
+  const cost = getCharacterUpgradeCostInfo(characterId);
+  if (cost.isMax) {
+    setStatus(`${character.name} 已达当前版本等级上限。`);
+    return false;
+  }
+  const spend = spendResources([
+    { type: "currency", id: "spiritStones", name: "灵石", amount: cost.spiritStones },
+    { type: "material", id: "character_exp_item", name: "修为丹", amount: cost.characterExpItem },
+  ]);
+  if (!spend.success) {
+    setStatus(`${character.name} 修为提升资源不足：需要灵石 ${cost.spiritStones}、修为丹 ${cost.characterExpItem}。`);
+    return false;
+  }
+  playerMeta.characterLevels[characterId] = cost.nextLevel;
+  syncPlayerMetaAliases();
+  savePlayerProfile();
+  setStatus(`${character.name} 修为提升至 Lv.${cost.nextLevel}。`);
   renderLobby();
+  renderFeaturePage();
+  updateDebugPanel();
   return true;
 }
 
@@ -1097,6 +1121,63 @@ function grantRewards(rewards = []) {
     savePlayerProfile();
   }
   return granted;
+}
+
+function normalizeResourceCost(cost = {}) {
+  const amount = safeRewardAmount(cost.amount);
+  if (amount <= 0) return null;
+  if (cost.type === "spiritStones") {
+    return { type: "currency", id: "spiritStones", name: "灵石", amount };
+  }
+  if (cost.type === "currency") {
+    const id = cost.id === "daoStones" ? "daoStones" : "spiritStones";
+    return {
+      type: "currency",
+      id,
+      name: CURRENCY_RESOURCE_CATALOG[id]?.name || cost.name || "货币",
+      amount,
+    };
+  }
+  if (cost.type === "material") {
+    const id = materialRewardId(cost);
+    if (!id) return null;
+    return {
+      type: "material",
+      id,
+      name: MATERIAL_RESOURCE_CATALOG[id]?.name || cost.name || "材料",
+      amount,
+    };
+  }
+  return null;
+}
+
+function getResourceAmount(entry = {}) {
+  ensureDaoSealState();
+  if (entry.type === "currency") return safeRewardAmount(playerMeta.currencies?.[entry.id]);
+  if (entry.type === "material") return safeRewardAmount(playerMeta.materials?.[entry.id]);
+  return 0;
+}
+
+function spendResources(costs = []) {
+  ensureDaoSealState();
+  const entries = (Array.isArray(costs) ? costs : []).map(normalizeResourceCost).filter(Boolean);
+  if (!entries.length) return { success: true, spent: [] };
+  const missing = entries.filter((entry) => getResourceAmount(entry) < entry.amount);
+  if (missing.length) {
+    return { success: false, reason: "not_enough_resources", missing, spent: [] };
+  }
+  entries.forEach((entry) => {
+    if (entry.type === "currency") {
+      playerMeta.currencies[entry.id] = Math.max(0, safeRewardAmount(playerMeta.currencies[entry.id]) - entry.amount);
+      if (entry.id === "spiritStones") playerMeta.spiritStones = playerMeta.currencies.spiritStones;
+    }
+    if (entry.type === "material") {
+      playerMeta.materials[entry.id] = Math.max(0, safeRewardAmount(playerMeta.materials[entry.id]) - entry.amount);
+    }
+  });
+  syncPlayerMetaAliases();
+  savePlayerProfile();
+  return { success: true, spent: entries };
 }
 
 function formatGrantedRewards(granted = []) {
@@ -3503,6 +3584,7 @@ function renderFeaturePage() {
       getCurrentChapterNodeId,
       getCharacterLevel,
       getCharacterBaseFinalDamage,
+      getCharacterUpgradeCostInfo,
     },
   });
 }

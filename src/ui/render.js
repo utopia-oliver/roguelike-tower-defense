@@ -43,6 +43,10 @@
     return Math.max(0, Math.floor(Number(playerProfile.currencies?.[id]) || 0));
   }
 
+  function materialAmount(playerProfile = {}, id = "") {
+    return Math.max(0, Math.floor(Number(playerProfile.materials?.[id]) || 0));
+  }
+
   function formatDaoSealReward(reward = {}) {
     const parts = [];
     if (reward.spiritStones) parts.push(`灵石 x${reward.spiritStones}`);
@@ -753,6 +757,23 @@
     const isSelectedForRun = Boolean(state?.selectedRoleId === currentRole.id || loadoutRoleIds.includes(currentRole.id) || selectedRoleIds.includes(currentRole.id) || deployedRoles.some((role) => role.roleId === currentRole.id || role.id === currentRole.id));
     const martialName = martialArtNameForRole(DATA, currentRole);
     const starLevel = currentRole.starLevel ?? playerProfile?.characterStars?.[currentRole.id] ?? 1;
+    const upgradeCost = helpers?.getCharacterUpgradeCostInfo
+      ? helpers.getCharacterUpgradeCostInfo(currentRole.id)
+      : {
+        level: currentLevel,
+        nextLevel: currentLevel + 1,
+        maxLevel: 20,
+        isMax: currentLevel >= 20,
+        spiritStones: currentLevel * 100,
+        characterExpItem: Math.max(1, Math.floor(currentLevel / 3) + 1),
+      };
+    const nextDamageRaw = baseDamage * (1 + Math.max(0, Number(upgradeCost.nextLevel || currentLevel) - 1) * 0.08);
+    const nextDamage = Number.isFinite(nextDamageRaw) ? Math.round(nextDamageRaw * 10) / 10 : currentDamage;
+    const ownedSpiritStones = currencyAmount(playerProfile, "spiritStones");
+    const ownedExpItems = materialAmount(playerProfile, "character_exp_item");
+    const hasUpgradeResources = ownedSpiritStones >= upgradeCost.spiritStones && ownedExpItems >= upgradeCost.characterExpItem;
+    const canUpgrade = owned && !upgradeCost.isMax && hasUpgradeResources;
+    const upgradeButtonText = upgradeCost.isMax ? "已达上限" : hasUpgradeResources ? "提升修为" : "资源不足";
 
     return `
       <section class="xm-character-page xm-character-page--formal">
@@ -762,7 +783,8 @@
             ${roles.map((role) => {
               const isOwned = ownedSet.has(role.id);
               const selected = role.id === currentRole.id;
-              return `<button type="button" class="xm-character-list-item ${selected ? "xm-character-list-item--selected" : ""} ${isOwned ? "" : "xm-character-list-item--locked"}" data-character-select-id="${safeText(role.id)}"><span class="xm-character-list-item__avatar">${safeText((role.name || "?").slice(0, 1))}</span><span class="xm-character-list-item__body"><strong>${safeText(role.name || role.id || "未命名门人")}</strong><small>${safeText(role.rarity || "-")} · ${safeText(role.school || "宗门")}</small></span><em>${safeText(isOwned ? "已拥有" : "未拥有")}</em></button>`;
+              const roleLevel = helpers?.getCharacterLevel ? helpers.getCharacterLevel(role.id) : levels[role.id] || 1;
+              return `<button type="button" class="xm-character-list-item ${selected ? "xm-character-list-item--selected" : ""} ${isOwned ? "" : "xm-character-list-item--locked"}" data-character-select-id="${safeText(role.id)}"><span class="xm-character-list-item__avatar">${safeText((role.name || "?").slice(0, 1))}</span><span class="xm-character-list-item__body"><strong>${safeText(role.name || role.id || "未命名门人")}</strong><small>${safeText(role.rarity || "-")} · ${safeText(role.school || "宗门")} · Lv.${safeText(isOwned ? roleLevel : "-")}</small></span><em>${safeText(isOwned ? "已拥有" : "未拥有")}</em></button>`;
             }).join("")}
           </div>
         </aside>
@@ -774,7 +796,7 @@
             <div class="xm-character-stage__meta">${safeText(currentRole.rarity || "-")} · ${safeText(currentRole.rankTitle || currentRole.rank || "宗门门人")} · ${safeText(currentRole.school || "宗门")}</div>
             <div class="xm-character-stage__role">${safeText(rolePositionLabel(currentRole))}</div>
             <div class="xm-character-stage__actions">
-              ${owned ? `<button type="button" class="primary" data-role-upgrade-id="${safeText(currentRole.id)}">升级角色</button>` : `<button type="button" class="secondary" disabled>尚未拥有</button>`}
+              ${owned ? `<button type="button" class="${canUpgrade ? "primary" : "secondary"}" data-role-upgrade-id="${safeText(currentRole.id)}" ${canUpgrade ? "" : "disabled"}>${safeText(upgradeButtonText)}</button>` : `<button type="button" class="secondary" disabled>尚未拥有</button>`}
             </div>
           </div>
         </section>
@@ -783,6 +805,7 @@
           <div class="xm-character-detail xm-character-detail--formal">
             <section class="xm-character-detail__section"><h3>角色信息</h3><p><strong>等级</strong><span>Lv.${safeText(owned ? currentLevel : "-")}</span></p><p><strong>星级</strong><span class="xm-character-stars">${safeText(starText(starLevel))}</span></p><p><strong>品质</strong><span>${safeText(currentRole.rarity || "-")}</span></p><p><strong>身份</strong><span>${safeText(currentRole.rankTitle || currentRole.rank || "宗门门人")}</span></p><p><strong>流派</strong><span>${safeText(currentRole.school || "-")}</span></p><p><strong>定位</strong><span>${safeText(rolePositionLabel(currentRole))}</span></p><p><strong>状态</strong><span>${safeText(`${owned ? "已拥有" : "未拥有"} · ${isSelectedForRun ? "已上阵" : "未上阵"}`)}</span></p></section>
             <section class="xm-character-detail__section xm-character-detail__stats"><h3>战斗属性</h3><p><strong>伤害类型</strong><span>${safeText(damageTypeLabel(currentRole))}</span></p><p><strong>攻击</strong><span>${safeText(owned ? currentDamage : currentRole.baseDamage || "-")}</span></p><p><strong>攻速</strong><span>${safeText(currentRole.baseAttackSpeed || currentRole.attackSpeed || "-")}</span></p><p><strong>射程</strong><span>${safeText(currentRole.baseRange || currentRole.range || "-")}</span></p><p><strong>攻击方式</strong><span>${safeText(characterAttackTypeLabel(currentRole.projectileType || currentRole.projectile))}</span></p><p><strong>弹道类型</strong><span>${safeText(characterTrajectoryLabel(currentRole.trajectoryType))}</span></p></section>
+            <section class="xm-character-detail__section"><h3>修为提升</h3><p><strong>当前等级</strong><span>Lv.${safeText(owned ? currentLevel : "-")}</span></p><p><strong>当前攻击</strong><span>${safeText(owned ? currentDamage : "-")}</span></p><p><strong>升级后</strong><span>${safeText(owned && !upgradeCost.isMax ? nextDamage : "已达当前版本等级上限")}</span></p><p><strong>消耗</strong><span>${safeText(upgradeCost.isMax ? "无需消耗" : `灵石 ${upgradeCost.spiritStones} · 修为丹 ${upgradeCost.characterExpItem}`)}</span></p><p><strong>当前拥有</strong><span>${safeText(`灵石 ${ownedSpiritStones} · 修为丹 ${ownedExpItems}`)}</span></p><p><strong>等级上限</strong><span>Lv.${safeText(upgradeCost.maxLevel || 20)}</span></p></section>
             <section class="xm-character-skill-card"><span class="xm-character-skill-icon">${safeText(skillIconText(currentRole))}</span><span class="xm-character-skill-body"><strong>${safeText(martialName)}</strong><em>${safeText(martialTypeText(currentRole))}</em><p>${safeText(martialDescription(currentRole, martialName))}</p></span></section>
             <section class="xm-character-detail__section xm-character-detail__bio"><h3>人物小传</h3><p>${safeText(characterBio(currentRole))}</p><button type="button" class="secondary" data-character-bio-id="${safeText(currentRole.id)}">人物传记</button></section>
           </div>

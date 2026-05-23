@@ -134,29 +134,15 @@
   }
 
   function getCharacterBaseFinalDamage({ playerProfile, character, characterRarity }) {
-    const level = getCharacterLevel({ playerProfile, characterId: character.id });
+    const level = Math.max(1, Math.floor(Number(getCharacterLevel({ playerProfile, characterId: character.id })) || 1));
     const levelDelta = level - 1;
-    return (
-      character.baseDamage +
-      levelDelta * getFlatDamageGrowthByRarity({ rarity: character.rarity, characterRarity }) +
-      character.baseDamage * levelDelta * getPercentGrowthByRarity({ rarity: character.rarity, characterRarity })
-    );
+    const baseDamage = Number(character.baseDamage ?? character.damage ?? 0) || 0;
+    return baseDamage * (1 + levelDelta * 0.08);
   }
 
   function getCharacterUpgradeCost({ characterLevel, rarity }) {
-    const rarityBase = {
-      SR: 80,
-      SSR: 140,
-      UR: 240,
-      SP: 360,
-    };
-    const rarityGrowth = {
-      SR: 1.5,
-      SSR: 1.6,
-      UR: 1.7,
-      SP: 1.8,
-    };
-    return Math.floor((rarityBase[rarity] || rarityBase.SR) * Math.pow(rarityGrowth[rarity] || rarityGrowth.SR, characterLevel - 1));
+    const level = Math.max(1, Math.floor(Number(characterLevel) || 1));
+    return level * 100;
   }
 
   function upgradeCharacter({ playerProfile, DATA, characterId, callbacks }) {
