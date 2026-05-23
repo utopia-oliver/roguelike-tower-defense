@@ -2182,6 +2182,54 @@ button:disabled {
   font-style: normal;
 }
 
+.xm-bag-page__note {
+  color: rgba(220, 235, 214, 0.76);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: -4px 0 14px;
+}
+
+.xm-resource-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.xm-resource-section h3 {
+  color: var(--gold-soft);
+  font-family: var(--font-accent);
+  font-size: 15px;
+  margin: 0;
+}
+
+.xm-material-grid--currency {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.xm-resource-card {
+  min-height: 174px;
+}
+
+.xm-resource-card--currency {
+  background:
+    linear-gradient(135deg, rgba(241, 217, 154, 0.14), transparent 48%),
+    linear-gradient(180deg, rgba(8, 26, 21, 0.72), rgba(11, 31, 25, 0.66));
+  border-color: rgba(216, 172, 82, 0.36);
+}
+
+.xm-resource-card em {
+  color: #fff4cf;
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.xm-resource-card > span:not(.xm-material-card__icon) {
+  color: rgba(220, 235, 214, 0.78);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .xm-material-detail {
   display: grid;
   gap: 14px;

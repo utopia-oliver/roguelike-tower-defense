@@ -179,6 +179,13 @@
   function syncPlayerMetaAliases({ playerMeta, getMaxDeploySlots, getMaxArtifactSlots }) {
     if (!playerMeta) return playerMeta;
     playerMeta.level = playerMeta.playerLevel;
+    playerMeta.currencies = playerMeta.currencies && typeof playerMeta.currencies === "object" ? playerMeta.currencies : {};
+    if (Number.isFinite(Number(playerMeta.spiritStones))) {
+      playerMeta.currencies.spiritStones = Math.max(0, Math.floor(Number(playerMeta.spiritStones) || 0));
+    } else {
+      playerMeta.spiritStones = Math.max(0, Math.floor(Number(playerMeta.currencies.spiritStones) || 0));
+    }
+    playerMeta.currencies.daoStones = Math.max(0, Math.floor(Number(playerMeta.currencies.daoStones) || 0));
     playerMeta.lingstone = playerMeta.spiritStones;
     playerMeta.ownedRoles = playerMeta.ownedCharacters;
     playerMeta.unlockedCharacterIds = playerMeta.ownedCharacters;

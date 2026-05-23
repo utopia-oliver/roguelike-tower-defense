@@ -36,6 +36,13 @@
     return (chapter?.nodes || []).reduce((sum, node) => sum + getNodeDaoSealCount(playerProfile, chapter.chapterId, node.nodeId), 0);
   }
 
+  function currencyAmount(playerProfile = {}, id = "spiritStones") {
+    if (id === "spiritStones") {
+      return Math.max(0, Math.floor(Number(playerProfile.currencies?.spiritStones ?? playerProfile.spiritStones) || 0));
+    }
+    return Math.max(0, Math.floor(Number(playerProfile.currencies?.[id]) || 0));
+  }
+
   function formatDaoSealReward(reward = {}) {
     const parts = [];
     if (reward.spiritStones) parts.push(`灵石 x${reward.spiritStones}`);
@@ -80,7 +87,7 @@
     const summary = currentChapterSummary({ DATA, playerProfile, helpers });
     root.innerHTML = `
       <span class="xm-resource-label">Lv. ${safeText(playerProfile.playerLevel || 1)}</span>
-      <span class="xm-resource-label">灵石 <strong class="xm-resource-value">${safeText(playerProfile.spiritStones || 0)}</strong></span>
+      <span class="xm-resource-label">灵石 <strong class="xm-resource-value">${safeText(currencyAmount(playerProfile, "spiritStones"))}</strong></span>
       <span class="xm-resource-label">${safeText(summary.complete ? "第一章已平定" : summary.chapter?.name || "第一章·妖门初启")}</span>
       <span class="xm-resource-label">青冥一界</span>
     `;
@@ -89,7 +96,7 @@
   function renderLobby({ elements, DATA, playerProfile, helpers }) {
     helpers.syncPlayerMetaAliases();
     elements.metaLevel.textContent = `${playerProfile.playerLevel}级 · ${playerProfile.playerExp}/${helpers.getPlayerLevelExpRequirement(playerProfile.playerLevel)}`;
-    elements.metaLingstone.textContent = playerProfile.spiritStones;
+    elements.metaLingstone.textContent = currencyAmount(playerProfile, "spiritStones");
     elements.ownedRolesList.innerHTML = "";
 
     valuesOf(DATA.roles).forEach((role) => {
@@ -154,7 +161,7 @@
       CHARACTERS: ["洞府", "查看、培养与管理宗门门人和已拥有角色。"],
       ARTIFACTS: ["炼器阁", "法宝祭炼、器灵养成、羁绊共鸣。"],
       FORMATIONS: ["阵枢殿", "护山大阵核心中枢，影响整局战斗节奏。"],
-      BAG: ["库藏殿", "材料、消耗、特殊与任务物品。"],
+      BAG: ["库藏殿", "宗门物资皆藏于此，可用于门人培养、法宝炼制与阵法修缮。"],
       GACHA: ["祈灵台", "以灵石祈召宗门角色，后续扩展法宝祈召。"],
       CODEX: ["镇妖录", "妖物图鉴、怪物记录与封妖资料。"],
       ADVENTURE: ["山门外", "选择章节关卡，进入战前配置。"],
@@ -420,23 +427,32 @@
     `;
   }
 
-  function getMaterialCatalogPreview() {
-    return [
-      { id: "monster_core", name: "妖核", icon: "核", category: "妖核", rarity: "普通", quantity: 0, key: false, sources: ["妖物掉落", "山门外历练", "精英妖物掉落"], uses: ["法宝升级", "阵法升级", "部分角色突破"], systems: ["炼器阁", "阵枢殿"], description: "妖物体内凝结的妖气核心，虽浊气未散，却可经炼化后作为宗门修复与祭炼材料。" },
-      { id: "array_fragment", name: "阵纹残片", icon: "纹", category: "阵纹", rarity: "普通", quantity: 0, key: false, sources: ["破阵妖物", "外阵遗迹", "山门外历练"], uses: ["护山大阵升级", "阵眼修复", "阵纹修补"], systems: ["阵枢殿", "山门外"], description: "从破损阵纹中剥离出的残片，仍残留微弱灵光，可用于修补护山大阵。" },
-      { id: "qingming_sword_soul", name: "青冥剑魄", icon: "剑", category: "法宝素材", rarity: "稀有", quantity: 0, key: false, sources: ["剑系节点", "精英掉落", "章节首通奖励"], uses: ["青冥剑匣进阶", "青冥剑匣大成路线"], systems: ["炼器阁", "山门外"], description: "蕴含青冥剑意的碎魄，是祭炼青冥剑匣的重要材料。" },
-      { id: "lihuo_sand", name: "离火砂", icon: "火", category: "法宝素材", rarity: "稀有", quantity: 0, key: false, sources: ["火系妖物", "万宝阁兑换，后续开放"], uses: ["离火葫芦进阶", "火系法宝强化"], systems: ["炼器阁"], description: "赤红如砂，遇妖气则温热，可催发离火法宝的真焰。" },
-      { id: "xuanbing_jade", name: "玄冰玉髓", icon: "冰", category: "法宝素材", rarity: "稀有", quantity: 0, key: false, sources: ["寒气节点", "Boss 掉落"], uses: ["玄冰玉镜进阶", "冰系法宝强化"], systems: ["炼器阁"], description: "寒玉深处凝成的冰髓，可用于强化冰系法宝与阵纹。" },
-      { id: "artifact_spirit_remnant", name: "器灵残识", icon: "灵", category: "法宝素材", rarity: "珍稀", quantity: 0, key: true, sources: ["Boss 掉落", "章节奖励"], uses: ["法宝大成路线解锁"], systems: ["炼器阁", "山门外"], description: "法宝器灵破碎后残留的一缕灵识，是开启大成路线的关键材料。" },
-      { id: "break_array_rune", name: "破阵残纹", icon: "阵", category: "阵纹", rarity: "稀有", quantity: 0, key: false, sources: ["噬阵螟", "破阵精英"], uses: ["阵法升级", "破阵飞剑路线"], systems: ["阵枢殿", "炼器阁"], description: "被妖气污染过的阵纹残片，处理后可用于研究破阵与反制之法。" },
-      { id: "spirit_stone", name: "靈石", icon: "石", category: "消耗品", rarity: "普通", quantity: 0, key: false, sources: ["历练结算", "章节奖励"], uses: ["抽取", "角色培养", "法宝与阵法养成"], systems: ["祈灵台", "炼器阁", "阵枢殿"], description: "宗门日常修行与祭炼所需的基础灵材，经过净化后可用于多种局外养成。" },
-      { id: "return_gate_rune", name: "归门妖纹", icon: "纹", category: "剧情物品", rarity: "剧情", quantity: 0, key: true, sources: ["第一章 Boss", "剧情奖励"], uses: ["主线线索", "镇妖录记录"], systems: ["镇妖录", "山门外"], description: "黑渊门将遗留的古老妖纹，上有“归门”之意，似乎指向护山大阵背后的旧秘。" },
-    ];
+  const RESOURCE_CATALOG = [
+    { id: "spiritStones", resourceType: "currency", name: "灵石", icon: "石", category: "货币", rarity: "通用", description: "宗门基础货币，可用于门人培养、法宝炼制与阵法修缮。", sources: ["战斗结算", "道印奖励", "扫荡奖励"], uses: ["门人培养", "法宝炼制", "阵法修缮", "祈灵台祈召"] },
+    { id: "daoStones", resourceType: "currency", name: "道石", icon: "道", category: "货币", rarity: "珍稀", description: "蕴含大道气息的珍稀灵石，后续可用于高级祈灵或特殊兑换。本版本暂未开放。", sources: ["后续开放"], uses: ["高级祈灵", "特殊兑换"] },
+    { id: "formation_shard", name: "阵纹残片", icon: "纹", category: "材料", rarity: "普通", description: "用于阵枢殿中修缮与升级护山阵法。", sources: ["山门外历练", "道印奖励", "扫荡奖励"], uses: ["阵法升级", "阵眼修复", "阵纹修补"] },
+    { id: "artifact_shard", name: "法宝碎片", icon: "器", category: "碎片", rarity: "稀有", description: "用于炼器阁中强化或进阶法宝。", sources: ["道印奖励", "山门外历练"], uses: ["法宝强化", "法宝进阶"] },
+    { id: "demon_core", name: "妖核", icon: "核", category: "材料", rarity: "普通", description: "妖物体内凝结的残余妖力，可用于炼器或兑换。", sources: ["妖物掉落", "精英妖物掉落", "扫荡奖励"], uses: ["法宝炼制", "阵法修缮", "后续兑换"] },
+    { id: "demon_soul", name: "妖魂", icon: "魂", category: "材料", rarity: "珍稀", description: "较稀有的妖物残魂，可用于高阶养成。", sources: ["Boss 掉落", "章节奖励"], uses: ["高阶门人培养", "高阶法宝养成"] },
+    { id: "qingming_sword_box_shard", name: "青冥剑匣碎片", icon: "剑", category: "碎片", rarity: "珍稀", description: "可用于青冥剑匣进阶。", sources: ["30印奖励", "章节奖励"], uses: ["青冥剑匣进阶"] },
+    { id: "character_exp_item", name: "修为丹", icon: "丹", category: "材料", rarity: "普通", description: "用于洞府中提升门人修为。", sources: ["历练奖励", "后续任务奖励"], uses: ["门人培养"] },
+  ];
+
+  function resourceQuantity(playerProfile, item) {
+    if (item.resourceType === "currency") return currencyAmount(playerProfile, item.id);
+    return Math.max(0, Math.floor(Number(playerProfile.materials?.[item.id]) || 0));
   }
 
-  function renderBagPage({ state }) {
-    const categories = ["全部", "妖核", "阵纹", "法宝素材", "角色素材", "消耗品", "剧情物品"];
-    const items = getMaterialCatalogPreview();
+  function getResourceCatalog(playerProfile = {}) {
+    return RESOURCE_CATALOG.map((item) => ({
+      ...item,
+      quantity: resourceQuantity(playerProfile, item),
+    }));
+  }
+
+  function renderBagPage({ state, playerProfile }) {
+    const categories = ["全部", "货币", "材料", "碎片", "特殊"];
+    const items = getResourceCatalog(playerProfile);
     const activeCategory = state.bagCategory || "全部";
     const filtered = activeCategory === "全部" ? items : items.filter((item) => item.category === activeCategory);
     const selected = filtered.find((item) => item.id === state.selectedMaterialId)
@@ -445,31 +461,34 @@
       || items[0];
     if (state && selected?.id) state.selectedMaterialId = selected.id;
     const owned = Number(selected.quantity) > 0;
+    const card = (item) => `<button type="button" class="xm-material-card xm-resource-card ${item.resourceType === "currency" ? "xm-resource-card--currency" : ""} ${item.id === selected.id ? "xm-material-card--selected" : ""} ${item.quantity > 0 ? "" : "xm-material-card--locked"} xm-material-card--${safeText(item.rarity)}" data-material-id="${safeText(item.id)}"><span class="xm-material-card__icon">${safeText(item.icon)}</span><strong>${safeText(item.name)}</strong><em>${safeText(item.quantity)}</em><small>${safeText(item.category)} · ${safeText(item.rarity)}</small><span>${safeText(item.description)}</span></button>`;
+    const currencyItems = filtered.filter((item) => item.resourceType === "currency");
+    const stashItems = filtered.filter((item) => item.resourceType !== "currency");
     return `
-      <section class="xm-bag-page">
+      <section class="xm-bag-page xm-bag-page--resources">
         <aside class="xm-bag-page__sidebar xm-inner-panel">
           <h2>物资分类</h2>
           <div class="xm-bag-category-list">
             ${categories.map((category) => {
               const count = category === "全部" ? items.length : items.filter((item) => item.category === category).length;
-              return `<button type="button" class="xm-bag-category ${activeCategory === category ? "xm-bag-category--selected" : ""}" data-bag-category="${safeText(category)}"><strong>${safeText(category)}</strong><span>${count} 件</span></button>`;
+              return `<button type="button" class="xm-bag-category ${activeCategory === category ? "xm-bag-category--selected" : ""}" data-bag-category="${safeText(category)}"><strong>${safeText(category)}</strong><span>${count} 类</span></button>`;
             }).join("")}
           </div>
         </aside>
         <section class="xm-bag-page__main xm-inner-panel">
-          <h2>库藏清单</h2>
-          <div class="xm-material-grid">
-            ${filtered.map((item) => `<button type="button" class="xm-material-card ${item.id === selected.id ? "xm-material-card--selected" : ""} ${item.quantity > 0 ? "" : "xm-material-card--locked"} xm-material-card--${safeText(item.rarity)}" data-material-id="${safeText(item.id)}"><span class="xm-material-card__icon">${safeText(item.icon)}</span><strong>${safeText(item.name)}</strong><small>${safeText(item.rarity)} · ${safeText(item.category)}</small><em>× ${safeText(item.quantity)}</em></button>`).join("")}
-          </div>
+          <h2>资源总览</h2>
+          <p class="xm-bag-page__note">当前库存会随战斗结算、扫荡与道印奖励领取实时入库。</p>
+          ${currencyItems.length ? `<section class="xm-resource-section"><h3>货币</h3><div class="xm-material-grid xm-material-grid--currency">${currencyItems.map(card).join("")}</div></section>` : ""}
+          ${stashItems.length ? `<section class="xm-resource-section"><h3>库藏物资</h3><div class="xm-material-grid">${stashItems.map(card).join("")}</div></section>` : ""}
         </section>
         <aside class="xm-bag-page__detail xm-inner-panel">
           <h2>物资卷宗</h2>
           <div class="xm-material-detail">
-            <section class="xm-character-detail__section"><h3>物品信息</h3><p><strong>物品名称</strong><span>${safeText(selected.name)}</span></p><p><strong>分类</strong><span>${safeText(selected.category)}</span></p><p><strong>品质</strong><span>${safeText(selected.rarity)}</span></p><p><strong>当前数量</strong><span>${safeText(selected.quantity)}</span></p><p><strong>获得状态</strong><span>${safeText(owned ? "已获得" : "未获得，可预览")}</span></p><p><strong>关键材料</strong><span>${safeText(selected.key ? "是" : "否")}</span></p></section>
+            <section class="xm-character-detail__section"><h3>资源信息</h3><p><strong>资源名称</strong><span>${safeText(selected.name)}</span></p><p><strong>分类</strong><span>${safeText(selected.category)}</span></p><p><strong>品阶</strong><span>${safeText(selected.rarity)}</span></p><p><strong>当前数量</strong><span>${safeText(selected.quantity)}</span></p><p><strong>库存状态</strong><span>${safeText(owned ? "已有库存" : "暂无库存")}</span></p></section>
             <section class="xm-character-detail__section"><h3>获取来源</h3><p>${selected.sources.map(safeText).join("、")}</p></section>
             <section class="xm-character-detail__section"><h3>主要用途</h3><p>${selected.uses.map(safeText).join("、")}</p></section>
             <section class="xm-character-detail__section"><h3>相关系统</h3><div class="xm-related-actions"><button type="button" class="secondary" data-bag-link="ARTIFACTS">前往炼器阁</button><button type="button" class="secondary" data-bag-link="FORMATIONS">前往阵枢殿</button><button type="button" class="secondary" data-bag-link="ADVENTURE">前往山门外</button><button type="button" class="secondary" data-bag-link="WANBAO">前往万宝阁</button></div></section>
-            <section class="xm-character-detail__section xm-character-detail__bio"><h3>物品说明</h3><p>${safeText(selected.description)}</p></section>
+            <section class="xm-character-detail__section xm-character-detail__bio"><h3>物资说明</h3><p>${safeText(selected.description)}</p></section>
           </div>
         </aside>
       </section>
@@ -521,7 +540,7 @@
         <aside class="xm-gacha-page__detail xm-inner-panel">
           <h2>祈灵卷宗</h2>
           <div class="xm-gacha-detail">
-            <section class="xm-character-detail__section"><h3>当前资源</h3><p><strong>靈石</strong><span>${safeText(playerProfile.spiritStones || 0)}</span></p><p><strong>祈灵符</strong><span>0 · 暂未开放</span></p><p><strong>单次祈召</strong><span>${safeText(cost)} 靈石</span></p><p><strong>十连祈召</strong><span>暂未开放</span></p></section>
+            <section class="xm-character-detail__section"><h3>当前资源</h3><p><strong>灵石</strong><span>${safeText(currencyAmount(playerProfile, "spiritStones"))}</span></p><p><strong>祈灵符</strong><span>0 · 暂未开放</span></p><p><strong>单次祈召</strong><span>${safeText(cost)} 灵石</span></p><p><strong>十连祈召</strong><span>暂未开放</span></p></section>
             <section class="xm-character-detail__section"><h3>卡池说明</h3><p>${safeText(currentPool.id === "character" ? "焚香问灵，可感召宗门门人加入山门。" : currentPool.id === "artifact" ? "法宝祈召界面预留中，实际法宝祈召后续开放。" : "该卡池后续开放。")}</p></section>
             <section class="xm-character-detail__section"><h3>祈召概率</h3><p>SR：常见 · SSR：稀有 · UR：极稀有</p><p class="xm-artifact-muted">当前概率沿用现有抽取逻辑，后续将接入正式卡池公告。</p></section>
             <section class="xm-character-detail__section"><h3>祈灵记录</h3><p>今日祈召：0 次</p><p>保底系统：暂未开放</p><p>最近获得：${safeText(state.gachaResult?.character?.name || "暂无记录")}</p></section>
@@ -1134,7 +1153,7 @@
       CHARACTERS: () => renderCharactersPageV2({ DATA, playerProfile, state, helpers }),
       ARTIFACTS: () => renderArtifactsPageV2({ DATA, playerProfile, state }),
       FORMATIONS: () => renderFormationsPage({ DATA, playerProfile, state }),
-      BAG: () => renderBagPage({ state }),
+      BAG: () => renderBagPage({ state, playerProfile }),
       GACHA: () => renderGachaPage({ DATA, playerProfile, state }),
       CODEX: () => renderCodexPage({ DATA, playerProfile, state }),
       ADVENTURE: () => renderAdventurePage({ DATA, playerProfile, state, helpers }),

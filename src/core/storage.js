@@ -50,6 +50,66 @@
     return result;
   }
 
+  const MATERIAL_IDS = [
+    "formation_shard",
+    "artifact_shard",
+    "demon_core",
+    "demon_soul",
+    "qingming_sword_box_shard",
+    "character_exp_item",
+  ];
+
+  const MATERIAL_ID_ALIASES = {
+    formation_shard: "formation_shard",
+    array_fragment: "formation_shard",
+    break_array_rune: "formation_shard",
+    "阵纹残片": "formation_shard",
+    artifact_shard: "artifact_shard",
+    artifact_spirit_remnant: "artifact_shard",
+    "法宝碎片": "artifact_shard",
+    demon_core: "demon_core",
+    monster_core: "demon_core",
+    "妖核": "demon_core",
+    demon_soul: "demon_soul",
+    "妖魂": "demon_soul",
+    qingming_sword_box_shard: "qingming_sword_box_shard",
+    qingming_sword_soul: "qingming_sword_box_shard",
+    "青冥剑匣碎片": "qingming_sword_box_shard",
+    character_exp_item: "character_exp_item",
+    "修为丹": "character_exp_item",
+  };
+
+  const MATERIAL_CURRENCY_KEYS = new Set(["spiritStones", "spirit_stone", "灵石", "daoStones", "道石"]);
+
+  function createDefaultMaterials() {
+    return Object.fromEntries(MATERIAL_IDS.map((id) => [id, 0]));
+  }
+
+  function normalizeMaterialAmount(value) {
+    return Math.max(0, Math.floor(Number(value) || 0));
+  }
+
+  function normalizeCurrencies(value, legacySpiritStones = 0) {
+    const source = value && typeof value === "object" ? value : {};
+    const hasSpiritStones = Object.prototype.hasOwnProperty.call(source, "spiritStones");
+    return {
+      spiritStones: normalizeMaterialAmount(hasSpiritStones ? source.spiritStones : legacySpiritStones),
+      daoStones: normalizeMaterialAmount(source.daoStones),
+    };
+  }
+
+  function normalizeMaterials(value) {
+    const result = createDefaultMaterials();
+    if (!value || typeof value !== "object") return result;
+    Object.entries(value).forEach(([rawId, rawAmount]) => {
+      if (MATERIAL_CURRENCY_KEYS.has(rawId)) return;
+      const id = MATERIAL_ID_ALIASES[rawId] || rawId;
+      if (!id) return;
+      result[id] = normalizeMaterialAmount(result[id]) + normalizeMaterialAmount(rawAmount);
+    });
+    return result;
+  }
+
   function createDefaultPlayerProfile(helpers = {}) {
     const profileHelpers = playerProfileHelpers(helpers);
     const ownedArtifacts = [...profileHelpers.initialArtifacts];
@@ -62,6 +122,10 @@
       playerLevel: 1,
       playerExp: 0,
       spiritStones: 0,
+      currencies: {
+        spiritStones: 0,
+        daoStones: 0,
+      },
       highestWave: 0,
       totalKills: 0,
       ownedCharacters: [...profileHelpers.initialRoles],
@@ -78,7 +142,7 @@
       chapterProgress: createDefaultChapterProgress(profileHelpers.chapters),
       chapterStars: {},
       chapterStarChests: {},
-      materials: {},
+      materials: createDefaultMaterials(),
     };
   }
 
@@ -146,15 +210,22 @@
   function normalizePlayerProfile(raw, helpers = {}) {
     const profileHelpers = playerProfileHelpers(helpers);
     const defaults = createDefaultPlayerProfile(profileHelpers);
+    const rawProfile = raw && typeof raw === "object" ? raw : {};
     const profile = {
       ...defaults,
-      ...(raw || {}),
+      ...rawProfile,
     };
+    const hasLegacySpiritStones = Object.prototype.hasOwnProperty.call(rawProfile, "spiritStones");
     const firstCharacterId = profileHelpers.initialRoles[0] || "lu_qingya";
 
     profile.playerLevel = Math.max(1, Math.floor(Number(profile.playerLevel) || 1));
     profile.playerExp = Math.max(0, Math.floor(Number(profile.playerExp) || 0));
     profile.spiritStones = Math.max(0, Math.floor(Number(profile.spiritStones) || 0));
+    profile.currencies = normalizeCurrencies(profile.currencies, profile.spiritStones);
+    if (hasLegacySpiritStones) {
+      profile.currencies.spiritStones = profile.spiritStones;
+    }
+    profile.spiritStones = profile.currencies.spiritStones;
     profile.highestWave = Math.max(0, Math.floor(Number(profile.highestWave) || 0));
     profile.totalKills = Math.max(0, Math.floor(Number(profile.totalKills) || 0));
 
@@ -193,12 +264,13 @@
     profile.chapterProgress = normalizeChapterProgress(profile.chapterProgress, profileHelpers.chapters);
     profile.chapterStars = profile.chapterStars && typeof profile.chapterStars === "object" ? profile.chapterStars : {};
     profile.chapterStarChests = profile.chapterStarChests && typeof profile.chapterStarChests === "object" ? profile.chapterStarChests : {};
-    profile.materials = profile.materials && typeof profile.materials === "object" ? profile.materials : {};
+    profile.materials = normalizeMaterials(profile.materials);
 
     return {
       playerLevel: profile.playerLevel,
       playerExp: profile.playerExp,
       spiritStones: profile.spiritStones,
+      currencies: profile.currencies,
       highestWave: profile.highestWave,
       totalKills: profile.totalKills,
       ownedCharacters: profile.ownedCharacters,

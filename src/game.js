@@ -398,6 +398,10 @@ const playerMeta = {
   playerLevel: 1,
   playerExp: 0,
   spiritStones: 0,
+  currencies: {
+    spiritStones: 0,
+    daoStones: 0,
+  },
   highestWave: 0,
   totalKills: 0,
   level: 1,
@@ -416,6 +420,9 @@ const playerMeta = {
   arrayCoreBaseHpBonus: 0,
   arrayCoreDefenseBonus: 0,
   chapterProgress: createStoredDefaultPlayerProfile({ chapters: DATA.chapters }).chapterProgress,
+  chapterStars: {},
+  chapterStarChests: {},
+  materials: {},
 };
 let playerProfileLoadedFromStorage = false;
 let playerProfileSaveSuppressed = false;
@@ -786,9 +793,7 @@ function getDebugActions() {
       return { rewards, snapshot: getDebugSnapshot() };
     },
     grantSpiritStones: (amount) => {
-      playerMeta.spiritStones += amount;
-      syncPlayerMetaAliases();
-      savePlayerProfile();
+      grantRewards([{ type: "currency", id: "spiritStones", name: "灵石", amount }]);
       renderLobby();
       updateUi();
       return getDebugSnapshot();
@@ -998,6 +1003,116 @@ function ensureDaoSealState() {
   if (!playerMeta.chapterStars || typeof playerMeta.chapterStars !== "object") playerMeta.chapterStars = {};
   if (!playerMeta.chapterStarChests || typeof playerMeta.chapterStarChests !== "object") playerMeta.chapterStarChests = {};
   if (!playerMeta.materials || typeof playerMeta.materials !== "object") playerMeta.materials = {};
+  if (!playerMeta.currencies || typeof playerMeta.currencies !== "object") playerMeta.currencies = {};
+  playerMeta.currencies.spiritStones = safeRewardAmount(playerMeta.currencies.spiritStones ?? playerMeta.spiritStones);
+  playerMeta.currencies.daoStones = safeRewardAmount(playerMeta.currencies.daoStones);
+  playerMeta.spiritStones = playerMeta.currencies.spiritStones;
+}
+
+const CURRENCY_RESOURCE_CATALOG = {
+  spiritStones: { name: "灵石" },
+  daoStones: { name: "道石" },
+};
+
+const MATERIAL_RESOURCE_CATALOG = {
+  formation_shard: { name: "阵纹残片" },
+  artifact_shard: { name: "法宝碎片" },
+  demon_core: { name: "妖核" },
+  demon_soul: { name: "妖魂" },
+  qingming_sword_box_shard: { name: "青冥剑匣碎片" },
+  character_exp_item: { name: "修为丹" },
+};
+
+const MATERIAL_REWARD_ALIASES = {
+  formation_shard: "formation_shard",
+  "阵纹残片": "formation_shard",
+  artifact_shard: "artifact_shard",
+  "法宝碎片": "artifact_shard",
+  demon_core: "demon_core",
+  "妖核": "demon_core",
+  demon_soul: "demon_soul",
+  "妖魂": "demon_soul",
+  qingming_sword_box_shard: "qingming_sword_box_shard",
+  "青冥剑匣碎片": "qingming_sword_box_shard",
+  character_exp_item: "character_exp_item",
+  "修为丹": "character_exp_item",
+};
+
+function safeRewardAmount(amount) {
+  return Math.max(0, Math.floor(Number(amount) || 0));
+}
+
+function materialRewardId(reward = {}) {
+  return MATERIAL_REWARD_ALIASES[reward.id] || MATERIAL_REWARD_ALIASES[reward.name] || reward.id || "";
+}
+
+function normalizeRewardEntry(reward = {}) {
+  const amount = safeRewardAmount(reward.amount);
+  if (amount <= 0) return null;
+  if (reward.type === "spiritStones") {
+    return { type: "currency", id: "spiritStones", name: "灵石", amount };
+  }
+  if (reward.type === "currency") {
+    const id = reward.id === "daoStones" ? "daoStones" : "spiritStones";
+    return {
+      type: "currency",
+      id,
+      name: CURRENCY_RESOURCE_CATALOG[id]?.name || reward.name || "货币",
+      amount,
+    };
+  }
+  if (reward.type === "material") {
+    const id = materialRewardId(reward);
+    if (!id) return null;
+    return {
+      type: "material",
+      id,
+      name: MATERIAL_RESOURCE_CATALOG[id]?.name || reward.name || "未知材料",
+      amount,
+    };
+  }
+  return null;
+}
+
+function grantRewards(rewards = []) {
+  ensureDaoSealState();
+  if (!Array.isArray(rewards) || !rewards.length) return [];
+  const granted = [];
+  rewards.forEach((reward) => {
+    const entry = normalizeRewardEntry(reward);
+    if (!entry) return;
+    if (entry.type === "currency") {
+      playerMeta.currencies[entry.id] = safeRewardAmount(playerMeta.currencies[entry.id]) + entry.amount;
+      if (entry.id === "spiritStones") playerMeta.spiritStones = playerMeta.currencies.spiritStones;
+      granted.push(entry);
+      return;
+    }
+    if (entry.type === "material") {
+      playerMeta.materials[entry.id] = safeRewardAmount(playerMeta.materials[entry.id]) + entry.amount;
+      granted.push(entry);
+    }
+  });
+  if (granted.length) {
+    syncPlayerMetaAliases();
+    savePlayerProfile();
+  }
+  return granted;
+}
+
+function formatGrantedRewards(granted = []) {
+  return (granted || []).map((item) => `${item.name} x${item.amount}`).join("、") || "暂无额外奖励";
+}
+
+function daoSealRewardToEntries(reward = {}) {
+  return [
+    reward.spiritStones ? { type: "currency", id: "spiritStones", name: "灵石", amount: reward.spiritStones } : null,
+    ...Object.entries(reward.materials || {}).map(([name, amount]) => ({
+      type: "material",
+      id: MATERIAL_REWARD_ALIASES[name] || name,
+      name,
+      amount,
+    })),
+  ].filter(Boolean);
 }
 
 function getNodeDaoSealCount(chapterId, nodeId) {
@@ -1069,19 +1184,15 @@ function claimChapterDaoSealReward(chapterId, threshold) {
     setStatus(`${tier}印奖励已领取。`);
     return false;
   }
-  playerMeta.spiritStones += Math.max(0, Math.floor(Number(reward.spiritStones) || 0));
-  Object.entries(reward.materials || {}).forEach(([name, amount]) => {
-    playerMeta.materials[name] = Math.max(0, Math.floor(Number(playerMeta.materials[name]) || 0)) + Math.max(0, Math.floor(Number(amount) || 0));
-  });
   playerMeta.chapterStarChests[chapterId][tier] = true;
-  syncPlayerMetaAliases();
-  savePlayerProfile();
-  const rewardText = formatDaoSealReward(reward);
+  const granted = grantRewards(daoSealRewardToEntries(reward));
+  if (!granted.length) savePlayerProfile();
+  const rewardText = formatGrantedRewards(granted);
   state.adventureModal = {
     type: "reward-result",
     title: `${tier}◇ 道印奖励`,
     message: "奖励已收入宗门库藏。",
-    items: rewardText.split("、").filter(Boolean),
+    items: granted.length ? granted.map((item) => `${item.name} x${item.amount}`) : ["暂无额外奖励"],
   };
   setStatus(`已领取 ${tier}印奖励：${rewardText}`);
   renderFeaturePage();
@@ -1098,16 +1209,28 @@ function sweepRewardForNode(chapterId, nodeId) {
   const materials = {};
   (node?.rewardPreview || []).forEach((name) => {
     if (!name || /灵石|经验|图鉴|旧阵残拓|归门妖纹|大量/.test(name)) return;
-    materials[name] = (materials[name] || 0) + 1;
+    const id = MATERIAL_REWARD_ALIASES[name] || "";
+    if (!id) return;
+    materials[id] = (materials[id] || 0) + 1;
   });
+  const resourceRewards = [
+    spiritStones > 0 ? { type: "currency", id: "spiritStones", name: "灵石", amount: spiritStones } : null,
+    ...Object.entries(materials).map(([id, amount]) => ({
+      type: "material",
+      id,
+      name: MATERIAL_RESOURCE_CATALOG[id]?.name || id,
+      amount,
+    })),
+  ].filter(Boolean);
   return {
     spiritStones,
     playerExp,
     materials,
+    resourceRewards,
     items: [
       spiritStones > 0 ? `灵石 x${spiritStones}` : "",
       playerExp > 0 ? `宗主经验 x${playerExp}` : "",
-      ...Object.entries(materials).map(([name, amount]) => `${name} x${amount}`),
+      ...Object.entries(materials).map(([id, amount]) => `${MATERIAL_RESOURCE_CATALOG[id]?.name || id} x${amount}`),
     ].filter(Boolean),
   };
 }
@@ -1143,19 +1266,16 @@ function confirmAdventureSweep(chapterId, nodeId) {
   }
   ensureDaoSealState();
   const reward = sweepRewardForNode(chapterId, nodeId);
-  playerMeta.spiritStones += reward.spiritStones;
+  const granted = grantRewards(reward.resourceRewards);
   playerMeta.playerExp += reward.playerExp;
   const levelRewards = checkPlayerLevelUp();
-  Object.entries(reward.materials || {}).forEach(([name, amount]) => {
-    playerMeta.materials[name] = Math.max(0, Math.floor(Number(playerMeta.materials[name]) || 0)) + Math.max(0, Math.floor(Number(amount) || 0));
-  });
   syncPlayerMetaAliases();
   savePlayerProfile();
   state.adventureModal = {
     type: "sweep-result",
     title: "扫荡完成",
     message: `${node.displayId} ${node.name} 的基础奖励已收入宗门。`,
-    items: [...(reward.items.length ? reward.items : ["暂无额外奖励"]), ...levelRewards],
+    items: [...(reward.items.length ? reward.items : granted.map((item) => `${item.name} x${item.amount}`)), ...levelRewards],
   };
   setStatus(`扫荡完成：${reward.items.join("、") || "暂无额外奖励"}`);
   renderFeaturePage();
@@ -3273,7 +3393,7 @@ function endGame(win) {
   state.paused = false;
   const reward = calculateSettlement(win);
   const playerExp = calculatePlayerExp(win);
-  playerMeta.spiritStones += reward;
+  grantRewards(reward > 0 ? [{ type: "currency", id: "spiritStones", name: "灵石", amount: reward }] : []);
   playerMeta.playerExp += playerExp;
   const levelRewards = checkPlayerLevelUp();
   playerMeta.highestWave = Math.max(playerMeta.highestWave || 0, state.highestWave);
