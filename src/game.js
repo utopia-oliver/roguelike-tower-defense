@@ -849,7 +849,7 @@ function getDebugActions() {
   return {
     enterLoadout: () => enterLoadout(),
     selectLoadout: () => {
-      state.loadoutFormationId = playerMeta.unlockedFormations[0];
+      state.loadoutFormationId = firstLoadoutFormationId();
       state.loadoutRoleIds = playerMeta.ownedCharacters.slice(0, playerMeta.maxDeploySlots);
       state.loadoutArtifactIds = playerMeta.ownedArtifacts.slice(0, playerMeta.maxArtifactSlots);
       state.loadoutArtifactId = state.loadoutArtifactIds[0] || "";
@@ -1428,11 +1428,23 @@ function confirmAdventureSweep(chapterId, nodeId) {
   return true;
 }
 
+function firstLoadoutFormationId() {
+  return (playerMeta.unlockedFormations || [])
+    .find((id) => DATA.formations?.[id] && DATA.formations[id].displayInLoadout !== false)
+    || DATA.initial.formation
+    || playerMeta.unlockedFormations?.[0]
+    || "";
+}
+
 function enterLoadout() {
   applyPlayerLevelUnlocks();
   state.battleMode = state.battleMode || "guard";
-  if (!state.loadoutFormationId || !playerMeta.unlockedFormations.includes(state.loadoutFormationId)) {
-    state.loadoutFormationId = playerMeta.unlockedFormations[0] || DATA.initial.formation || "";
+  if (
+    !state.loadoutFormationId ||
+    !playerMeta.unlockedFormations.includes(state.loadoutFormationId) ||
+    DATA.formations?.[state.loadoutFormationId]?.displayInLoadout === false
+  ) {
+    state.loadoutFormationId = firstLoadoutFormationId();
   }
   state.loadoutRoleIds = state.loadoutRoleIds
     .filter((id) => playerMeta.ownedCharacters.includes(id))
@@ -4020,7 +4032,7 @@ function debugJumpToWave(targetWave) {
     setDebugNotice("未找到该波配置");
     return false;
   }
-  if (!state.loadoutFormationId) state.loadoutFormationId = playerMeta.unlockedFormations[0] || DATA.initial.formation || "";
+  if (!state.loadoutFormationId || DATA.formations?.[state.loadoutFormationId]?.displayInLoadout === false) state.loadoutFormationId = firstLoadoutFormationId();
   if (!state.selectedFormationId) state.selectedFormationId = state.loadoutFormationId;
   if (!Number.isFinite(state.arrayCoreMaxHp) || state.arrayCoreMaxHp <= 0) initializeArrayCoreForRun();
   clearRuntimeThreats();
@@ -4058,7 +4070,7 @@ function debugForceDeploy() {
 }
 
 function debugForceBattle() {
-  if (!state.loadoutFormationId) state.loadoutFormationId = playerMeta.unlockedFormations[0] || DATA.initial.formation || "";
+  if (!state.loadoutFormationId || DATA.formations?.[state.loadoutFormationId]?.displayInLoadout === false) state.loadoutFormationId = firstLoadoutFormationId();
   if (!state.loadoutRoleIds.length && playerMeta.ownedCharacters[0]) state.loadoutRoleIds = [playerMeta.ownedCharacters[0]];
   if (!state.loadoutArtifactIds?.length && playerMeta.ownedArtifacts[0]) {
     state.loadoutArtifactIds = [playerMeta.ownedArtifacts[0]];

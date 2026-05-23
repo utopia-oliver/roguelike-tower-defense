@@ -959,7 +959,7 @@
     if (!deployed.length) return false;
     if (perk.scope === "character") {
       if (perk.targetCharacterId) return deployed.some((character) => character.id === perk.targetCharacterId);
-      if (perk.targetSchool) return deployed.some((character) => character.school === perk.targetSchool);
+      if (perk.targetSchool) return deployed.some((character) => character.school === perk.targetSchool || (character.schoolTags || []).includes(perk.targetSchool));
       if (perk.targetRarity) return deployed.some((character) => character.rarity === perk.targetRarity);
       if (perk.targetTrajectoryType) return deployed.some((character) => character.trajectoryType === perk.targetTrajectoryType);
       if (perk.requiresPassiveSkill) return deployed.some((character) => Boolean(character.passiveSkill));
@@ -1157,7 +1157,7 @@
     if (perk.scope === "artifact" && !selectedArtifactIds({ state: context.state }).length) return "本局未携带法宝";
     if (perk.scope === "artifact" && !selectedArtifactIds({ state: context.state }).includes(perk.targetArtifactId)) return "目标法宝未携带";
     if (perk.scope === "trajectory") return "泛化弹道升级已禁用";
-    if (perk.scope === "character" && perk.targetSchool && !currentRunCharacters({ state: context.state, data: context.data }).some((role) => role.school === perk.targetSchool)) return "当前阵容没有对应流派";
+    if (perk.scope === "character" && perk.targetSchool && !currentRunCharacters({ state: context.state, data: context.data }).some((role) => role.school === perk.targetSchool || (role.schoolTags || []).includes(perk.targetSchool))) return "当前阵容没有对应流派";
     return "过滤条件不满足";
   }
 

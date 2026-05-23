@@ -158,7 +158,10 @@
     }
 
     elements.ownedArtifactsList.innerHTML = (playerProfile.ownedArtifacts || []).map((id) => `<span>${safeText(DATA.artifacts[id]?.name || id)}</span>`).join("");
-    elements.unlockedFormationsList.innerHTML = (playerProfile.unlockedFormations || []).map((id) => `<span>${safeText(DATA.formations[id]?.name || id)}</span>`).join("");
+    elements.unlockedFormationsList.innerHTML = (playerProfile.unlockedFormations || [])
+      .filter((id) => DATA.formations[id]?.displayInLoadout !== false)
+      .map((id) => `<span>${safeText(DATA.formations[id]?.name || id)}</span>`)
+      .join("");
   }
 
   function renderMainHub({ elements, playerProfile, DATA, helpers }) {
@@ -221,6 +224,8 @@
   }
 
   function rolePositionLabel(role = {}) {
+    if (role.combatRole && role.subRole) return `${role.combatRole} / ${role.subRole}`;
+    if (role.combatRole) return role.combatRole;
     const raw = `${role.role || ""} ${role.trajectoryType || ""} ${role.projectileType || ""} ${role.school || ""}`;
     if (/slow|冰|减速/.test(raw)) return "减速控制";
     if (/poison|毒/.test(raw)) return "持续伤害";
@@ -327,11 +332,26 @@
   }
 
   function formationRoleLabel(formation = {}) {
+    const labels = {
+      taiyi_zhenyao_array: "旧版阵法",
+      qinglian_huiyuan_array: "防守续航",
+      xuanbing_chiyao_array: "迟滞妖潮",
+      lihuo_fenyao_array: "范围灼烧",
+      leigang_zhuxie_array: "群体雷击",
+      shanhe_guyuan_array: "已并入青莲山河阵",
+      xingdou_juling_array: "灵气成长",
+      wanjian_hushan_array: "飞剑支援",
+    };
+    if (formation.combatIdentity) return formation.combatIdentity;
+    if (labels[formation.id]) return labels[formation.id];
     const raw = `${formation.role || ""} ${formation.effectType || ""} ${formation.description || ""}`;
     if (/heal|回复|回元|护心/i.test(raw)) return "阵眼护持";
     if (/slow|迟|冰/i.test(raw)) return "迟滞妖潮";
     if (/burn|火|焚/i.test(raw)) return "范围灼烧";
     if (/chain|雷|精英|高血/i.test(raw)) return "精英压制";
+    if (/spirit|灵气|成长|聚灵/i.test(raw)) return "灵气成长";
+    if (/sword|剑|飞剑/i.test(raw)) return "飞剑支援";
+    if (/damageReduction|固元|减伤|山河/i.test(raw)) return "阵前压制";
     if (/damage|镇妖|伤害|压制/i.test(raw)) return "通用压制";
     return formation.role || "护山大阵";
   }
@@ -354,24 +374,43 @@
     return "初启";
   }
 
+  function formationTierLabel(value) {
+    return {
+      starter: "初始核心",
+      core_defense: "核心防守",
+      core_control: "核心控场",
+      core_aoe: "核心清场",
+      core_burst_control: "核心爆发",
+      late_growth: "后期成长",
+      legacy: "旧版归档",
+      merged: "已合并归档",
+    }[value] || "核心阵法";
+  }
+
   function formationEffectText(formation = {}) {
     const effects = {
-      taiyi_zhenyao_array: "周期性激活镇妖阵纹，对靠近阵眼的妖物造成压制与伤害。",
-      qinglian_huiyuan_array: "以青莲灵纹护持阵眼，定时回复护山阵眼生命，低血时护持更强。",
-      xuanbing_chiyao_array: "凝结玄冰阵纹，迟滞妖潮推进速度，并造成少量冰霜伤害。",
-      lihuo_fenyao_array: "引动离火阵纹，对妖物密集区域造成范围伤害与短暂灼烧。",
-      leigang_zhuxie_array: "召落雷罡打击高血量妖物，并向附近目标跳跃传导。",
+      taiyi_zhenyao_array: "旧版通用镇妖阵，当前不作为核心阵法重点展示。",
+      qinglian_huiyuan_array: "每隔一段时间回复护山阵眼生命，后续主动阵诀可击退敌人并生成护盾。",
+      xuanbing_chiyao_array: "周期凝结玄冰阵纹，迟滞妖潮推进，为门人与法宝创造爆发窗口。",
+      lihuo_fenyao_array: "周期引燃妖物密集区域，敌人越密集收益越高。",
+      leigang_zhuxie_array: "周期召落雷罡，对多个敌人造成雷击，并预留短暂眩晕方向。",
+      shanhe_guyuan_array: "已并入青莲山河阵，防御与护盾能力作为青莲山河阵主动阵诀的一部分。",
+      xingdou_juling_array: "提高灵气获取效率，偏后期成长流阵法。",
+      wanjian_hushan_array: "周期释放阵前剑气，拦截靠近阵眼的妖物。",
     };
-    return effects[formation.id] || formation.effectText || formation.description || "阵纹流转，镇守五方。";
+    return formation.passiveText || effects[formation.id] || formation.effectText || formation.description || "阵纹流转，镇守五方。";
   }
 
   function formationLore(formation = {}) {
     const lores = {
-      taiyi_zhenyao_array: "玄门旧传镇妖阵式之一，阵纹沉稳，善于压制靠近山门的妖物，是护山大阵最基础也最可靠的阵法。",
-      qinglian_huiyuan_array: "以青莲灵纹护持阵眼，适合阵眼承压较高时使用。青莲纹开时，阵眼灵光会短暂回稳。",
+      taiyi_zhenyao_array: "玄门旧传镇妖阵式之一，因定位过于中庸，当前从核心阵法中移出，保留为后续剧情或教程阵法。",
+      qinglian_huiyuan_array: "青莲生机与山河厚势合为一阵，既能回护阵眼，也预留山岳镇压与护盾救场的主动阵诀。",
       xuanbing_chiyao_array: "以寒纹封锁妖气流动，擅长迟滞妖潮推进，使护山大阵获得更多喘息余地。",
       lihuo_fenyao_array: "引离火入阵，专克妖邪污秽，适合清理密集妖潮。阵纹燃起时，山门前会泛出赤金火意。",
-      leigang_zhuxie_array: "以雷罡刻入阵盘，专打妖气厚重之物。雷纹落处，常能逼退精英妖物的冲阵之势。",
+      leigang_zhuxie_array: "以雷罡刻入阵盘，烛照妖氛、诛除邪祟。后续阵诀将强化群体雷击与短暂震慑。",
+      shanhe_guyuan_array: "取山河稳固之意铸成阵基，现已并入青莲山河阵，作为护盾与镇压能力的设计来源保留。",
+      xingdou_juling_array: "以星斗方位牵引散落灵机，阵纹明灭如夜空群星。此阵不善急攻，却能令本局成长更快。",
+      wanjian_hushan_array: "玄门剑修旧阵之一，传闻由百道护山剑意合铸而成。阵眼受逼时，剑气会自行出阵迎敌。",
     };
     return lores[formation.id] || "此阵法来历尚未完整录入，后续将随宗门旧卷与阵枢殿修复逐步解锁。";
   }
@@ -391,7 +430,7 @@
   }
 
   function renderFormationsPage({ DATA, playerProfile, state }) {
-    const formations = valuesOf(DATA.formations);
+    const formations = valuesOf(DATA.formations).filter((formation) => formation.displayInLoadout !== false);
     const unlocked = new Set(playerProfile.unlockedFormations || []);
     if (!formations.length) {
       return `<section class="xm-formation-page"><aside class="xm-formation-page__sidebar xm-inner-panel"><h2>阵法名录</h2><p>暂无阵法数据。</p></aside><section class="xm-formation-page__center xm-inner-panel"><h2>护山阵盘</h2><p>暂无可展示阵法。</p></section><aside class="xm-formation-page__detail xm-inner-panel"><h2>阵法卷宗</h2><p>阵法数据尚未载入。</p></aside></section>`;
@@ -437,8 +476,9 @@
         <aside class="xm-formation-page__detail xm-inner-panel">
           <h2>阵法卷宗</h2>
           <div class="xm-formation-detail">
-            <section class="xm-character-detail__section"><h3>阵法信息</h3><p><strong>阵法名</strong><span>${safeText(current.name || "-")}</span></p><p><strong>定位</strong><span>${safeText(formationRoleLabel(current))}</span></p><p><strong>等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>状态</strong><span>${safeText(`${isUnlocked ? "已解锁" : "未解锁"} · ${isSelected ? "当前选择" : "未选择"}`)}</span></p><p><strong>触发方式</strong><span>${safeText(formationTriggerLabel(current.triggerType))}</span></p><p><strong>冷却 / 间隔</strong><span>${safeText(current.triggerInterval || current.cooldown ? `${current.triggerInterval || current.cooldown}秒` : "-")}</span></p></section>
-            <section class="xm-character-detail__section"><h3>阵法效果</h3><p>${safeText(formationEffectText(current))}</p></section>
+            <section class="xm-character-detail__section"><h3>阵法信息</h3><p><strong>阵法名</strong><span>${safeText(current.name || "-")}</span></p><p><strong>定位</strong><span>${safeText(formationRoleLabel(current))}</span></p><p><strong>阵法阶段</strong><span>${safeText(formationTierLabel(current.formationTier))}</span></p><p><strong>核心阵法</strong><span>${safeText(current.isCoreFormation === false ? "否" : "是")}</span></p><p><strong>等级</strong><span>Lv.${safeText(level)}</span></p><p><strong>状态</strong><span>${safeText(`${isUnlocked ? "已解锁" : "未解锁"} · ${isSelected ? "当前选择" : "未选择"}`)}</span></p><p><strong>触发方式</strong><span>${safeText(formationTriggerLabel(current.triggerType))}</span></p><p><strong>冷却 / 间隔</strong><span>${safeText(current.triggerInterval || current.cooldown ? `${current.triggerInterval || current.cooldown}秒` : "-")}</span></p></section>
+            <section class="xm-character-detail__section"><h3>被动阵势</h3><p>${safeText(formationEffectText(current))}</p></section>
+            <section class="xm-character-detail__section"><h3>主动阵诀</h3><p><strong>${safeText(current.activeSkill?.name || "后续开放")}</strong><span>${safeText(current.activeSkill?.description || "阵法主动释放系统后续开放。")}</span></p></section>
             ${renderFormationCoreStatus({ coreHp, coreMaxHp, formation: current })}
             ${renderFormationCultivation(current, level)}
             <section class="xm-character-detail__section xm-character-detail__bio"><h3>阵法来历</h3><p>${safeText(formationLore(current))}</p></section>
@@ -641,9 +681,9 @@
     const item = entry?.raw || {};
     if (!entry) return "<p>暂无条目。</p>";
     if (!entry.unlocked) return `<section class="xm-character-detail__section"><h3>尚未收录</h3><p>该条目尚未在镇妖录中完整显现，请继续推进山门外历练。</p></section>`;
-    if (category === "门人") return `<section class="xm-character-detail__section"><h3>门人档案</h3><p><strong>角色名</strong><span>${safeText(item.name)}</span></p><p><strong>品质</strong><span>${safeText(item.rarity || "-")}</span></p><p><strong>身份</strong><span>${safeText(item.rankTitle || item.rank || "宗门门人")}</span></p><p><strong>流派</strong><span>${safeText(item.school || "-")}</span></p><p><strong>定位</strong><span>${safeText(rolePositionLabel(item))}</span></p><p><strong>先天武学</strong><span>${safeText(item.martialArtName || "未载明")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>人物小传</h3><p>${safeText(item.note || item.description || `${item.name || "此门人"}在宗门静修待命，可随宗主出阵守护山门。`)}</p><button type="button" class="secondary" data-codex-link="CHARACTERS" data-codex-target="${safeText(item.id)}">前往洞府</button></section>`;
+    if (category === "门人") return `<section class="xm-character-detail__section"><h3>门人档案</h3><p><strong>角色名</strong><span>${safeText(item.name)}</span></p><p><strong>品质</strong><span>${safeText(item.rarity || "-")}</span></p><p><strong>身份</strong><span>${safeText(item.rankTitle || item.rank || "宗门门人")}</span></p><p><strong>所属</strong><span>${safeText(`${item.faction || "万玄盟"} · ${item.sect || "宗门"}`)}</span></p><p><strong>心法</strong><span>${safeText(item.coreMethod || "未载明")}</span></p><p><strong>定位</strong><span>${safeText(`${item.combatRole || rolePositionLabel(item)} / ${item.subRole || item.role || "-"}`)}</span></p><p><strong>法门</strong><span>${safeText(item.school || "-")}</span></p><p><strong>先天武学</strong><span>${safeText(item.martialArtName || "未载明")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>人物小传</h3><p>${safeText(item.note || item.description || `${item.name || "此门人"}在宗门静修待命，可随宗主出阵守护山门。`)}</p><button type="button" class="secondary" data-codex-link="CHARACTERS" data-codex-target="${safeText(item.id)}">前往洞府</button></section>`;
     if (category === "法宝") return `<section class="xm-character-detail__section"><h3>法宝记录</h3><p><strong>法宝名</strong><span>${safeText(item.name)}</span></p><p><strong>定位</strong><span>${safeText(artifactRoleLabel(item))}</span></p><p><strong>品质</strong><span>${safeText(item.rarity || "-")}</span></p><p><strong>战斗效果</strong><span>${safeText(artifactEffectText(item))}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>法宝来历</h3><p>${safeText(artifactLore(item))}</p><button type="button" class="secondary" data-codex-link="ARTIFACTS" data-codex-target="${safeText(item.id)}">前往炼器阁</button></section>`;
-    if (category === "阵法") return `<section class="xm-character-detail__section"><h3>阵法卷宗</h3><p><strong>阵法名</strong><span>${safeText(item.name)}</span></p><p><strong>定位</strong><span>${safeText(formationRoleLabel(item))}</span></p><p><strong>触发方式</strong><span>${safeText(formationTriggerLabel(item.triggerType))}</span></p><p><strong>阵法效果</strong><span>${safeText(formationEffectText(item))}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>阵法来历</h3><p>${safeText(formationLore(item))}</p><button type="button" class="secondary" data-codex-link="FORMATIONS" data-codex-target="${safeText(item.id)}">前往阵枢殿</button></section>`;
+    if (category === "阵法") return `<section class="xm-character-detail__section"><h3>阵法卷宗</h3><p><strong>阵法名</strong><span>${safeText(item.name)}</span></p><p><strong>定位</strong><span>${safeText(formationRoleLabel(item))}</span></p><p><strong>核心阵法</strong><span>${safeText(item.isCoreFormation === false ? "否" : "是")}</span></p><p><strong>触发方式</strong><span>${safeText(formationTriggerLabel(item.triggerType))}</span></p><p><strong>被动阵势</strong><span>${safeText(formationEffectText(item))}</span></p><p><strong>主动阵诀</strong><span>${safeText(item.activeSkill?.name || "后续开放")} · ${safeText(item.activeSkill?.description || "阵法主动释放系统后续开放。")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>阵法来历</h3><p>${safeText(formationLore(item))}</p><button type="button" class="secondary" data-codex-link="FORMATIONS" data-codex-target="${safeText(item.id)}">前往阵枢殿</button></section>`;
     if (category === "剧情线索" || category === "世界秘闻") return `<section class="xm-character-detail__section"><h3>${safeText(entry.name)}</h3><p><strong>类型</strong><span>${safeText(item.type || entry.type)}</span></p><p><strong>来源</strong><span>${safeText(item.source || "镇妖录")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>线索说明</h3><p>${safeText(item.description || entry.description)}</p><button type="button" class="secondary" data-codex-link="ADVENTURE">前往山门外</button></section>`;
     return `<section class="xm-character-detail__section"><h3>妖物图鉴</h3><p><strong>妖物名称</strong><span>${safeText(item.name)}</span></p><p><strong>妖物类型</strong><span>${safeText(enemyTypeLabel(item))}</span></p><p><strong>威胁等级</strong><span>${safeText(item.isBoss ? "首领" : item.trait || "普通")}</span></p><p><strong>出现场景</strong><span>第一章·妖门初启</span></p><p><strong>攻击方式</strong><span>${safeText(item.attackMode === "ranged" ? "远程" : item.attackMode === "caster" ? "施法" : "近战")}</span></p><p><strong>特性</strong><span>${safeText(item.trait || item.note || "妖潮单位")}</span></p><p><strong>克制建议</strong><span>${safeText(item.isBoss ? "优先使用高爆发与持续压制。" : item.type === "fast" ? "尽早点杀，避免快速压迫阵眼。" : item.type === "armored" ? "使用持续输出或穿透攻击。" : "稳定输出即可压制。")}</span></p></section><section class="xm-character-detail__section xm-character-detail__bio"><h3>妖物志</h3><p>${safeText(codexEnemyLore(item))}</p></section>`;
   }
@@ -735,10 +775,10 @@
 
   function characterBio(role = {}) {
     const bios = {
-      lu_qingya: "玄门外门剑修，性子沉稳，守山之乱中第一个响应宗主调令。虽修为尚浅，却以一手青崖剑诀稳住了山门初阵。",
-      shen_lianxing: "内门火修，性情急烈，擅以火符压制妖潮。平日不喜繁礼，临阵却极少退后半步。",
-      ye_hanyan: "寒脉出身的冰修，言语不多，出手极稳。她擅以冰魄迟滞妖潮，为宗门争得喘息之机。",
-      wen_suyi: "素衣毒修，熟识草木妖瘴。她行事温和，却能在无声处消磨强敌。",
+      lu_qingya: "青玄宗门人，性子沉稳，守山之乱中第一个响应宗主调令。虽修为尚浅，却以一手青崖剑诀稳住了山门初阵。",
+      shen_lianxing: "烛龙门弟子，性情急烈，擅以火符压制妖潮。平日不喜繁礼，临阵却极少退后半步。",
+      ye_hanyan: "听雪宫弟子，言语不多，出手极稳。她擅以冰魄迟滞妖潮，为宗门争得喘息之机。",
+      wen_suyi: "灵枢宗弟子，熟识医毒与草木妖瘴。她行事温和，却能在无声处消磨强敌。",
     };
     return bios[role.id] || role.note || role.designValue || role.description || "此门人档案尚未完整录入，后续将随宗门剧情逐步解锁。";
   }
@@ -820,7 +860,7 @@
         <aside class="xm-character-page__detail xm-inner-panel">
           <h2>门人卷宗</h2>
           <div class="xm-character-detail xm-character-detail--formal">
-            <section class="xm-character-detail__section"><h3>角色信息</h3><p><strong>等级</strong><span>Lv.${safeText(owned ? currentLevel : "-")}</span></p><p><strong>星级</strong><span class="xm-character-stars">${safeText(starText(starLevel))}</span></p><p><strong>品质</strong><span>${safeText(currentRole.rarity || "-")}</span></p><p><strong>身份</strong><span>${safeText(currentRole.rankTitle || currentRole.rank || "宗门门人")}</span></p><p><strong>流派</strong><span>${safeText(currentRole.school || "-")}</span></p><p><strong>定位</strong><span>${safeText(rolePositionLabel(currentRole))}</span></p><p><strong>状态</strong><span>${safeText(`${owned ? "已拥有" : "未拥有"} · ${isSelectedForRun ? "已上阵" : "未上阵"}`)}</span></p></section>
+            <section class="xm-character-detail__section"><h3>角色信息</h3><p><strong>等级</strong><span>Lv.${safeText(owned ? currentLevel : "-")}</span></p><p><strong>星级</strong><span class="xm-character-stars">${safeText(starText(starLevel))}</span></p><p><strong>品质</strong><span>${safeText(currentRole.rarity || "-")}</span></p><p><strong>身份</strong><span>${safeText(currentRole.rankTitle || currentRole.rank || "宗门门人")}</span></p><p><strong>所属</strong><span>${safeText(`${currentRole.faction || "万玄盟"} · ${currentRole.sect || "宗门"}`)}</span></p><p><strong>心法</strong><span>${safeText(currentRole.coreMethod || "未载明")}</span></p><p><strong>定位</strong><span>${safeText(`${currentRole.combatRole || rolePositionLabel(currentRole)} / ${currentRole.subRole || currentRole.role || "-"}`)}</span></p><p><strong>法门</strong><span>${safeText(currentRole.school || "-")}</span></p><p><strong>状态</strong><span>${safeText(`${owned ? "已拥有" : "未拥有"} · ${isSelectedForRun ? "已上阵" : "未上阵"}`)}</span></p></section>
             <section class="xm-character-detail__section xm-character-detail__stats"><h3>战斗属性</h3><p><strong>伤害类型</strong><span>${safeText(damageTypeLabel(currentRole))}</span></p><p><strong>攻击</strong><span>${safeText(owned ? currentDamage : currentRole.baseDamage || "-")}</span></p><p><strong>攻速</strong><span>${safeText(currentRole.baseAttackSpeed || currentRole.attackSpeed || "-")}</span></p><p><strong>射程</strong><span>${safeText(currentRole.baseRange || currentRole.range || "-")}</span></p><p><strong>攻击方式</strong><span>${safeText(characterAttackTypeLabel(currentRole.projectileType || currentRole.projectile))}</span></p><p><strong>弹道类型</strong><span>${safeText(characterTrajectoryLabel(currentRole.trajectoryType))}</span></p></section>
             <section class="xm-character-detail__section"><h3>修为提升</h3><p><strong>当前等级</strong><span>Lv.${safeText(owned ? currentLevel : "-")}</span></p><p><strong>当前攻击</strong><span>${safeText(owned ? currentDamage : "-")}</span></p><p><strong>升级后</strong><span>${safeText(owned && !upgradeCost.isMax ? nextDamage : "已达当前版本等级上限")}</span></p><p><strong>消耗</strong><span>${safeText(upgradeCost.isMax ? "无需消耗" : `灵石 ${upgradeCost.spiritStones} · 修为丹 ${upgradeCost.characterExpItem}`)}</span></p><p><strong>当前拥有</strong><span>${safeText(`灵石 ${ownedSpiritStones} · 修为丹 ${ownedExpItems}`)}</span></p><p><strong>等级上限</strong><span>Lv.${safeText(upgradeCost.maxLevel || 20)}</span></p></section>
             <section class="xm-character-skill-card"><span class="xm-character-skill-icon">${safeText(skillIconText(currentRole))}</span><span class="xm-character-skill-body"><strong>${safeText(martialName)}</strong><em>${safeText(martialTypeText(currentRole))}</em><p>${safeText(martialDescription(currentRole, martialName))}</p></span></section>
@@ -1521,9 +1561,14 @@
       { id: "slot_5", name: "后阵位", bonus: "法宝冷却 -5%" },
     ];
     const presets = {
+      taiyi_zhenyao_array: ["阵前伤害提升", "射程 +8%", "阵法压制增强", "攻速 +6%", "法宝冷却 -5%"],
       qinglian_huiyuan_array: ["阵位护持", "回复效果提升", "阵眼韧性提升", "控制效果提升", "法宝触发效率提升"],
       xuanbing_chiyao_array: ["冰霜伤害提升", "减速效果提升", "控制时间提升", "射程提升", "冷却缩短"],
       lihuo_fenyao_array: ["火焰伤害提升", "范围伤害提升", "阵法伤害提升", "灼烧效果提升", "法宝伤害提升"],
+      leigang_zhuxie_array: ["雷法伤害提升", "连锁范围提升", "精英压制增强", "攻速 +6%", "法宝伤害提升"],
+      shanhe_guyuan_array: ["阵位护持", "阵前压制增强", "阵眼减伤提升", "控制效果提升", "法宝触发效率提升"],
+      xingdou_juling_array: ["灵气获取提升", "成长效率提升", "阵法灵机增强", "攻速 +6%", "法宝冷却 -5%"],
+      wanjian_hushan_array: ["飞剑伤害提升", "飞剑穿透提升", "剑阵效果增强", "攻速 +6%", "剑气支援提升"],
     };
     const bonus = presets[formationId];
     return bonus ? common.map((slot, index) => ({ ...slot, bonus: bonus[index] || slot.bonus })) : common;
@@ -1814,9 +1859,13 @@
         ? [state.loadoutArtifactId]
         : [];
     const artifactSlots = Math.max(1, playerProfile.maxArtifactSlots || 1);
-    const selectedFormation = DATA.formations[state.loadoutFormationId]
-      || DATA.formations[playerProfile.unlockedFormations?.[0]]
-      || {};
+    const loadoutFormationIds = (playerProfile.unlockedFormations || [])
+      .filter((id) => DATA.formations[id] && DATA.formations[id].displayInLoadout !== false);
+    const selectedFormation = DATA.formations[state.loadoutFormationId]?.displayInLoadout === false
+      ? DATA.formations[loadoutFormationIds[0]]
+      : DATA.formations[state.loadoutFormationId]
+        || DATA.formations[loadoutFormationIds[0]]
+        || {};
     const deployedRoles = Array.isArray(state.deployedRoles) ? state.deployedRoles : [];
     const assignedRoleIds = new Set(deployedRoles.map((role) => role.roleId));
     const selectedCharacterId = state.selectedLoadoutCharacterId || state.loadoutRoleIds?.[0] || playerProfile.ownedCharacters?.[0] || "";
@@ -1908,13 +1957,13 @@
       </section>
     `;
 
-    const formationCards = (playerProfile.unlockedFormations || []).map((id) => {
+    const formationCards = loadoutFormationIds.map((id) => {
       const formation = DATA.formations[id];
       if (!formation) return "";
       return `<button type="button" class="xm-loadout-formation-v3__card ${state.loadoutFormationId === id ? "xm-loadout-formation-v3__card--selected" : ""}" data-loadout-formation-id="${safeText(id)}">
         <span class="xm-loadout-icon xm-loadout-icon--formation">${safeText((formation.name || "阵").slice(0, 1))}</span>
         <strong>${safeText(formation.name)}</strong>
-        <small>${safeText(formation.role || formation.rarity || "护山阵法")}</small>
+        <small>${safeText(formation.combatIdentity || formation.role || formation.rarity || "护山阵法")}</small>
       </button>`;
     }).join("");
     const slotButtons = slots.map((slot, index) => {
@@ -1943,7 +1992,8 @@
           <section class="xm-loadout-formation-v3__picker" data-scroll-key="loadout-formations">${formationCards || "<p>暂无可用阵法。</p>"}</section>
           <section class="xm-loadout-formation-v3__summary">
             <h3>${safeText(selectedFormation.name || "五方阵盘")}</h3>
-            <p>${safeText(selectedFormation.effectText || selectedFormation.description || "阵位加成当前仅作 UI 展示，后续可接入战斗数值系统。")}</p>
+            <p>${safeText(selectedFormation.passiveText || selectedFormation.effectText || selectedFormation.description || "阵位加成当前仅作 UI 展示，后续可接入战斗数值系统。")}</p>
+            <p>${safeText(selectedFormation.activeSkill?.name ? `主动阵诀：${selectedFormation.activeSkill.name} · ${selectedFormation.activeSkill.description}` : "主动阵诀后续开放。")}</p>
             <small>守山模式下，五方阵位会映射为护山大阵前的防守位置。</small>
           </section>
           <section class="xm-loadout-formation-v3__board">
@@ -2010,7 +2060,7 @@
 
     const formation = DATA.formations[state.selectedFormationId];
     const formationName = formation?.name || "未选择阵法";
-    const formationEffect = formation?.effectText || formation?.description || "阵法效果运行中。";
+    const formationEffect = formation?.passiveText || formation?.effectText || formation?.description || "阵法效果运行中。";
     const artifactNames = (state.selectedArtifactIds || []).map((id) => DATA.artifacts[id]?.name || id).filter(Boolean);
     const roleNames = (state.deployedRoles || []).map((role) => DATA.roles[role.roleId]?.name || role.roleId).filter(Boolean);
     const activeBonds = window.XM.Artifacts?.getActiveArtifactBonds ? window.XM.Artifacts.getActiveArtifactBonds(state.selectedArtifactIds || []) : [];
