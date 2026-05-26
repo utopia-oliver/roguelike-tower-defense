@@ -125,6 +125,17 @@
   function renderResourceBar({ root, playerProfile, DATA, helpers }) {
     if (!root) return;
     const summary = currentChapterSummary({ DATA, playerProfile, helpers });
+    if (window.XM.UI?.renderResourceBar) {
+      root.innerHTML = `
+        ${window.XM.UI.renderResourceBar({
+          currencies: playerProfile.currencies || {},
+          spiritStones: playerProfile.spiritStones,
+          stamina: playerProfile.stamina ?? 0,
+        })}
+        <span class="xm-ui-resource xm-ui-resource--chapter"><strong>${safeText(summary.complete ? "第一章已平定" : summary.chapter?.name || "第一章·妖门初启")}</strong></span>
+      `;
+      return;
+    }
     root.innerHTML = `
       <span class="xm-resource-label">Lv. ${safeText(playerProfile.playerLevel || 1)}</span>
       <span class="xm-resource-label">灵石 <strong class="xm-resource-value">${safeText(currencyAmount(playerProfile, "spiritStones"))}</strong></span>
