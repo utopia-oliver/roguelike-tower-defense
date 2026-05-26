@@ -14,6 +14,25 @@
     return Array.isArray(collection) ? collection : Object.values(collection || {});
   }
 
+  const RARITY_UI_ASSETS = {
+    SR: {
+      frame: "assets/images/ui/rarity/frame_sr.webp",
+      label: "assets/images/ui/rarity/label_sr.webp",
+    },
+    SSR: {
+      frame: "assets/images/ui/rarity/frame_ssr.webp",
+      label: "assets/images/ui/rarity/label_ssr.webp",
+    },
+    UR: {
+      frame: "assets/images/ui/rarity/frame_ur.webp",
+      label: "assets/images/ui/rarity/label_ur.webp",
+    },
+  };
+
+  function rarityUiAssets(rarity = "SR") {
+    return RARITY_UI_ASSETS[rarity] || RARITY_UI_ASSETS.SR;
+  }
+
   function assetFallbackLabel(type, label = "") {
     if (label) return label;
     if (type === "character") return "门人";
@@ -2082,6 +2101,8 @@
   }
 
   Object.assign(window.XM.Render, {
+    RARITY_UI_ASSETS,
+    rarityUiAssets,
     renderHud: renderHudBattleV2,
     renderFeaturePage,
     renderLoadout: renderLoadoutV3,
