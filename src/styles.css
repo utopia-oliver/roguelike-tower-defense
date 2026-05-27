@@ -7285,3 +7285,318 @@ button.secondary:disabled,
 .xm-ui-secondary-content--adventure .xm-adventure-map-frame {
   border-color: rgba(216, 172, 82, 0.38);
 }
+
+/* 31D: login screen art skin. CSS fallback remains under every image layer. */
+.xm-title-screen {
+  isolation: isolate;
+  min-height: calc(100vh - 32px);
+  overflow: hidden;
+  padding: 88px 28px 72px;
+  background:
+    radial-gradient(circle at 52% 78%, rgba(109, 226, 190, 0.13), transparent 20rem),
+    radial-gradient(circle at 85% 14%, rgba(110, 49, 95, 0.18), transparent 24rem),
+    linear-gradient(180deg, rgba(10, 26, 23, 0.95), rgba(4, 10, 9, 0.98)),
+    url("../assets/images/ui/bg/login-bg.webp");
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  border-color: rgba(216, 172, 82, 0.42);
+  box-shadow:
+    0 30px 96px rgba(0, 0, 0, 0.46),
+    inset 0 0 86px rgba(5, 10, 9, 0.58),
+    inset 0 0 0 1px rgba(109, 226, 190, 0.07);
+}
+
+.xm-title-screen::before,
+.xm-title-screen::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.xm-title-screen::before {
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(3, 9, 8, 0.48), transparent 22%, transparent 78%, rgba(3, 9, 8, 0.5)),
+    radial-gradient(circle at 50% 58%, transparent 26%, rgba(0, 0, 0, 0.2) 100%);
+}
+
+.xm-title-screen::after {
+  top: 6%;
+  bottom: 8%;
+  left: -6%;
+  width: min(360px, 34vw);
+  background:
+    radial-gradient(ellipse at left center, rgba(109, 226, 190, 0.16), transparent 68%),
+    url("../assets/images/ui/ornaments/login-side-glow.webp");
+  background-position: left center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.78;
+}
+
+.xm-title-screen .xm-title-bg {
+  background:
+    radial-gradient(circle at 50% 38%, rgba(241, 217, 154, 0.08), transparent 28rem),
+    linear-gradient(180deg, rgba(0, 10, 8, 0.04), rgba(0, 8, 7, 0.12));
+  opacity: 0.72;
+  z-index: 0;
+}
+
+.xm-title-screen .xm-title-bg::before {
+  background:
+    radial-gradient(ellipse at 24% 62%, rgba(220, 235, 214, 0.12), transparent 24rem),
+    radial-gradient(ellipse at 72% 48%, rgba(109, 226, 190, 0.08), transparent 22rem);
+}
+
+.xm-title-screen .xm-title-bg::after,
+.xm-title-screen .xm-title-rift {
+  opacity: 0.56;
+}
+
+.xm-title-screen .xm-title-topbar,
+.xm-title-screen .xm-title-content,
+.xm-title-screen .xm-title-footer {
+  z-index: 2;
+}
+
+.xm-title-screen .xm-title-topbar {
+  left: 28px;
+  right: 28px;
+  top: 22px;
+}
+
+.xm-title-screen .xm-title-link {
+  min-height: 36px;
+  padding: 8px 14px;
+  border-color: rgba(216, 172, 82, 0.42);
+  background:
+    linear-gradient(180deg, rgba(247, 239, 214, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(12, 34, 30, 0.76), rgba(4, 13, 12, 0.78)),
+    url("../assets/images/ui/panels/panel-chip.webp");
+  background-size: 100% 100%;
+  box-shadow: inset 0 0 16px rgba(109, 226, 190, 0.055), 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.xm-title-screen .xm-title-link--realm {
+  min-width: 214px;
+  text-align: left;
+  background-image:
+    linear-gradient(180deg, rgba(247, 239, 214, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(12, 34, 30, 0.78), rgba(4, 13, 12, 0.78)),
+    url("../assets/images/ui/panels/panel-server-select.webp");
+}
+
+.xm-title-screen .xm-title-content {
+  width: min(640px, 100%);
+  padding: 24px 26px 20px;
+}
+
+.xm-title-screen .xm-eyebrow {
+  color: rgba(241, 217, 154, 0.88);
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-shadow: 0 0 18px rgba(216, 172, 82, 0.18);
+}
+
+.xm-title-screen .xm-title-logo {
+  position: relative;
+  display: inline-grid;
+  min-width: min(560px, 88vw);
+  min-height: 114px;
+  place-items: center;
+  padding: 22px 40px 26px;
+  font-size: clamp(48px, 7vw, 78px);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  color: #fff8dc;
+  text-shadow:
+    0 2px 0 rgba(113, 70, 25, 0.7),
+    0 0 24px rgba(241, 217, 154, 0.3),
+    0 0 48px rgba(109, 226, 190, 0.18);
+}
+
+.xm-title-screen .xm-title-logo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse at center, rgba(241, 217, 154, 0.16), transparent 64%),
+    url("../assets/images/ui/ornaments/login-title-base.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.94;
+}
+
+.xm-title-screen .xm-title-subtitle {
+  margin-top: 6px;
+  letter-spacing: 0.08em;
+  color: rgba(244, 239, 223, 0.9);
+}
+
+.xm-title-screen .xm-title-version {
+  color: rgba(241, 217, 154, 0.78);
+  margin-bottom: 18px;
+}
+
+.xm-title-screen .xm-title-login-panel {
+  width: min(470px, 100%);
+  max-width: 470px;
+  padding: 30px 28px 26px;
+  border: 1px solid rgba(216, 172, 82, 0.5);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(241, 217, 154, 0.13), transparent 38%),
+    linear-gradient(180deg, rgba(9, 28, 25, 0.76), rgba(3, 10, 9, 0.86)),
+    url("../assets/images/ui/panels/panel-login-main.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  box-shadow:
+    0 24px 74px rgba(0, 0, 0, 0.36),
+    inset 0 0 30px rgba(109, 226, 190, 0.07);
+  backdrop-filter: blur(8px);
+}
+
+.xm-title-screen .xm-title-button {
+  border-color: rgba(216, 172, 82, 0.54);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(247, 239, 214, 0.08), transparent 36%),
+    linear-gradient(180deg, rgba(18, 54, 45, 0.82), rgba(4, 17, 15, 0.88)),
+    url("../assets/images/ui/buttons/btn-login-secondary.webp");
+  background-size: 100% 100%;
+  color: #fff7db;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.46);
+}
+
+.xm-title-screen .xm-title-button--main {
+  min-height: 58px;
+  background:
+    linear-gradient(180deg, rgba(255, 246, 216, 0.12), transparent 38%),
+    linear-gradient(180deg, rgba(55, 37, 18, 0.32), rgba(11, 35, 30, 0.8)),
+    url("../assets/images/ui/buttons/btn-login-enter.webp");
+  background-size: 100% 100%;
+  font-size: 22px;
+}
+
+.xm-title-screen .xm-title-button:hover:not(:disabled),
+.xm-title-screen .xm-title-link:hover:not(:disabled) {
+  border-color: rgba(241, 217, 154, 0.74);
+  box-shadow:
+    0 0 0 1px rgba(241, 217, 154, 0.18),
+    0 0 20px rgba(109, 226, 190, 0.15),
+    inset 0 0 18px rgba(241, 217, 154, 0.06);
+  filter: brightness(1.08);
+}
+
+.xm-title-screen .xm-title-button:active:not(:disabled),
+.xm-title-screen .xm-title-link:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.96);
+}
+
+.xm-title-screen .xm-title-login-panel p,
+.xm-title-screen .xm-title-agreement {
+  color: rgba(244, 239, 223, 0.78);
+}
+
+.xm-title-screen .xm-title-agreement {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.xm-title-screen .xm-title-agreement input {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 1px solid rgba(216, 172, 82, 0.58);
+  border-radius: 4px;
+  background:
+    linear-gradient(180deg, rgba(247, 239, 214, 0.08), rgba(4, 13, 12, 0.72)),
+    url("../assets/images/ui/icons/icon-checkbox-unchecked.webp");
+  background-size: cover;
+  box-shadow: inset 0 0 8px rgba(109, 226, 190, 0.08);
+}
+
+.xm-title-screen .xm-title-agreement input:checked {
+  background:
+    radial-gradient(circle, rgba(241, 217, 154, 0.22), transparent 70%),
+    url("../assets/images/ui/icons/icon-checkbox-checked.webp");
+  background-size: cover;
+}
+
+.xm-title-screen .xm-title-footer {
+  left: 34px;
+  right: 34px;
+  bottom: 22px;
+  min-height: 38px;
+  align-items: center;
+  padding: 8px 22px;
+  border: 1px solid rgba(216, 172, 82, 0.22);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(4, 13, 12, 0.2), rgba(9, 28, 25, 0.66), rgba(4, 13, 12, 0.2)),
+    url("../assets/images/ui/ornaments/login-footer-info.webp");
+  background-size: 100% 100%;
+}
+
+.xm-title-modal {
+  border-color: rgba(216, 172, 82, 0.56);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(241, 217, 154, 0.11), transparent 36%),
+    linear-gradient(180deg, rgba(10, 31, 28, 0.94), rgba(3, 10, 9, 0.96)),
+    url("../assets/images/ui/panels/panel-login-modal.webp");
+  background-size: 100% 100%;
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.46),
+    inset 0 0 30px rgba(109, 226, 190, 0.06);
+}
+
+.xm-title-modal .primary,
+.xm-title-modal .secondary {
+  min-height: 40px;
+  background-size: 100% 100%;
+}
+
+.xm-title-modal .primary {
+  background-image:
+    linear-gradient(180deg, rgba(255, 246, 216, 0.1), transparent 40%),
+    linear-gradient(180deg, rgba(16, 48, 41, 0.82), rgba(4, 17, 15, 0.88)),
+    url("../assets/images/ui/buttons/btn-login-enter.webp");
+}
+
+.xm-title-modal .secondary {
+  background-image:
+    linear-gradient(180deg, rgba(255, 246, 216, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(16, 44, 38, 0.78), rgba(4, 15, 13, 0.84)),
+    url("../assets/images/ui/buttons/btn-login-secondary.webp");
+}
+
+@media (max-width: 720px) {
+  .xm-title-screen {
+    padding: 96px 16px 88px;
+  }
+
+  .xm-title-screen .xm-title-topbar,
+  .xm-title-screen .xm-title-footer {
+    left: 14px;
+    right: 14px;
+  }
+
+  .xm-title-screen .xm-title-logo {
+    min-width: 0;
+    min-height: 88px;
+    padding: 18px 20px 20px;
+    font-size: 42px;
+  }
+
+  .xm-title-screen .xm-title-login-panel {
+    padding: 22px 18px;
+  }
+}
