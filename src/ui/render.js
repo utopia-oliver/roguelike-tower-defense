@@ -1291,6 +1291,7 @@
     const [title, subtitle] = classifyPage(page);
     elements.featurePageTitle.textContent = title;
     elements.featurePageSubtitle.textContent = subtitle;
+    elements.featurePageContent.className = `xm-page-content xm-ui-secondary-content xm-ui-secondary-content--${safeText(String(page).toLowerCase())}`;
     const renderers = {
       CHARACTERS: () => renderCharactersPageV2({ DATA, playerProfile, state, helpers }),
       ARTIFACTS: () => renderArtifactsPageV2({ DATA, playerProfile, state, helpers }),
