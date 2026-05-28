@@ -7495,7 +7495,7 @@ button.secondary:disabled,
   align-items: center;
   justify-content: center;
   min-height: 380px;
-  padding: 78px 84px 58px;
+  padding: 74px 72px 56px;
   box-sizing: border-box;
 }
 
@@ -7528,14 +7528,18 @@ button.secondary:disabled,
   background-image: url("../assets/images/ui/buttons/btn-primary.webp");
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 100% 100%;
+  background-size: contain;
+  transform-origin: center;
 }
 
 .xm-title-screen .xm-title-button--main {
-  min-height: 58px;
-  width: min(520px, 100%);
+  width: min(560px, 100%);
+  height: 86px;
+  min-height: 86px;
   align-self: center;
-  font-size: 22px;
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
 }
 
 .xm-title-screen .xm-title-button--main::before {
@@ -7547,6 +7551,7 @@ button.secondary:disabled,
   position: relative;
   isolation: isolate;
   min-width: 96px;
+  min-height: 40px;
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -7570,21 +7575,26 @@ button.secondary:disabled,
   background-image: url("../assets/images/ui/buttons/btn-primary.webp");
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 100% 100%;
+  background-size: contain;
+  transform-origin: center;
 }
 
 .xm-title-screen .xm-title-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(160px, 180px));
+  grid-template-columns: repeat(2, minmax(200px, 220px));
   justify-content: center;
-  gap: 16px;
-  width: min(400px, 100%);
-  margin: 14px auto 0;
+  gap: 18px;
+  width: min(458px, 100%);
+  margin: 20px auto 0;
 }
 
 .xm-title-screen .xm-title-actions .xm-title-button {
   width: 100%;
-  min-height: 42px;
+  height: 56px;
+  min-height: 56px;
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
 }
 
 .xm-title-screen .xm-title-button:hover:not(:disabled),
@@ -7606,7 +7616,8 @@ button.secondary:disabled,
 .xm-title-screen .xm-title-top-actions .xm-title-link:hover:not(:disabled)::before,
 .xm-title-screen .xm-title-top-actions .xm-title-link:focus-visible:not(:disabled)::before {
   background-image: url("../assets/images/ui/buttons/btn-primary-hover.webp");
-  filter: drop-shadow(0 0 10px rgba(241, 217, 154, 0.32));
+  filter: drop-shadow(0 0 8px rgba(241, 217, 154, 0.28));
+  transform: none;
 }
 
 .xm-title-screen .xm-title-button:active:not(:disabled),
@@ -7622,7 +7633,7 @@ button.secondary:disabled,
 .xm-title-screen .xm-title-top-actions .xm-title-link:active:not(:disabled)::before {
   background-image: url("../assets/images/ui/buttons/btn-primary-pressed.webp");
   filter: none;
-  transform: translateY(1px) scale(0.99);
+  transform: translateY(1px);
 }
 
 .xm-title-screen .xm-title-link:focus-visible:not(:disabled) {
@@ -7644,7 +7655,7 @@ button.secondary:disabled,
 
 .xm-title-screen .xm-title-login-panel p {
   max-width: 520px;
-  margin: 18px auto 0;
+  margin: 22px auto 0;
 }
 
 .xm-title-screen .xm-title-agreement {
@@ -7677,28 +7688,55 @@ button.secondary:disabled,
 }
 
 .xm-title-screen .xm-title-footer {
-  left: 34px;
-  right: 34px;
-  bottom: 22px;
-  min-height: 38px;
-  align-items: center;
-  padding: 8px 22px;
+  left: 50%;
+  right: auto;
+  bottom: 20px;
+  width: min(1080px, calc(100vw - 80px));
+  height: 40px;
+  min-height: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0 8px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
   box-shadow: none;
+  overflow: visible;
+  transform: translateX(-50%);
 }
 
 .xm-title-screen .xm-title-footer::before {
+  display: none;
+}
+
+.xm-title-screen .xm-title-footer-line {
   content: "";
   position: absolute;
-  inset: -8px -18px;
-  z-index: -1;
+  left: 50%;
+  top: 18px;
+  width: 100%;
+  height: 14px;
+  transform: translateX(-50%);
+  z-index: 0;
   pointer-events: none;
-  background-image: url("../assets/images/ui/ornaments/login-footer-info.webp");
-  background-position: center;
+  background-image: url("../assets/images/ui/ornaments/ornament-divider.webp");
+  background-position: center center;
   background-repeat: no-repeat;
-  background-size: 100% 100%;
+  background-size: 100% 14px;
+  opacity: 0.9;
+}
+
+.xm-title-screen .xm-title-footer-left,
+.xm-title-screen .xm-title-footer-right {
+  position: relative;
+  z-index: 1;
+  color: rgba(238, 232, 204, 0.84);
+  font-size: 12px;
+  line-height: 16px;
+  padding-top: 0;
+  background: transparent;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.58);
+  white-space: nowrap;
 }
 
 .xm-title-modal {
