@@ -7330,15 +7330,13 @@ button.secondary:disabled,
   bottom: 8%;
   left: -6%;
   width: min(360px, 34vw);
-  /* login-side-glow.webp is held back for now because the current export
-     appears to include a checkerboard matte instead of true transparency. */
   background:
-    radial-gradient(ellipse at left center, rgba(109, 226, 190, 0.18), transparent 68%),
-    linear-gradient(90deg, rgba(241, 217, 154, 0.08), transparent 58%);
+    url("../assets/images/ui/ornaments/login-side-glow.webp"),
+    radial-gradient(ellipse at left center, rgba(109, 226, 190, 0.14), transparent 68%);
   background-position: left center;
   background-repeat: no-repeat;
-  background-size: contain;
-  opacity: 0.82;
+  background-size: contain, 100% 100%;
+  opacity: 0.88;
 }
 
 .xm-title-screen .xm-title-bg {
@@ -7385,6 +7383,7 @@ button.secondary:disabled,
     linear-gradient(180deg, rgba(16, 44, 38, 0.84), rgba(4, 15, 13, 0.92));
   background-size: 100% 100%;
   box-shadow: none;
+  outline: none;
 }
 
 .xm-title-screen .xm-title-link--realm {
@@ -7430,18 +7429,15 @@ button.secondary:disabled,
 .xm-title-screen .xm-title-logo::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -12px -34px -18px;
   z-index: -1;
-  /* login-title-base.webp is temporarily not used here because the current art
-     export appears to include a checkerboard background instead of alpha. */
   background:
-    radial-gradient(ellipse at center, rgba(241, 217, 154, 0.16), transparent 64%),
-    linear-gradient(90deg, transparent, rgba(216, 172, 82, 0.18), transparent),
-    linear-gradient(180deg, transparent, rgba(109, 226, 190, 0.06), transparent);
+    url("../assets/images/ui/ornaments/login-title-base.webp"),
+    radial-gradient(ellipse at center, rgba(241, 217, 154, 0.14), transparent 68%);
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 100% 100%;
-  opacity: 0.94;
+  background-size: 100% 100%, 100% 100%;
+  opacity: 0.96;
 }
 
 .xm-title-screen .xm-title-subtitle {
@@ -7505,29 +7501,76 @@ button.secondary:disabled,
 
 .xm-title-screen .xm-title-button {
   appearance: none;
-  border: 1px solid rgba(216, 172, 82, 0.42);
-  border-radius: 8px;
-  /* Login button art has a baked checkerboard/light matte in this export.
-     Use the CSS skin fallback so buttons do not become white panels. */
-  background:
-    radial-gradient(ellipse at center, rgba(109, 226, 190, 0.09), transparent 72%),
-    linear-gradient(180deg, rgba(18, 54, 45, 0.9), rgba(4, 17, 15, 0.96));
-  background-size: 100% 100%;
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  background-color: transparent;
   box-shadow: none;
+  outline: none;
   color: #fff7db;
+  display: inline-grid;
+  place-items: center;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.46);
+}
+
+.xm-title-screen .xm-title-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  background-image: url("../assets/images/ui/buttons/btn-primary.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
 }
 
 .xm-title-screen .xm-title-button--main {
   min-height: 58px;
   width: min(520px, 100%);
   align-self: center;
-  background:
-    radial-gradient(ellipse at center, rgba(241, 217, 154, 0.14), transparent 70%),
-    linear-gradient(180deg, rgba(39, 71, 57, 0.96), rgba(9, 33, 28, 0.98));
-  background-size: 100% 100%;
-  border-color: rgba(241, 217, 154, 0.58);
   font-size: 22px;
+}
+
+.xm-title-screen .xm-title-button--main::before {
+  inset: 0;
+}
+
+.xm-title-screen .xm-title-top-actions .xm-title-link {
+  appearance: none;
+  position: relative;
+  isolation: isolate;
+  min-width: 96px;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  background-color: transparent;
+  box-shadow: none;
+  outline: none;
+  display: inline-grid;
+  place-items: center;
+}
+
+.xm-title-screen .xm-title-top-actions .xm-title-link::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  width: 100%;
+  height: 100%;
+  background-color: transparent;
+  background-image: url("../assets/images/ui/buttons/btn-primary.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
 }
 
 .xm-title-screen .xm-title-actions {
@@ -7545,16 +7588,52 @@ button.secondary:disabled,
 }
 
 .xm-title-screen .xm-title-button:hover:not(:disabled),
-.xm-title-screen .xm-title-link:hover:not(:disabled) {
+.xm-title-screen .xm-title-button:focus:not(:disabled),
+.xm-title-screen .xm-title-button:focus-visible:not(:disabled),
+.xm-title-screen .xm-title-link:hover:not(:disabled),
+.xm-title-screen .xm-title-link:focus:not(:disabled),
+.xm-title-screen .xm-title-link:focus-visible:not(:disabled) {
+  background-color: transparent;
+  background-image: none;
   border-color: rgba(241, 217, 154, 0.64);
   box-shadow: none;
-  filter: brightness(1.08);
+  filter: none;
+  outline: none;
+}
+
+.xm-title-screen .xm-title-button:hover:not(:disabled)::before,
+.xm-title-screen .xm-title-button:focus-visible:not(:disabled)::before,
+.xm-title-screen .xm-title-top-actions .xm-title-link:hover:not(:disabled)::before,
+.xm-title-screen .xm-title-top-actions .xm-title-link:focus-visible:not(:disabled)::before {
+  background-image: url("../assets/images/ui/buttons/btn-primary-hover.webp");
+  filter: drop-shadow(0 0 10px rgba(241, 217, 154, 0.32));
 }
 
 .xm-title-screen .xm-title-button:active:not(:disabled),
 .xm-title-screen .xm-title-link:active:not(:disabled) {
-  transform: translateY(1px);
-  filter: brightness(0.96);
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  filter: none;
+  outline: none;
+}
+
+.xm-title-screen .xm-title-button:active:not(:disabled)::before,
+.xm-title-screen .xm-title-top-actions .xm-title-link:active:not(:disabled)::before {
+  background-image: url("../assets/images/ui/buttons/btn-primary-pressed.webp");
+  filter: none;
+  transform: translateY(1px) scale(0.99);
+}
+
+.xm-title-screen .xm-title-link:focus-visible:not(:disabled) {
+  border-color: rgba(241, 217, 154, 0.62);
+  filter: brightness(1.08);
+}
+
+.xm-title-screen .xm-title-button:disabled::before,
+.xm-title-screen .xm-title-top-actions .xm-title-link:disabled::before {
+  background-image: url("../assets/images/ui/buttons/btn-disabled.webp");
+  filter: saturate(0.7) brightness(0.82);
 }
 
 .xm-title-screen .xm-title-login-panel p,
@@ -7604,16 +7683,22 @@ button.secondary:disabled,
   min-height: 38px;
   align-items: center;
   padding: 8px 22px;
-  border: 1px solid rgba(216, 172, 82, 0.18);
+  border: 0;
   border-radius: 999px;
-  /* login-footer-info.webp is temporarily disabled because the current file
-     appears to contain a baked checkerboard matte. Keep a dark fallback bar. */
-  background:
-    radial-gradient(ellipse at center, rgba(109, 226, 190, 0.08), transparent 68%),
-    linear-gradient(90deg, rgba(4, 13, 12, 0.34), rgba(9, 28, 25, 0.72), rgba(4, 13, 12, 0.34));
-  box-shadow:
-    inset 0 0 18px rgba(109, 226, 190, 0.04),
-    0 10px 24px rgba(0, 0, 0, 0.14);
+  background: transparent;
+  box-shadow: none;
+}
+
+.xm-title-screen .xm-title-footer::before {
+  content: "";
+  position: absolute;
+  inset: -8px -18px;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("../assets/images/ui/ornaments/login-footer-info.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
 }
 
 .xm-title-modal {
