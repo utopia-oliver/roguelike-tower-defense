@@ -5559,6 +5559,8 @@ body {
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(7, 18, 15, 0.72), rgba(10, 24, 20, 0.54)),
+    url("../assets/images/bg/main-hub-sect-v2.webp"),
+    url("../assets/images/bg/main-hub-sect-v1.webp"),
     url("../assets/images/ui/bg/sect-home-bg.webp");
   background-size: cover;
   background-position: center;
@@ -6988,9 +6990,9 @@ button.secondary:disabled,
 .xm-hub-scene-frame {
   background:
     linear-gradient(180deg, rgba(0, 10, 8, 0.04), rgba(0, 8, 6, 0.12)),
-    url("../assets/images/ui/bg/sect-home-bg.webp"),
     url("../assets/images/bg/main-hub-sect-v2.webp"),
     url("../assets/images/bg/main-hub-sect-v1.webp"),
+    url("../assets/images/ui/bg/sect-home-bg.webp"),
     radial-gradient(circle at 50% 80%, rgba(109, 226, 190, 0.14), transparent 20rem),
     radial-gradient(circle at 84% 12%, rgba(110, 49, 95, 0.12), transparent 24rem),
     linear-gradient(180deg, rgba(15, 32, 27, 0.97), rgba(5, 9, 8, 0.98));
@@ -7293,9 +7295,10 @@ button.secondary:disabled,
   overflow: hidden;
   padding: 88px 28px 72px;
   background:
-    radial-gradient(circle at 52% 78%, rgba(109, 226, 190, 0.13), transparent 20rem),
-    radial-gradient(circle at 85% 14%, rgba(110, 49, 95, 0.18), transparent 24rem),
-    linear-gradient(180deg, rgba(10, 26, 23, 0.95), rgba(4, 10, 9, 0.98)),
+    radial-gradient(circle at 52% 78%, rgba(109, 226, 190, 0.08), transparent 20rem),
+    radial-gradient(circle at 85% 14%, rgba(110, 49, 95, 0.1), transparent 24rem),
+    linear-gradient(180deg, rgba(10, 26, 23, 0.18), rgba(4, 10, 9, 0.26)),
+    url("../assets/images/bg/title-gate-v1.webp"),
     url("../assets/images/ui/bg/login-bg.webp");
   background-position: center center;
   background-repeat: no-repeat;
@@ -7318,8 +7321,8 @@ button.secondary:disabled,
 .xm-title-screen::before {
   inset: 0;
   background:
-    linear-gradient(90deg, rgba(3, 9, 8, 0.48), transparent 22%, transparent 78%, rgba(3, 9, 8, 0.5)),
-    radial-gradient(circle at 50% 58%, transparent 26%, rgba(0, 0, 0, 0.2) 100%);
+    linear-gradient(90deg, rgba(3, 9, 8, 0.18), transparent 22%, transparent 78%, rgba(3, 9, 8, 0.2)),
+    radial-gradient(circle at 50% 58%, transparent 34%, rgba(0, 0, 0, 0.16) 100%);
 }
 
 .xm-title-screen::after {
@@ -7328,8 +7331,7 @@ button.secondary:disabled,
   left: -6%;
   width: min(360px, 34vw);
   background:
-    radial-gradient(ellipse at left center, rgba(109, 226, 190, 0.16), transparent 68%),
-    url("../assets/images/ui/ornaments/login-side-glow.webp");
+    radial-gradient(ellipse at left center, rgba(109, 226, 190, 0.13), transparent 68%);
   background-position: left center;
   background-repeat: no-repeat;
   background-size: contain;
@@ -7424,7 +7426,7 @@ button.secondary:disabled,
   z-index: -1;
   background:
     radial-gradient(ellipse at center, rgba(241, 217, 154, 0.16), transparent 64%),
-    url("../assets/images/ui/ornaments/login-title-base.webp");
+    linear-gradient(90deg, transparent, rgba(216, 172, 82, 0.18), transparent);
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;

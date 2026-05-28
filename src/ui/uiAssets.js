@@ -4,8 +4,11 @@
 
   const UI_ASSETS = {
     bg: {
-      login: "assets/images/ui/bg/login-bg.webp",
-      sectHome: "assets/images/ui/bg/sect-home-bg.webp",
+      login: "assets/images/bg/title-gate-v1.webp",
+      loginUiFallback: "assets/images/ui/bg/login-bg.webp",
+      sectHome: "assets/images/bg/main-hub-sect-v2.webp",
+      sectHomeFallback: "assets/images/bg/main-hub-sect-v1.webp",
+      adventureMap: "assets/images/bg/chapter1-map-v1.webp",
       secondaryPage: "assets/images/ui/bg/secondary-page-bg.webp",
       dongfu: "assets/images/ui/bg/dongfu-bg.webp",
       artifact: "assets/images/ui/bg/artifact-bg.webp",
