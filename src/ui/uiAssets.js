@@ -6,6 +6,8 @@
     bg: {
       login: "assets/images/bg/title-gate-v1.webp",
       loginUiFallback: "assets/images/ui/bg/login-bg.webp",
+      loginLight: "assets/images/ui/ornaments/login-bg-light.webp",
+      loginParticles: "assets/images/ui/ornaments/login-bg-particles.webp",
       sectHome: "assets/images/bg/main-hub-sect-v2.webp",
       sectHomeFallback: "assets/images/bg/main-hub-sect-v1.webp",
       adventureMap: "assets/images/bg/chapter1-map-v1.webp",
@@ -17,6 +19,9 @@
       shop: "assets/images/ui/bg/shop-bg.webp",
       archive: "assets/images/ui/bg/archive-bg.webp",
       adventure: "assets/images/ui/bg/adventure-bg.webp",
+    },
+    title: {
+      loginLogo: "assets/images/ui/title/title-login-logo.webp",
     },
     panels: {
       common: "assets/images/ui/panels/panel-common-9slice.webp",
@@ -77,6 +82,7 @@
       loginTitleBase: "assets/images/ui/ornaments/login-title-base.webp",
       loginFooterInfo: "assets/images/ui/ornaments/login-footer-info.webp",
       loginSideGlow: "assets/images/ui/ornaments/login-side-glow.webp",
+      loginTitleLogo: "assets/images/ui/title/title-login-logo.webp",
     },
   };
 

@@ -18,6 +18,8 @@
           <span class="xm-title-fog xm-title-fog--one"></span>
           <span class="xm-title-fog xm-title-fog--two"></span>
         </div>
+        <span class="xm-title-bg-light" aria-hidden="true"></span>
+        <span class="xm-title-bg-particles" aria-hidden="true"></span>
         <header class="xm-title-topbar">
           <button id="titleRealmButton" class="xm-title-link xm-title-link--realm" type="button">当前界域：青冥一界</button>
           <div class="xm-title-top-actions">
@@ -27,19 +29,33 @@
         </header>
         <div class="xm-title-content">
           <p class="xm-eyebrow">万玄盟外山卷</p>
-          <h1 class="xm-title-logo">封妖镇魔录</h1>
-          <p class="xm-title-subtitle">万玄镇妖，山门未宁。</p>
-          <p class="xm-title-version">先行测试版 v0.1</p>
-          <div class="xm-title-login-panel">
-            <img class="xm-title-login-panel-skin" src="assets/images/ui/panels/panel-login-main.webp" alt="" aria-hidden="true" />
-            <div class="xm-title-login-panel-content">
-            <button id="titleStartButton" class="primary xm-title-button xm-title-button--main" type="button">进入宗门</button>
-            <div class="xm-title-actions">
-              <button id="titleLoginButton" class="secondary xm-title-button" type="button">继续修行</button>
-              <button id="titleGuestButton" class="secondary xm-title-button" type="button">本地试炼</button>
-            </div>
-            <p>此为试玩修行版本，当前进度暂存于本机。</p>
-            <label class="xm-title-agreement"><input type="checkbox" checked /> 已阅《修行者须知》与《玄门试炼告示》</label>
+          <h1 class="xm-title-logo">
+            <img
+              class="xm-title-logo-image"
+              src="assets/images/ui/title/title-login-logo.webp"
+              alt="封妖镇魔录"
+              onload="this.classList.add('is-loaded'); this.parentElement.classList.add('has-image'); this.nextElementSibling.hidden = true;"
+              onerror="this.hidden = true;"
+            />
+            <span class="xm-title-logo-text">封妖镇魔录</span>
+          </h1>
+          <div class="xm-title-login-panel-wrap">
+            <span class="xm-title-panel-side-glow xm-title-panel-side-glow--left" aria-hidden="true"></span>
+            <span class="xm-title-panel-side-glow xm-title-panel-side-glow--right" aria-hidden="true"></span>
+            <div class="xm-title-login-panel">
+              <img class="xm-title-login-panel-skin" src="assets/images/ui/panels/panel-login-main.webp" alt="" aria-hidden="true" />
+              <div class="xm-title-login-panel-content">
+              <div class="xm-title-button-stack">
+                <button id="titleStartButton" class="primary xm-title-button xm-title-button--main" type="button">进入宗门</button>
+                <div class="xm-title-actions">
+                  <button id="titleLoginButton" class="secondary xm-title-button" type="button">继续修行</button>
+                  <button id="titleGuestButton" class="secondary xm-title-button" type="button">本地试炼</button>
+                </div>
+              </div>
+              <p>此为试玩修行版本，当前进度暂存于本机。</p>
+              <label class="xm-title-agreement"><input type="checkbox" checked /> 已阅《修行者须知》与《玄门试炼告示》</label>
+              <span class="xm-title-panel-version">先行测试版 v0.1</span>
+              </div>
             </div>
           </div>
         </div>
