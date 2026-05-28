@@ -927,6 +927,30 @@ button:disabled {
   width: 8%;
 }
 
+.xm-hub-hotspot--scene-market {
+  --hub-glow-h: 42%;
+  --hub-glow-w: 64%;
+  --hub-glow-y: 50%;
+  --hub-particles-h: 148%;
+  --hub-particles-w: 156%;
+  height: 13%;
+  left: 73%;
+  top: 47%;
+  width: 11%;
+}
+
+.xm-hub-hotspot--scene-library {
+  --hub-glow-h: 42%;
+  --hub-glow-w: 60%;
+  --hub-glow-y: 46%;
+  --hub-particles-h: 145%;
+  --hub-particles-w: 150%;
+  height: 13%;
+  left: 28%;
+  top: 36%;
+  width: 10%;
+}
+
 .xm-hub-hotspot[data-glow="jade"] {
   --hub-glow: rgba(194, 255, 230, 0.42);
   --hub-glow-soft: rgba(194, 255, 230, 0.16);
@@ -8021,5 +8045,339 @@ button.secondary:disabled,
   .xm-title-screen .xm-title-actions {
     grid-template-columns: 1fr;
     width: min(280px, 100%);
+  }
+}
+
+/* 31E: sect hub inherits the stable login button skin without hover images. */
+.xm-hub .xm-title-link,
+.xm-hub .xm-nav-button {
+  appearance: none;
+  position: relative;
+  isolation: auto;
+  overflow: visible;
+  border: 0 !important;
+  border-radius: 0;
+  background: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  outline: none;
+  color: rgba(255, 248, 220, 0.95);
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.65),
+    0 0 8px rgba(226, 215, 160, 0.16);
+}
+
+.xm-hub .xm-title-link {
+  display: inline-grid;
+  min-width: 136px;
+  min-height: 46px;
+  padding: 0 18px;
+  place-items: center;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+
+.xm-hub .xm-title-link--realm {
+  min-width: 220px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.xm-hub .xm-title-link::before,
+.xm-hub .xm-nav-button::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  background-color: transparent;
+  background-image: url("../assets/images/ui/buttons/btn-login-secondary.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  filter: none;
+  opacity: 1;
+  transform-origin: center;
+  transition: filter 160ms ease;
+}
+
+.xm-hub .xm-title-link::after,
+.xm-hub .xm-nav-button::after {
+  content: "";
+  position: absolute;
+  inset: -9px -16px;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 22% 50%, rgba(245, 232, 176, 0.34), transparent 18%),
+    radial-gradient(circle at 78% 50%, rgba(220, 250, 235, 0.26), transparent 20%),
+    radial-gradient(ellipse at center, rgba(230, 218, 150, 0.17), transparent 62%);
+  filter: blur(8px);
+  opacity: 0;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.xm-hub .xm-title-button-label,
+.xm-hub .xm-nav-button strong,
+.xm-hub .xm-nav-button span {
+  position: relative;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.xm-hub .xm-nav-button {
+  display: grid;
+  gap: 2px;
+  min-height: 58px;
+  min-width: 112px;
+  padding: 9px 14px;
+  place-items: center;
+  text-align: center;
+}
+
+.xm-hub .xm-nav-button strong {
+  color: rgba(255, 247, 219, 0.96);
+}
+
+.xm-hub .xm-nav-button span {
+  color: rgba(222, 211, 190, 0.86);
+}
+
+.xm-hub .xm-title-link:hover:not(:disabled),
+.xm-hub .xm-title-link:focus:not(:disabled),
+.xm-hub .xm-title-link:focus-visible:not(:disabled),
+.xm-hub .xm-nav-button:hover:not(:disabled),
+.xm-hub .xm-nav-button:focus:not(:disabled),
+.xm-hub .xm-nav-button:focus-visible:not(:disabled),
+.xm-hub .xm-nav-button.active {
+  background: none !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+  filter: none;
+  outline: none;
+}
+
+.xm-hub .xm-title-link:hover:not(:disabled)::after,
+.xm-hub .xm-title-link:focus-visible:not(:disabled)::after,
+.xm-hub .xm-nav-button:hover:not(:disabled)::after,
+.xm-hub .xm-nav-button:focus-visible:not(:disabled)::after,
+.xm-hub .xm-nav-button.active::after {
+  opacity: 1;
+}
+
+.xm-hub .xm-title-link:hover:not(:disabled)::before,
+.xm-hub .xm-title-link:focus-visible:not(:disabled)::before,
+.xm-hub .xm-nav-button:hover:not(:disabled)::before,
+.xm-hub .xm-nav-button:focus-visible:not(:disabled)::before,
+.xm-hub .xm-nav-button.active::before {
+  filter: brightness(1.1) saturate(1.04);
+}
+
+.xm-hub .xm-title-link:active:not(:disabled),
+.xm-hub .xm-nav-button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+.xm-hub .xm-title-link:active:not(:disabled)::after,
+.xm-hub .xm-nav-button:active:not(:disabled)::after {
+  opacity: 0.55;
+}
+
+.xm-hub .xm-title-link:active:not(:disabled)::before,
+.xm-hub .xm-nav-button:active:not(:disabled)::before {
+  filter: brightness(0.96) saturate(0.98);
+}
+
+/* 31E fix: secondary button feedback is a faint edge glow, not side bulbs. */
+.xm-title-screen .xm-title-button:not(.xm-title-button--main)::after,
+.xm-title-screen .xm-title-link::after,
+.xm-ui-button:not(.xm-ui-button--primary)::after,
+.xm-hub .xm-title-link::after {
+  inset: -4px -8px;
+  background:
+    radial-gradient(ellipse at center, rgba(236, 225, 168, 0.12), transparent 58%),
+    radial-gradient(ellipse at center, rgba(218, 250, 235, 0.1), transparent 72%);
+  filter: blur(4px);
+}
+
+.xm-title-screen .xm-title-button:not(.xm-title-button--main):hover:not(:disabled)::after,
+.xm-title-screen .xm-title-button:not(.xm-title-button--main):focus-visible:not(:disabled)::after,
+.xm-title-screen .xm-title-link:hover:not(:disabled)::after,
+.xm-title-screen .xm-title-link:focus-visible:not(:disabled)::after,
+.xm-ui-button:not(.xm-ui-button--primary):hover:not(:disabled)::after,
+.xm-ui-button:not(.xm-ui-button--primary):focus-visible:not(:disabled)::after,
+.xm-hub .xm-title-link:hover:not(:disabled)::after,
+.xm-hub .xm-title-link:focus-visible:not(:disabled)::after {
+  opacity: 0.78;
+}
+
+/* 31E fix: hub HUD floats on the scene instead of sitting in a heavy panel. */
+.xm-hub .xm-topbar {
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  align-items: flex-start;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+.xm-hub .xm-topbar > * {
+  pointer-events: auto;
+}
+
+.xm-hub .xm-topbar .xm-title-link {
+  min-height: 42px;
+  font-size: 13px;
+}
+
+.xm-hub .xm-topbar .xm-title-link--realm {
+  min-width: 210px;
+}
+
+.xm-hub .xm-ui-hub-resource {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.xm-hub .xm-ui-hub-resource .xm-ui-resource-bar {
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.xm-hub .xm-ui-hub-resource .xm-ui-resource {
+  min-height: 30px;
+  padding: 5px 9px;
+  border-color: rgba(216, 172, 82, 0.22);
+  background:
+    linear-gradient(180deg, rgba(246, 232, 178, 0.08), transparent 42%),
+    rgba(5, 18, 16, 0.5);
+  box-shadow:
+    inset 0 0 12px rgba(109, 226, 190, 0.04),
+    0 4px 14px rgba(0, 0, 0, 0.14);
+}
+
+/* 31E fix: main hub entries attach to the artwork as icon + name, not a bottom menu bar. */
+.xm-hub > .xm-bottom-nav {
+  position: absolute;
+  right: 38px;
+  bottom: 118px;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: repeat(4, 64px);
+  gap: 14px 12px;
+  width: auto;
+  max-width: 300px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button {
+  width: 64px;
+  min-width: 64px;
+  height: 74px;
+  min-height: 74px;
+  display: grid;
+  grid-template-rows: 48px 18px;
+  gap: 4px;
+  padding: 0;
+  place-items: center;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button::before {
+  display: block;
+  position: relative;
+  inset: auto;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(232, 210, 142, 0.28);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 246, 216, 0.2), transparent 28%),
+    radial-gradient(circle at center, rgba(31, 84, 70, 0.68), rgba(4, 18, 16, 0.74) 68%),
+    linear-gradient(180deg, rgba(232, 210, 142, 0.18), rgba(109, 226, 190, 0.08));
+  box-shadow:
+    inset 0 0 14px rgba(109, 226, 190, 0.08),
+    0 5px 16px rgba(0, 0, 0, 0.24);
+  grid-row: 1;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button::after {
+  inset: 2px 0 auto;
+  width: 58px;
+  height: 58px;
+  margin: auto;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(241, 217, 154, 0.2), transparent 34%),
+    radial-gradient(circle at 50% 50%, rgba(194, 255, 230, 0.12), transparent 66%);
+  filter: blur(4px);
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button strong {
+  grid-row: 2;
+  font-size: 13px;
+  line-height: 18px;
+  color: rgba(255, 247, 219, 0.94);
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.72),
+    0 0 8px rgba(226, 215, 160, 0.16);
+  white-space: nowrap;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button span {
+  display: none;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button:hover:not(:disabled)::before,
+.xm-hub > .xm-bottom-nav .xm-nav-button:focus-visible:not(:disabled)::before,
+.xm-hub > .xm-bottom-nav .xm-nav-button.active::before {
+  filter: brightness(1.12) saturate(1.05);
+  border-color: rgba(241, 217, 154, 0.46);
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button:hover:not(:disabled)::after,
+.xm-hub > .xm-bottom-nav .xm-nav-button:focus-visible:not(:disabled)::after,
+.xm-hub > .xm-bottom-nav .xm-nav-button.active::after {
+  opacity: 0.86;
+}
+
+@media (max-width: 860px) {
+  .xm-hub > .xm-bottom-nav {
+    right: 22px;
+    bottom: 92px;
+    grid-template-columns: repeat(4, 58px);
+    gap: 10px 8px;
+  }
+
+  .xm-hub > .xm-bottom-nav .xm-nav-button {
+    width: 58px;
+    min-width: 58px;
+    height: 70px;
+  }
+
+  .xm-hub > .xm-bottom-nav .xm-nav-button::before {
+    width: 44px;
+    height: 44px;
   }
 }

@@ -5749,6 +5749,12 @@ canvas.addEventListener("click", (event) => {
 });
 
 function handleHubNavClick(event) {
+  const placeholder = event.target.closest("[data-hub-placeholder]");
+  if (placeholder) {
+    event.stopPropagation();
+    openSettings(`${placeholder.dataset.hubPlaceholder || "该建筑"}功能开发中。`);
+    return;
+  }
   const button = event.target.closest("[data-hub-page]");
   if (!button) return;
   event.stopPropagation();
