@@ -21,10 +21,10 @@
         <span class="xm-title-bg-light" aria-hidden="true"></span>
         <span class="xm-title-bg-particles" aria-hidden="true"></span>
         <header class="xm-title-topbar">
-          <button id="titleRealmButton" class="xm-title-link xm-title-link--realm" type="button">当前界域：青冥一界</button>
+          <button id="titleRealmButton" class="xm-title-link xm-title-link--realm" type="button"><span class="xm-title-button-label">当前界域：青冥一界</span></button>
           <div class="xm-title-top-actions">
-            <button id="titleNoticeButton" class="xm-title-link" type="button">宗门告示</button>
-            <button id="titleSettingsButton" class="xm-title-link" type="button">设置</button>
+            <button id="titleNoticeButton" class="xm-title-link" type="button"><span class="xm-title-button-label">宗门告示</span></button>
+            <button id="titleSettingsButton" class="xm-title-link" type="button"><span class="xm-title-button-label">设置</span></button>
           </div>
         </header>
         <div class="xm-title-content">
@@ -43,13 +43,20 @@
             <span class="xm-title-panel-side-glow xm-title-panel-side-glow--left" aria-hidden="true"></span>
             <span class="xm-title-panel-side-glow xm-title-panel-side-glow--right" aria-hidden="true"></span>
             <div class="xm-title-login-panel">
-              <img class="xm-title-login-panel-skin" src="assets/images/ui/panels/panel-login-main.webp" alt="" aria-hidden="true" />
+              <div class="xm-title-login-panel-glass" aria-hidden="true"></div>
+              <img
+                class="xm-title-login-panel-frame"
+                src="assets/images/ui/panels/panel-login-frame.webp"
+                alt=""
+                aria-hidden="true"
+                onerror="this.onerror=null; this.src='assets/images/ui/panels/panel-login-main.webp';"
+              />
               <div class="xm-title-login-panel-content">
               <div class="xm-title-button-stack">
-                <button id="titleStartButton" class="primary xm-title-button xm-title-button--main" type="button">进入宗门</button>
+                <button id="titleStartButton" class="primary xm-title-button xm-title-button--main" type="button"><span class="xm-title-button-label">进入宗门</span></button>
                 <div class="xm-title-actions">
-                  <button id="titleLoginButton" class="secondary xm-title-button" type="button">继续修行</button>
-                  <button id="titleGuestButton" class="secondary xm-title-button" type="button">本地试炼</button>
+                  <button id="titleLoginButton" class="secondary xm-title-button" type="button"><span class="xm-title-button-label">继续修行</span></button>
+                  <button id="titleGuestButton" class="secondary xm-title-button" type="button"><span class="xm-title-button-label">本地试炼</span></button>
                 </div>
               </div>
               <p>此为试玩修行版本，当前进度暂存于本机。</p>
