@@ -7452,7 +7452,27 @@ button.secondary:disabled,
   display: none;
 }
 
+.xm-title-screen .xm-title-logo::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -46px;
+  z-index: 1;
+  width: min(680px, 72vw);
+  height: 158px;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(245, 232, 176, 0.2) 0%,
+      rgba(196, 236, 218, 0.13) 34%,
+      rgba(196, 236, 218, 0) 72%);
+  filter: blur(12px);
+  transform: translateX(-50%);
+}
+
 .xm-title-screen .xm-title-logo-image {
+  position: relative;
+  z-index: 2;
   display: block;
   width: min(980px, 90vw);
   max-width: 980px;
@@ -7471,6 +7491,8 @@ button.secondary:disabled,
 }
 
 .xm-title-screen .xm-title-logo-text {
+  position: relative;
+  z-index: 2;
   display: block;
 }
 
@@ -7501,6 +7523,19 @@ button.secondary:disabled,
   max-width: 820px;
   margin: 0 auto;
   overflow: visible;
+}
+
+.xm-title-screen .xm-title-login-panel-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -28px -36px;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at center,
+      rgba(178, 228, 210, 0.1),
+      rgba(178, 228, 210, 0) 70%);
+  filter: blur(14px);
 }
 
 .xm-title-screen .xm-title-panel-side-glow {
@@ -7540,13 +7575,28 @@ button.secondary:disabled,
   border: 0;
   border-radius: 0;
   background: transparent;
-  box-shadow: none;
+  box-shadow:
+    0 18px 48px rgba(0, 18, 18, 0.22),
+    0 0 42px rgba(158, 222, 196, 0.08);
   backdrop-filter: none;
   overflow: visible;
 }
 
 .xm-title-screen .xm-title-login-panel::before {
-  display: none;
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 4%;
+  z-index: 1;
+  height: 24%;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg,
+      rgba(245, 232, 176, 0.16),
+      rgba(190, 230, 214, 0.08),
+      rgba(190, 230, 214, 0));
+  filter: blur(8px);
 }
 
 .xm-title-screen .xm-title-login-panel-skin {
@@ -7559,6 +7609,7 @@ button.secondary:disabled,
   display: block;
   object-fit: fill;
   object-position: center;
+  opacity: 0.92;
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -7567,7 +7618,7 @@ button.secondary:disabled,
 
 .xm-title-screen .xm-title-login-panel-content {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
