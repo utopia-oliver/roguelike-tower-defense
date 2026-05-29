@@ -8649,35 +8649,56 @@ button.secondary:disabled,
   white-space: nowrap;
 }
 
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .scene-action-icon-text {
+  position: absolute;
+  left: 50%;
+  bottom: 11px;
+  z-index: 4;
+  display: block;
+  width: var(--scene-action-text-width, 82%);
+  height: 26px;
+  transform: translateX(-50%);
+  background: var(--scene-action-text, none) center / contain no-repeat;
+  pointer-events: none;
+}
+
 .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="CHARACTERS"] {
   --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-dongfu.webp");
+  --scene-action-text: url("../assets/images/ui/text/main/text-main-dongfu.webp");
+  --scene-action-text-width: 62%;
 }
 
 .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="ARTIFACTS"] {
   --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-lianqi-ge.webp");
+  --scene-action-text: url("../assets/images/ui/text/main/text-main-lianqi-ge.webp");
 }
 
 .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="FORMATIONS"] {
   --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-zhenshu-dian.webp");
+  --scene-action-text: url("../assets/images/ui/text/main/text-main-zhenshu-dian.webp");
 }
 
 .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="BAG"] {
   --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-kucang-dian.webp");
+  --scene-action-text: url("../assets/images/ui/text/main/text-main-kucang-dian.webp");
 }
 
 .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="GACHA"] {
   --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-qiling-tai.webp");
+  --scene-action-text: url("../assets/images/ui/text/main/text-main-qiling-tai.webp");
 }
 
 .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="CODEX"] {
   --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-zhenyao-lu.webp");
+  --scene-action-text: url("../assets/images/ui/text/main/text-main-zhenyao-lu.webp");
 }
 
 .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="ADVENTURE"] {
   --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-shanmen-wai.webp");
+  --scene-action-text: url("../assets/images/ui/text/main/text-main-shanmen-wai.webp");
 }
 
-.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button span {
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button > span:not(.scene-action-icon-text) {
   display: none;
 }
 
@@ -8708,5 +8729,10 @@ button.secondary:disabled,
     bottom: 10px;
     width: 68px;
     font-size: 12px;
+  }
+
+  .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .scene-action-icon-text {
+    bottom: 9px;
+    height: 22px;
   }
 }

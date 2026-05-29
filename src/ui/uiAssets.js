@@ -23,6 +23,17 @@
     title: {
       loginLogo: "assets/images/ui/title/title-login-logo.webp",
     },
+    text: {
+      main: {
+        dongfu: "assets/images/ui/text/main/text-main-dongfu.webp",
+        lianqiGe: "assets/images/ui/text/main/text-main-lianqi-ge.webp",
+        zhenshuDian: "assets/images/ui/text/main/text-main-zhenshu-dian.webp",
+        kucangDian: "assets/images/ui/text/main/text-main-kucang-dian.webp",
+        qilingTai: "assets/images/ui/text/main/text-main-qiling-tai.webp",
+        zhenyaoLu: "assets/images/ui/text/main/text-main-zhenyao-lu.webp",
+        shanmenWai: "assets/images/ui/text/main/text-main-shanmen-wai.webp",
+      },
+    },
     panels: {
       common: "assets/images/ui/panels/panel-common-9slice.webp",
       sub: "assets/images/ui/panels/panel-sub-9slice.webp",
