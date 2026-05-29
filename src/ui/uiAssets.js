@@ -59,6 +59,15 @@
       settings: "assets/images/ui/icons/icon-settings.webp",
       checkboxUnchecked: "assets/images/ui/icons/icon-checkbox-unchecked.webp",
       checkboxChecked: "assets/images/ui/icons/icon-checkbox-checked.webp",
+      main: {
+        dongfu: "assets/images/ui/icons/main/icon-main-dongfu.webp",
+        lianqiGe: "assets/images/ui/icons/main/icon-main-lianqi-ge.webp",
+        zhenshuDian: "assets/images/ui/icons/main/icon-main-zhenshu-dian.webp",
+        kucangDian: "assets/images/ui/icons/main/icon-main-kucang-dian.webp",
+        qilingTai: "assets/images/ui/icons/main/icon-main-qiling-tai.webp",
+        zhenyaoLu: "assets/images/ui/icons/main/icon-main-zhenyao-lu.webp",
+        shanmenWai: "assets/images/ui/icons/main/icon-main-shanmen-wai.webp",
+      },
     },
     rarity: {
       SR: {

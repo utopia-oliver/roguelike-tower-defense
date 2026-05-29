@@ -8381,3 +8381,332 @@ button.secondary:disabled,
     height: 44px;
   }
 }
+
+/* 32: main hub HUD and scene-attached action icons. */
+.xm-hub .xm-topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.xm-hub .xm-hub-top-actions {
+  justify-self: end;
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.xm-hub .xm-ui-hub-resource {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  margin: 0 10px 0 0;
+  max-width: min(560px, 48vw);
+}
+
+.xm-hub .xm-ui-hub-resource .xm-ui-resource-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.xm-hub .xm-ui-hub-resource .xm-ui-resource {
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid rgba(216, 172, 82, 0.18);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 220, 0.06), transparent 44%),
+    rgba(4, 16, 14, 0.42);
+  box-shadow:
+    inset 0 0 10px rgba(109, 226, 190, 0.035),
+    0 3px 10px rgba(0, 0, 0, 0.12);
+  backdrop-filter: none;
+}
+
+.xm-hub .xm-ui-hub-resource .xm-ui-resource--chapter {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  padding-inline: 4px;
+  color: rgba(248, 239, 214, 0.78);
+}
+
+.xm-hub .xm-ui-hub-resource .xm-ui-resource__icon {
+  width: 18px;
+  height: 18px;
+  border-color: rgba(241, 217, 154, 0.22);
+  background:
+    radial-gradient(circle, rgba(241, 217, 154, 0.18), rgba(109, 226, 190, 0.08) 56%, rgba(5, 16, 14, 0.56) 100%);
+}
+
+.xm-hub .xm-ui-hub-resource .xm-ui-resource em {
+  font-size: 12px;
+}
+
+.xm-hub > .xm-bottom-nav {
+  right: 42px;
+  bottom: 104px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 12px;
+  max-width: none;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button {
+  width: 58px;
+  min-width: 58px;
+  height: 62px;
+  min-height: 62px;
+  display: grid;
+  grid-template-rows: 1fr;
+  padding: 0;
+  overflow: visible;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button::before {
+  display: block;
+  width: 52px;
+  height: 52px;
+  grid-row: 1;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 210, 142, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 246, 216, 0.14), transparent 32%),
+    radial-gradient(circle at 50% 52%, rgba(37, 92, 78, 0.58), rgba(5, 20, 18, 0.7) 72%),
+    linear-gradient(135deg, rgba(232, 210, 142, 0.15), rgba(109, 226, 190, 0.07));
+  box-shadow:
+    inset 0 0 12px rgba(109, 226, 190, 0.06),
+    0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: rotate(45deg);
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button::after {
+  inset: 4px 0 auto;
+  width: 54px;
+  height: 54px;
+  background:
+    radial-gradient(ellipse at center, rgba(241, 217, 154, 0.1), transparent 44%),
+    radial-gradient(ellipse at center, rgba(194, 255, 230, 0.08), transparent 70%);
+  filter: blur(4px);
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button strong {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  z-index: 3;
+  width: 58px;
+  transform: translateX(-50%);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button:hover:not(:disabled)::after,
+.xm-hub > .xm-bottom-nav .xm-nav-button:focus-visible:not(:disabled)::after,
+.xm-hub > .xm-bottom-nav .xm-nav-button.active::after {
+  opacity: 0.48;
+}
+
+.xm-hub > .xm-bottom-nav .xm-nav-button:hover:not(:disabled)::before,
+.xm-hub > .xm-bottom-nav .xm-nav-button:focus-visible:not(:disabled)::before,
+.xm-hub > .xm-bottom-nav .xm-nav-button.active::before {
+  filter: brightness(1.08) saturate(1.03);
+  border-color: rgba(241, 217, 154, 0.38);
+}
+
+@media (max-width: 980px) {
+  .xm-hub .xm-topbar {
+    grid-template-columns: auto auto;
+  }
+
+  .xm-hub .xm-ui-hub-resource {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: end;
+    max-width: min(620px, calc(100vw - 48px));
+    margin: 6px 0 0;
+  }
+
+  .xm-hub > .xm-bottom-nav {
+    right: 22px;
+    bottom: 86px;
+    gap: 8px;
+  }
+}
+
+/* 32A: the sect scene image is the only visible stage; HUD and actions live inside it. */
+.xm-hub {
+  width: min(100%, 1320px);
+  padding: 0;
+  gap: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.xm-hub-scene-frame {
+  width: min(100%, 1280px, calc((100vh - 32px) * 16 / 9));
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-topbar {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  z-index: 8;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-topbar > * {
+  pointer-events: auto;
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav {
+  position: absolute;
+  left: auto;
+  right: 42px;
+  bottom: 44px;
+  transform: none;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  width: auto;
+  max-width: none;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button {
+  width: 86px;
+  min-width: 86px;
+  height: 86px;
+  min-height: 86px;
+  display: grid;
+  grid-template-rows: 1fr;
+  padding: 0;
+  overflow: visible;
+  place-items: center;
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button::before {
+  display: block;
+  position: relative;
+  inset: auto;
+  width: 82px;
+  height: 82px;
+  grid-row: 1;
+  border: 0;
+  border-radius: 0;
+  background:
+    var(--scene-action-icon, none) center / contain no-repeat,
+    radial-gradient(circle at 50% 38%, rgba(255, 246, 216, 0.18), transparent 28%),
+    radial-gradient(circle at center, rgba(31, 84, 70, 0.62), rgba(4, 18, 16, 0.64) 68%),
+    linear-gradient(180deg, rgba(232, 210, 142, 0.14), rgba(109, 226, 190, 0.07));
+  box-shadow: none;
+  transform: none;
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button strong {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  z-index: 3;
+  width: 76px;
+  transform: translateX(-50%);
+  font-size: 13px;
+  line-height: 16px;
+  color: rgba(255, 247, 219, 0.96);
+  text-align: center;
+  text-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.75),
+    0 0 8px rgba(226, 215, 160, 0.16);
+  white-space: nowrap;
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="CHARACTERS"] {
+  --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-dongfu.webp");
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="ARTIFACTS"] {
+  --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-lianqi-ge.webp");
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="FORMATIONS"] {
+  --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-zhenshu-dian.webp");
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="BAG"] {
+  --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-kucang-dian.webp");
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="GACHA"] {
+  --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-qiling-tai.webp");
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="CODEX"] {
+  --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-zhenyao-lu.webp");
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button[data-hub-page="ADVENTURE"] {
+  --scene-action-icon: url("../assets/images/ui/icons/main/icon-main-shanmen-wai.webp");
+}
+
+.xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button span {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .xm-hub .xm-hub-scene-frame > .xm-topbar {
+    grid-template-columns: auto auto;
+  }
+
+  .xm-hub .xm-hub-scene-frame > .xm-bottom-nav {
+    right: 22px;
+    bottom: 32px;
+    gap: 8px;
+  }
+
+  .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button {
+    width: 74px;
+    min-width: 74px;
+    height: 74px;
+    min-height: 74px;
+  }
+
+  .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button::before {
+    width: 72px;
+    height: 72px;
+  }
+
+  .xm-hub .xm-hub-scene-frame > .xm-bottom-nav .xm-nav-button strong {
+    bottom: 10px;
+    width: 68px;
+    font-size: 12px;
+  }
+}
